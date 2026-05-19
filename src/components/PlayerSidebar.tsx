@@ -2,6 +2,7 @@
 
 import { useSession } from 'next-auth/react';
 import { useGameStore } from '@/store/gameStore';
+import { getCompletedUpgradeCount, getRankProgress, getRankTierLabel } from '@/store/gameStore';
 import { motion } from 'framer-motion';
 
 function StatBar({ value, max, color }: { value: number; max: number; color: string }) {
@@ -22,14 +23,6 @@ function StatBar({ value, max, color }: { value: number; max: number; color: str
 const HEAT_COLOR = (heat: number) =>
   heat < 30 ? '#22c55e' : heat < 60 ? '#f59e0b' : '#ef4444';
 
-const getRankLabel = (rank: number): string => {
-  if (rank < 10) return 'Street Rat';
-  if (rank < 25) return 'Scavenger';
-  if (rank < 50) return 'Veteran';
-  if (rank < 75) return 'Legend';
-  return 'Kingpin';
-};
-
 const RARITY_COLORS: Record<string, string> = {
   common: '#9ca3af',
   uncommon: '#22c55e',
@@ -47,10 +40,12 @@ const EQUIPMENT_SLOTS: Array<{ slot: 'cart' | 'backpack' | 'flashlight' | 'glove
 ];
 
 export default function PlayerSidebar() {
-  const { player, getEquippedItem, getEquipmentStats } = useGameStore();
+  const { player, getEquippedItem, getEquipmentStats, upgradeTreeProgress } = useGameStore();
   const { data: session } = useSession();
   const effectiveCapacity = player.inventoryCapacity * (1 + getEquipmentStats().capacityBonus / 100);
   const displayName = session?.user?.username || player.username;
+  const rankProgress = getRankProgress(player.totalScavenged);
+  const completedUpgrades = getCompletedUpgradeCount(upgradeTreeProgress);
 
   return (
     <aside className="fixed left-0 top-14 bottom-0 w-52 flex flex-col overflow-y-auto z-40"
@@ -67,7 +62,11 @@ export default function PlayerSidebar() {
             <p className="text-sm font-bold tracking-wide" style={{ color: '#39ff14' }}>
               {displayName}
             </p>
-            <p className="text-xs" style={{ color: '#6b7280' }}>{getRankLabel(player.rank)} (Lv. {player.rank})</p>
+            <p className="text-xs" style={{ color: '#6b7280' }}>{getRankTierLabel(player.rank)} Tier (Lv. {player.rank})</p>
+            <div className="mt-2 w-28 mx-auto">
+              <StatBar value={rankProgress.progress * 100} max={100} color="#fbbf24" />
+            </div>
+            <p className="text-[10px] mt-1" style={{ color: '#4b5563' }}>{rankProgress.nextRankRequirement - player.totalScavenged} value to next rank</p>
           </div>
         </div>
       </div>
@@ -87,6 +86,13 @@ export default function PlayerSidebar() {
           <div className="flex justify-between text-xs mb-1">
             <span style={{ color: '#9ca3af' }}>Cash</span>
             <span style={{ color: '#22c55e' }}>${player.cash.toLocaleString()}</span>
+          </div>
+        </div>
+
+        <div>
+          <div className="flex justify-between text-xs mb-1">
+            <span style={{ color: '#9ca3af' }}>Upgrades</span>
+            <span style={{ color: '#fbbf24' }}>{completedUpgrades}</span>
           </div>
         </div>
 

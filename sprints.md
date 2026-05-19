@@ -287,39 +287,39 @@ Auth QA matrix:
 ### Tasks
 
 #### 6.1 Upgrade Tree Data
-- [ ] Create upgrade tree definitions (JSON or Zustand store):
+- [x] Create upgrade tree definitions (JSON or Zustand store):
   - Transport (Cart → Bike → Motorcycle → Truck)
   - Equipment (Backpack → Satchel → Duffel → Trunk)
   - Lighting (Flashlight → Lantern → LED → Night Vision)
   - Storage (Small Box → Crate → Pallet → Container)
-- [ ] Each node: name, icon, cost (cash + materials), stat bonuses, prerequisites
-- [ ] Minimum 3 levels per tree, max 6 levels
+- [x] Each node: name, icon, cost (cash + materials), stat bonuses, prerequisites
+- [x] Minimum 3 levels per tree, max 6 levels
 
 #### 6.2 Progression Logic
-- [ ] Track player rank (based on total scavenged value + missions)
-- [ ] Unlock nodes: require rank ≥ X, previous node completed, resources available
-- [ ] Upgrade action: spend resources, item goes into inventory (replace old if equipped)
-- [ ] Stat bonuses apply immediately (carry capacity, search speed, heat penalty, rarity ↑)
-- [ ] Visual feedback: glow/highlight when upgradeable, dim when locked
+- [x] Track player rank (based on total scavenged value + missions)
+- [x] Unlock nodes: require rank ≥ X, previous node completed, resources available
+- [x] Upgrade action: spend resources, item goes into inventory (replace old if equipped)
+- [x] Stat bonuses apply immediately (carry capacity, search speed, heat penalty, rarity ↑)
+- [x] Visual feedback: glow/highlight when upgradeable, dim when locked
 
 #### 6.3 Resource Gates
-- [ ] Track player resources: cash, junk, materials (Electronics, Metals, Software)
-- [ ] Costly upgrades: late-game (Tier 5+) require 100k+ cash or rare materials
-- [ ] Alternative paths: some upgrades have multiple cost options (pay more cash OR more time)
-- [ ] Time-based unlocks: certain upgrades only available after X hours played
+- [x] Track player resources: cash, junk, materials (Electronics, Metals, Software)
+- [x] Costly upgrades: late-game (Tier 5+) require 100k+ cash or rare materials
+- [x] Alternative paths: some upgrades have multiple cost options (pay more cash OR more time)
+- [x] Time-based unlocks: certain upgrades only available after X hours played
 
 #### 6.4 UpgradesPage Enhancements
-- [ ] Tree visualization: node borders glow based on status (unlocked, locked, completed)
-- [ ] Hover tooltip: cost breakdown, stat deltas, time to upgrade
-- [ ] Upgrade button triggers modal: confirm cost, select if inventory slot
-- [ ] Show current progression (e.g., "Cart 2/6") for each tree
-- [ ] Animation when upgrading (progress bar, confetti on completion)
+- [x] Tree visualization: node borders glow based on status (unlocked, locked, completed)
+- [x] Hover tooltip: cost breakdown, stat deltas, time to upgrade
+- [x] Upgrade button triggers modal: confirm cost, select if inventory slot
+- [x] Show current progression (e.g., "Cart 2/6") for each tree
+- [x] Animation when upgrading (progress bar, confetti on completion)
 
 #### 6.5 Progression Tracking
-- [ ] Add to PlayerSidebar: Rank (Bronze/Silver/Gold/Platinum/Diamond)
-- [ ] Achievement system: "First Upgrade", "Veteran Equipment", "Junkyard Master"
-- [ ] Progress bar to next rank (based on total value scavenged)
-- [ ] Leaderboard: top players by rank, total scavenged value, upgrades completed
+- [x] Add to PlayerSidebar: Rank (Bronze/Silver/Gold/Platinum/Diamond)
+- [x] Achievement system: "First Upgrade", "Veteran Equipment", "Junkyard Master"
+- [x] Progress bar to next rank (based on total value scavenged)
+- [x] Leaderboard: top players by rank, total scavenged value, upgrades completed
 
 ---
 

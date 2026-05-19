@@ -58,6 +58,13 @@ export const createStarterProfileData = (displayName: string) => ({
       activeDays: 0,
       lastProcessedDay: null,
     },
+    upgradeTreeProgress: {
+      transport: null,
+      equipment: null,
+      lighting: null,
+      storage: null,
+    },
+    progressionHoursPlayed: 0,
     maxParallelJobs: 3,
     maxWorkerSlots: 3,
     tradeHistory: [],

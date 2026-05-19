@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { useGameStore } from '@/store/gameStore';
+import { getEffectiveProgressionHours, useGameStore } from '@/store/gameStore';
 import type { PersistedGameState } from '@/store/gameStore';
 
 export default function GameBootstrap({ children }: { children: React.ReactNode }) {
@@ -21,6 +21,9 @@ export default function GameBootstrap({ children }: { children: React.ReactNode 
   const junkyardApplicants = useGameStore((state) => state.junkyardApplicants);
   const junkyardFacilities = useGameStore((state) => state.junkyardFacilities);
   const junkyardStats = useGameStore((state) => state.junkyardStats);
+  const upgradeTreeProgress = useGameStore((state) => state.upgradeTreeProgress);
+  const progressionHoursPlayed = useGameStore((state) => state.progressionHoursPlayed);
+  const progressionSessionStartedAt = useGameStore((state) => state.progressionSessionStartedAt);
   const maxParallelJobs = useGameStore((state) => state.maxParallelJobs);
   const maxWorkerSlots = useGameStore((state) => state.maxWorkerSlots);
   const tradeHistory = useGameStore((state) => state.tradeHistory);
@@ -77,10 +80,12 @@ export default function GameBootstrap({ children }: { children: React.ReactNode 
     junkyardApplicants,
     junkyardFacilities,
     junkyardStats,
+    upgradeTreeProgress,
+    progressionHoursPlayed: getEffectiveProgressionHours(progressionHoursPlayed, progressionSessionStartedAt),
     maxParallelJobs,
     maxWorkerSlots,
     tradeHistory,
-  }), [auctionListings, currentDistrict, currentPage, directTradeOffers, inventory, junkyardApplicants, junkyardFacilities, junkyardJobs, junkyardStats, junkyardStorage, junkyardWorkers, marketCycle, marketListings, maxParallelJobs, maxWorkerSlots, player, tradeHistory]);
+  }), [auctionListings, currentDistrict, currentPage, directTradeOffers, inventory, junkyardApplicants, junkyardFacilities, junkyardJobs, junkyardStats, junkyardStorage, junkyardWorkers, marketCycle, marketListings, maxParallelJobs, maxWorkerSlots, player, progressionHoursPlayed, progressionSessionStartedAt, tradeHistory, upgradeTreeProgress]);
 
   const serializedSnapshot = useMemo(() => JSON.stringify(snapshot), [snapshot]);
 

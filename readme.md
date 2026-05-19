@@ -1,12 +1,12 @@
 # Dumpster Tycoon
 
-Dumpster Tycoon is a browser-based scavenging and junk-economy game built with Next.js, React, Zustand, Prisma, and NextAuth. The current build covers the early gameplay loop, inventory and equipment systems, user accounts, provider linking, profile persistence, and account recovery flows.
+Dumpster Tycoon is a browser-based scavenging and junk-economy game built with Next.js, React, Zustand, Prisma, and NextAuth. The current build now covers the core scavenging loop, inventory and equipment, authenticated persistence, live market trading, junkyard management, and the opening Sprint 6 progression tree systems.
 
 ![Dumpster Tycoon app screenshot](public/appphoto.png)
 
 ## Current State
 
-The project is currently through Sprint 3 of the roadmap.
+The project is fully through Sprint 5.5 of the roadmap, and Sprint 6 has started.
 
 Implemented so far:
 
@@ -17,7 +17,10 @@ Implemented so far:
 - Profile settings with account stats, provider management, password add/update, and sign-out
 - Email verification, forgot-password, reset-password, and recovery flows
 - User-scoped persistence for gameplay state using Prisma + SQLite
-- Automated test coverage for auth flows, profile routes, and key UI recovery states
+- Marketplace buy/sell flows, auction house listings, direct peer trades, and escrow-backed settlement
+- Junkyard storage, timed recycling jobs, worker assignment, facility upgrades, and junkyard revenue stats
+- Store-backed upgrade trees with rank progress, resource gates, achievements, and progression leaderboards
+- Automated test coverage for auth flows, profile routes, store logic, and key page states
 
 ## Stack
 
@@ -98,28 +101,28 @@ Notes about auth testing:
 
 The next major work is already laid out in `sprints.md`. The highest-priority open items are:
 
-- Tie more progression systems to the user record: unlocked districts, upgrades, missions, and guild membership
+- Finish the remaining Sprint 6 resource-gate and upgrades-page polish items
+- Tie more progression systems to the user record: unlocked districts, missions, and guild membership
 - Add optimistic update + rollback behavior when persistence fails
 - Finalize account migration strategy for existing local-only players
 - Complete QA around session refresh, logout/login, expired sessions, and account isolation
 - Confirm Sprint 1 and Sprint 2 gameplay still behaves correctly under persisted authenticated state
-- Begin Sprint 4 marketplace systems: listings, buy/sell flows, pricing logic, and market UI
+- Continue from progression into missions, contracts, and faction systems
 
 ## Short Roadmap
 
-### Sprint 4: Market System & Trading
+### Sprint 6: Progression & Upgrade Trees
 
-- Marketplace data model and mock listings
-- Buy/sell mechanics with fees and pricing modifiers
-- Filtering, sorting, and price tracking UI
-- Optional player-to-player trading foundation
+- Store-backed linear upgrade trees for transport, equipment, lighting, and storage
+- Rank progress tied to lifetime scavenged value
+- Resource-gated upgrade purchases with junkyard material costs
+- Progression achievements and leaderboard scaffolding
 
-### Sprint 5: Junkyard & Recycling Empire
+### Sprint 7: Missions & Contracts
 
-- Storage categories and processing queues
-- Recycling automation
-- Worker management
-- Facility upgrades and ROI systems
+- Daily mission generation and contract rewards
+- Multi-step chains and faction-sensitive outcomes
+- Seasonal leaderboard hooks
 
 ## Repository Notes
 
@@ -128,7 +131,8 @@ The next major work is already laid out in `sprints.md`. The highest-priority op
 - Gameplay state store: `src/store/gameStore.ts`
 - Profile persistence API: `src/app/api/profile/route.ts`
 - Account settings UI: `src/pages-ui/SettingsPage.tsx`
+- Upgrade tree UI: `src/pages-ui/UpgradesPage.tsx`
 
 ## Status
 
-This repository is under active iteration. The current focus is moving from account infrastructure into marketplace and deeper player progression systems.
+This repository is under active iteration. The current focus is finishing Sprint 6 progression work before moving into missions and contract systems.

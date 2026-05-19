@@ -161,6 +161,8 @@ export async function PUT(request: Request) {
         junkyardApplicants: body.snapshot.junkyardApplicants,
         junkyardFacilities: body.snapshot.junkyardFacilities,
         junkyardStats: body.snapshot.junkyardStats,
+        upgradeTreeProgress: body.snapshot.upgradeTreeProgress,
+        progressionHoursPlayed: body.snapshot.progressionHoursPlayed,
         maxParallelJobs: body.snapshot.maxParallelJobs,
         maxWorkerSlots: body.snapshot.maxWorkerSlots,
         tradeHistory: body.snapshot.tradeHistory,

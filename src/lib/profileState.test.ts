@@ -30,6 +30,13 @@ describe('profileState', () => {
         activeDays: 0,
         lastProcessedDay: null,
       },
+      upgradeTreeProgress: {
+        transport: null,
+        equipment: null,
+        lighting: null,
+        storage: null,
+      },
+      progressionHoursPlayed: 0,
       maxParallelJobs: 3,
       maxWorkerSlots: 3,
       tradeHistory: [],
@@ -219,6 +226,13 @@ describe('profileState', () => {
             activeDays: 3,
             lastProcessedDay: '2026-05-19',
           },
+          upgradeTreeProgress: {
+            transport: 'transport_2',
+            equipment: 'equipment_1',
+            lighting: null,
+            storage: 'storage_1',
+          },
+          progressionHoursPlayed: 14.5,
           maxParallelJobs: 4,
           maxWorkerSlots: 5,
           tradeHistory: [
@@ -254,6 +268,8 @@ describe('profileState', () => {
     expect(snapshot.junkyardApplicants).toHaveLength(1);
     expect(snapshot.junkyardFacilities).toHaveLength(1);
     expect(snapshot.junkyardStats).toMatchObject({ lifetimeMaterialsProcessed: 220, activeDays: 3 });
+    expect(snapshot.upgradeTreeProgress).toMatchObject({ transport: 'transport_2', equipment: 'equipment_1' });
+    expect(snapshot.progressionHoursPlayed).toBe(14.5);
     expect(snapshot.maxParallelJobs).toBe(4);
     expect(snapshot.maxWorkerSlots).toBe(5);
     expect(snapshot.tradeHistory).toHaveLength(1);
@@ -307,6 +323,8 @@ describe('profileState', () => {
     expect(snapshot.junkyardApplicants.length).toBeGreaterThan(0);
     expect(snapshot.junkyardFacilities.length).toBeGreaterThan(0);
     expect(snapshot.junkyardStats).toMatchObject({ lifetimeMaterialsProcessed: 0, activeDays: 0 });
+    expect(snapshot.upgradeTreeProgress).toMatchObject({ transport: null, equipment: null, lighting: null, storage: null });
+    expect(snapshot.progressionHoursPlayed).toBe(0);
     expect(snapshot.maxParallelJobs).toBe(3);
     expect(snapshot.marketCycle).toBe(0);
   });

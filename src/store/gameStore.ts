@@ -193,6 +193,38 @@ export interface JunkyardStats {
   lastProcessedDay: string | null;
 }
 
+export type UpgradeTreeId = 'transport' | 'equipment' | 'lighting' | 'storage';
+
+export interface UpgradeTreeNode {
+  id: string;
+  treeId: UpgradeTreeId;
+  tier: number;
+  name: string;
+  icon: string;
+  description: string;
+  equipmentSlot: EquipmentSlot;
+  equipmentItemId: string;
+  cashCost: number;
+  junkCost: number;
+  materialCosts: Partial<Record<JunkyardStorageCategory, number>>;
+  rankRequired: number;
+  hoursPlayedRequired: number;
+  costOptions: UpgradeCostOption[];
+  bonusLabel: string;
+}
+
+export interface UpgradeCostOption {
+  id: string;
+  label: string;
+  cashCost: number;
+  junkCost: number;
+  materialCosts: Partial<Record<JunkyardStorageCategory, number>>;
+  hoursPlayedRequired: number;
+  note: string;
+}
+
+export type UpgradeTreeProgress = Record<UpgradeTreeId, string | null>;
+
 export interface Player {
   username: string;
   rank: number; // 0-100, affects progression
@@ -229,6 +261,8 @@ export interface PersistedGameState {
   junkyardApplicants: JunkyardWorker[];
   junkyardFacilities: JunkyardFacility[];
   junkyardStats: JunkyardStats;
+  upgradeTreeProgress: UpgradeTreeProgress;
+  progressionHoursPlayed: number;
   maxParallelJobs: number;
   maxWorkerSlots: number;
   tradeHistory: TradeHistoryEntry[];
@@ -256,6 +290,8 @@ interface GameState {
   junkyardApplicants: JunkyardWorker[];
   junkyardFacilities: JunkyardFacility[];
   junkyardStats: JunkyardStats;
+  upgradeTreeProgress: UpgradeTreeProgress;
+  progressionHoursPlayed: number;
   maxParallelJobs: number;
   maxWorkerSlots: number;
   tradeHistory: TradeHistoryEntry[];
@@ -267,6 +303,7 @@ interface GameState {
   junkyardSessionRevenue: number;
   junkyardSessionJobsCompleted: number;
   junkyardSessionStartedAt: number;
+  progressionSessionStartedAt: number;
 
   setPage: (page: NavPage) => void;
   setDistrict: (district: District) => void;
@@ -300,6 +337,7 @@ interface GameState {
   assignWorkerToJunkyardJob: (workerId: string, jobId: string | null) => void;
   startJunkyardFacilityUpgrade: (facilityId: JunkyardFacilityId) => void;
   upgradeJunkyardOperations: (kind: 'parallel' | 'workers') => void;
+  purchaseUpgradeNode: (nodeId: string, costOptionId?: string) => void;
   disassembleItem: (itemId: string, quantity: number) => void;
   removeFromInventory: (itemId: string, quantity: number) => void;
   calculateUsedCapacity: () => number;
@@ -329,7 +367,266 @@ const EQUIPMENT_STATS: Record<string, { capacityBonus: number; searchSpeedBonus:
   eq_pack_e1: { capacityBonus: 0, searchSpeedBonus: 28, heatReduction: 0, rarityBonus: 0 },
   eq_light_e1: { capacityBonus: 0, searchSpeedBonus: 0, heatReduction: 15, rarityBonus: 0 },
   eq_glove_e1: { capacityBonus: 0, searchSpeedBonus: 0, heatReduction: 0, rarityBonus: 12 },
+  eq_cart_l1: { capacityBonus: 60, searchSpeedBonus: 4, heatReduction: 8, rarityBonus: 0 },
+  eq_cart_i1: { capacityBonus: 90, searchSpeedBonus: 8, heatReduction: 12, rarityBonus: 2 },
+  eq_pack_l1: { capacityBonus: 8, searchSpeedBonus: 40, heatReduction: 0, rarityBonus: 0 },
+  eq_pack_i1: { capacityBonus: 15, searchSpeedBonus: 55, heatReduction: 0, rarityBonus: 2 },
+  eq_light_l1: { capacityBonus: 0, searchSpeedBonus: 4, heatReduction: 22, rarityBonus: 2 },
+  eq_light_i1: { capacityBonus: 0, searchSpeedBonus: 8, heatReduction: 30, rarityBonus: 4 },
+  eq_glove_l1: { capacityBonus: 0, searchSpeedBonus: 0, heatReduction: 5, rarityBonus: 18 },
+  eq_glove_i1: { capacityBonus: 0, searchSpeedBonus: 0, heatReduction: 8, rarityBonus: 24 },
 };
+
+const EQUIPMENT_ITEM_BLUEPRINTS: Record<string, Omit<InventoryItem, 'quantity'> & { slot: EquipmentSlot; stats: { capacityBonus: number; searchSpeedBonus: number; heatReduction: number; rarityBonus: number } }> = {
+  eq_cart_u1: { id: 'eq_cart_u1', name: 'Old Shopping Cart', icon: '🛒', rarity: 'uncommon', weight: 8.0, value: 120, description: 'Dented but sturdy. +10% capacity.', slot: 'cart', stats: EQUIPMENT_STATS.eq_cart_u1 },
+  eq_pack_u1: { id: 'eq_pack_u1', name: 'Weathered Backpack', icon: '🎒', rarity: 'uncommon', weight: 2.5, value: 95, description: 'Torn straps. +8% search speed.', slot: 'backpack', stats: EQUIPMENT_STATS.eq_pack_u1 },
+  eq_light_u1: { id: 'eq_light_u1', name: 'LED Flashlight', icon: '🔦', rarity: 'uncommon', weight: 0.3, value: 80, description: 'Decent battery. -3% heat gain.', slot: 'flashlight', stats: EQUIPMENT_STATS.eq_light_u1 },
+  eq_glove_u1: { id: 'eq_glove_u1', name: 'Work Gloves', icon: '🧤', rarity: 'uncommon', weight: 0.2, value: 70, description: 'Worn leather. +2% rarity chance.', slot: 'gloves', stats: EQUIPMENT_STATS.eq_glove_u1 },
+  eq_cart_r1: { id: 'eq_cart_r1', name: 'Industrial Dolly', icon: '🛒', rarity: 'rare', weight: 12.0, value: 580, description: 'Heavy-duty warehouse model. +25% capacity.', slot: 'cart', stats: EQUIPMENT_STATS.eq_cart_r1 },
+  eq_pack_r1: { id: 'eq_pack_r1', name: 'Military Backpack', icon: '🎒', rarity: 'rare', weight: 3.0, value: 420, description: 'Kevlar-reinforced. +18% search speed.', slot: 'backpack', stats: EQUIPMENT_STATS.eq_pack_r1 },
+  eq_light_r1: { id: 'eq_light_r1', name: 'Xenon Torch', icon: '🔦', rarity: 'rare', weight: 0.5, value: 380, description: 'Powerful beam. -8% heat gain.', slot: 'flashlight', stats: EQUIPMENT_STATS.eq_light_r1 },
+  eq_glove_r1: { id: 'eq_glove_r1', name: 'Leather Grip Gloves', icon: '🧤', rarity: 'rare', weight: 0.3, value: 320, description: 'Professional-grade. +6% rarity chance.', slot: 'gloves', stats: EQUIPMENT_STATS.eq_glove_r1 },
+  eq_cart_e1: { id: 'eq_cart_e1', name: 'Hover Cart', icon: '🛒', rarity: 'epic', weight: 6.0, value: 2800, description: 'Anti-gravity prototype. +40% capacity, -5% heat.', slot: 'cart', stats: EQUIPMENT_STATS.eq_cart_e1 },
+  eq_pack_e1: { id: 'eq_pack_e1', name: 'Nano-Fiber Satchel', icon: '🎒', rarity: 'epic', weight: 1.5, value: 2100, description: 'Synthetic fibers. +28% search speed.', slot: 'backpack', stats: EQUIPMENT_STATS.eq_pack_e1 },
+  eq_light_e1: { id: 'eq_light_e1', name: 'Plasma Flare', icon: '🔦', rarity: 'epic', weight: 0.6, value: 1800, description: 'Generates light. -15% heat gain.', slot: 'flashlight', stats: EQUIPMENT_STATS.eq_light_e1 },
+  eq_glove_e1: { id: 'eq_glove_e1', name: 'Neural Response Gloves', icon: '🧤', rarity: 'epic', weight: 0.4, value: 1600, description: 'Enhanced grip. +12% rarity chance.', slot: 'gloves', stats: EQUIPMENT_STATS.eq_glove_e1 },
+  eq_cart_l1: { id: 'eq_cart_l1', name: 'Courier Bike Rig', icon: '🏍️', rarity: 'legendary', weight: 7.5, value: 9200, description: 'Hybrid haul frame that turns alley sprints into cargo runs. +60% capacity, +4% speed.', slot: 'cart', stats: EQUIPMENT_STATS.eq_cart_l1 },
+  eq_cart_i1: { id: 'eq_cart_i1', name: 'Smuggler Hauler', icon: '🚚', rarity: 'illegal', weight: 9.5, value: 22000, description: 'Black-market hauling platform built for silent district hops. +90% capacity, +8% speed.', slot: 'cart', stats: EQUIPMENT_STATS.eq_cart_i1 },
+  eq_pack_l1: { id: 'eq_pack_l1', name: 'Courier Frame Pack', icon: '🎒', rarity: 'legendary', weight: 2.2, value: 8400, description: 'Suspension rig that keeps every route fast under load. +40% search speed.', slot: 'backpack', stats: EQUIPMENT_STATS.eq_pack_l1 },
+  eq_pack_i1: { id: 'eq_pack_i1', name: 'Contraband Trunk Harness', icon: '🧳', rarity: 'illegal', weight: 3.4, value: 20500, description: 'Smuggling-grade pack with hidden braces and fast-release storage. +55% search speed.', slot: 'backpack', stats: EQUIPMENT_STATS.eq_pack_i1 },
+  eq_light_l1: { id: 'eq_light_l1', name: 'Spectral Lantern', icon: '🏮', rarity: 'legendary', weight: 0.8, value: 7900, description: 'Cold-spectrum lamp that cuts patrol attention without killing visibility. -22% heat gain.', slot: 'flashlight', stats: EQUIPMENT_STATS.eq_light_l1 },
+  eq_light_i1: { id: 'eq_light_i1', name: 'Night Vision Stack', icon: '🟢', rarity: 'illegal', weight: 1.1, value: 19800, description: 'Forbidden optics package tuned for zero-light scrapyards. -30% heat gain.', slot: 'flashlight', stats: EQUIPMENT_STATS.eq_light_i1 },
+  eq_glove_l1: { id: 'eq_glove_l1', name: 'Salvage Surgeon Gloves', icon: '🩺', rarity: 'legendary', weight: 0.5, value: 8700, description: 'Precision gloves for extracting the best components from live scrap. +18% rarity chance.', slot: 'gloves', stats: EQUIPMENT_STATS.eq_glove_l1 },
+  eq_glove_i1: { id: 'eq_glove_i1', name: 'Blacksite Handling Gloves', icon: '🧤', rarity: 'illegal', weight: 0.6, value: 21400, description: 'Restricted handling kit for unstable or stolen hardware. +24% rarity chance.', slot: 'gloves', stats: EQUIPMENT_STATS.eq_glove_i1 },
+};
+
+function createUpgradeNode(args: {
+  id: string;
+  treeId: UpgradeTreeId;
+  tier: number;
+  equipmentItemId: keyof typeof EQUIPMENT_ITEM_BLUEPRINTS;
+  cashCost?: number;
+  junkCost?: number;
+  materialCosts?: Partial<Record<JunkyardStorageCategory, number>>;
+  rankRequired: number;
+  hoursPlayedRequired?: number;
+  costOptions?: UpgradeCostOption[];
+  bonusLabel: string;
+}) {
+  const equipmentItem = EQUIPMENT_ITEM_BLUEPRINTS[args.equipmentItemId];
+  const primaryCost = args.costOptions?.[0] ?? {
+    id: `${args.id}_primary`,
+    label: 'Standard Build',
+    cashCost: args.cashCost ?? 0,
+    junkCost: args.junkCost ?? 0,
+    materialCosts: args.materialCosts ?? {},
+    hoursPlayedRequired: args.hoursPlayedRequired ?? 0,
+    note: 'Standard fabrication route.',
+  } satisfies UpgradeCostOption;
+  return {
+    id: args.id,
+    treeId: args.treeId,
+    tier: args.tier,
+    name: equipmentItem.name,
+    icon: equipmentItem.icon,
+    description: equipmentItem.description,
+    equipmentSlot: equipmentItem.slot,
+    equipmentItemId: equipmentItem.id,
+    cashCost: primaryCost.cashCost,
+    junkCost: primaryCost.junkCost,
+    materialCosts: primaryCost.materialCosts,
+    rankRequired: args.rankRequired,
+    hoursPlayedRequired: primaryCost.hoursPlayedRequired,
+    costOptions: args.costOptions ?? [primaryCost],
+    bonusLabel: args.bonusLabel,
+  } satisfies UpgradeTreeNode;
+}
+
+function createUpgradeCostOption(args: UpgradeCostOption) {
+  return args;
+}
+
+export const UPGRADE_TREE_META: Record<UpgradeTreeId, { label: string; icon: string; accent: string }> = {
+  transport: { label: 'Transport', icon: '🛒', accent: '#f59e0b' },
+  equipment: { label: 'Equipment', icon: '🧤', accent: '#a855f7' },
+  lighting: { label: 'Lighting', icon: '🔦', accent: '#38bdf8' },
+  storage: { label: 'Storage', icon: '🎒', accent: '#22c55e' },
+};
+
+export const UPGRADE_TREE_DEFINITIONS: Record<UpgradeTreeId, UpgradeTreeNode[]> = {
+  transport: [
+    createUpgradeNode({ id: 'transport_1', treeId: 'transport', tier: 1, equipmentItemId: 'eq_cart_u1', cashCost: 450, junkCost: 12, materialCosts: { Metals: 18 }, rankRequired: 2, bonusLabel: '+10% carry capacity' }),
+    createUpgradeNode({ id: 'transport_2', treeId: 'transport', tier: 2, equipmentItemId: 'eq_cart_r1', cashCost: 1800, junkCost: 30, materialCosts: { Metals: 42, Electronics: 12 }, rankRequired: 7, bonusLabel: '+25% carry capacity' }),
+    createUpgradeNode({ id: 'transport_3', treeId: 'transport', tier: 3, equipmentItemId: 'eq_cart_e1', cashCost: 6200, junkCost: 90, materialCosts: { Metals: 80, Electronics: 30 }, rankRequired: 16, bonusLabel: '+40% carry capacity, -5% heat' }),
+    createUpgradeNode({
+      id: 'transport_4',
+      treeId: 'transport',
+      tier: 4,
+      equipmentItemId: 'eq_cart_l1',
+      rankRequired: 28,
+      bonusLabel: '+60% carry capacity, +4% search speed',
+      costOptions: [
+        createUpgradeCostOption({ id: 'transport_4_premium', label: 'Premium Fabrication', cashCost: 24000, junkCost: 520, materialCosts: { Metals: 140, Electronics: 55 }, hoursPlayedRequired: 8, note: 'Pay extra cash to bring the rig online after a shorter field grind.' }),
+        createUpgradeCostOption({ id: 'transport_4_salvage', label: 'Salvage Route', cashCost: 15000, junkCost: 360, materialCosts: { Metals: 100, Electronics: 35 }, hoursPlayedRequired: 18, note: 'Lower cash outlay, but only available after a longer scrapyard run.' }),
+      ],
+    }),
+    createUpgradeNode({
+      id: 'transport_5',
+      treeId: 'transport',
+      tier: 5,
+      equipmentItemId: 'eq_cart_i1',
+      rankRequired: 45,
+      bonusLabel: '+90% carry capacity, +8% search speed',
+      costOptions: [
+        createUpgradeCostOption({ id: 'transport_5_premium', label: 'Syndicate Buyout', cashCost: 120000, junkCost: 2500, materialCosts: { Metals: 420, Electronics: 180, Software: 90 }, hoursPlayedRequired: 16, note: 'Massive cash sink for an immediate black-market haul frame.' }),
+        createUpgradeCostOption({ id: 'transport_5_salvage', label: 'Long-Haul Build', cashCost: 76000, junkCost: 1800, materialCosts: { Metals: 320, Electronics: 140, Software: 110 }, hoursPlayedRequired: 36, note: 'Cheaper than the buyout, but gated behind serious hours played and rarer salvage.' }),
+      ],
+    }),
+  ],
+  equipment: [
+    createUpgradeNode({ id: 'equipment_1', treeId: 'equipment', tier: 1, equipmentItemId: 'eq_glove_u1', cashCost: 300, junkCost: 10, materialCosts: { Waste: 10, Electronics: 8 }, rankRequired: 2, bonusLabel: '+2% rarity chance' }),
+    createUpgradeNode({ id: 'equipment_2', treeId: 'equipment', tier: 2, equipmentItemId: 'eq_glove_r1', cashCost: 1350, junkCost: 24, materialCosts: { Waste: 22, Metals: 18 }, rankRequired: 6, bonusLabel: '+6% rarity chance' }),
+    createUpgradeNode({ id: 'equipment_3', treeId: 'equipment', tier: 3, equipmentItemId: 'eq_glove_e1', cashCost: 5400, junkCost: 84, materialCosts: { Electronics: 45, Software: 40 }, rankRequired: 15, bonusLabel: '+12% rarity chance' }),
+    createUpgradeNode({
+      id: 'equipment_4',
+      treeId: 'equipment',
+      tier: 4,
+      equipmentItemId: 'eq_glove_l1',
+      rankRequired: 27,
+      bonusLabel: '+18% rarity chance, +5% heat control',
+      costOptions: [
+        createUpgradeCostOption({ id: 'equipment_4_premium', label: 'Precision Lab Build', cashCost: 21000, junkCost: 480, materialCosts: { Electronics: 120, Software: 110 }, hoursPlayedRequired: 10, note: 'Premium clean-room assembly with a shorter playtime gate.' }),
+        createUpgradeCostOption({ id: 'equipment_4_salvage', label: 'Workshop Refit', cashCost: 13200, junkCost: 320, materialCosts: { Metals: 50, Electronics: 90, Software: 85 }, hoursPlayedRequired: 20, note: 'Refit a cheaper pair from recovered parts after more field time.' }),
+      ],
+    }),
+    createUpgradeNode({
+      id: 'equipment_5',
+      treeId: 'equipment',
+      tier: 5,
+      equipmentItemId: 'eq_glove_i1',
+      rankRequired: 44,
+      bonusLabel: '+24% rarity chance, +8% heat control',
+      costOptions: [
+        createUpgradeCostOption({ id: 'equipment_5_premium', label: 'Blacksite Procurement', cashCost: 105000, junkCost: 2300, materialCosts: { Electronics: 220, Software: 240, Waste: 160 }, hoursPlayedRequired: 18, note: 'Direct procurement is brutally expensive but opens sooner.' }),
+        createUpgradeCostOption({ id: 'equipment_5_salvage', label: 'Contraband Retrofit', cashCost: 69000, junkCost: 1700, materialCosts: { Electronics: 180, Software: 210, Waste: 140 }, hoursPlayedRequired: 38, note: 'Recover and retrofit the kit if you can stand the longer grind.' }),
+      ],
+    }),
+  ],
+  lighting: [
+    createUpgradeNode({ id: 'lighting_1', treeId: 'lighting', tier: 1, equipmentItemId: 'eq_light_u1', cashCost: 260, junkCost: 8, materialCosts: { Electronics: 14 }, rankRequired: 2, bonusLabel: '-3% heat gain' }),
+    createUpgradeNode({ id: 'lighting_2', treeId: 'lighting', tier: 2, equipmentItemId: 'eq_light_r1', cashCost: 1500, junkCost: 28, materialCosts: { Electronics: 26, Metals: 12 }, rankRequired: 8, bonusLabel: '-8% heat gain' }),
+    createUpgradeNode({ id: 'lighting_3', treeId: 'lighting', tier: 3, equipmentItemId: 'eq_light_e1', cashCost: 5200, junkCost: 76, materialCosts: { Electronics: 55, Software: 24 }, rankRequired: 17, bonusLabel: '-15% heat gain' }),
+    createUpgradeNode({
+      id: 'lighting_4',
+      treeId: 'lighting',
+      tier: 4,
+      equipmentItemId: 'eq_light_l1',
+      rankRequired: 29,
+      bonusLabel: '-22% heat gain, +2% rarity',
+      costOptions: [
+        createUpgradeCostOption({ id: 'lighting_4_premium', label: 'Cold-Spectrum Build', cashCost: 23000, junkCost: 460, materialCosts: { Electronics: 125, Software: 60 }, hoursPlayedRequired: 9, note: 'High-end optics order with a shorter playtime gate.' }),
+        createUpgradeCostOption({ id: 'lighting_4_salvage', label: 'Scavenged Lens Route', cashCost: 14800, junkCost: 320, materialCosts: { Electronics: 90, Software: 45, Metals: 30 }, hoursPlayedRequired: 19, note: 'Lower cash route if you stay in the field longer.' }),
+      ],
+    }),
+    createUpgradeNode({
+      id: 'lighting_5',
+      treeId: 'lighting',
+      tier: 5,
+      equipmentItemId: 'eq_light_i1',
+      rankRequired: 46,
+      bonusLabel: '-30% heat gain, +4% rarity',
+      costOptions: [
+        createUpgradeCostOption({ id: 'lighting_5_premium', label: 'Night Ops Package', cashCost: 112000, junkCost: 2100, materialCosts: { Electronics: 240, Software: 180, Metals: 120 }, hoursPlayedRequired: 18, note: 'Buy the full black-bag optics stack outright.' }),
+        createUpgradeCostOption({ id: 'lighting_5_salvage', label: 'Field Retrofit', cashCost: 72000, junkCost: 1600, materialCosts: { Electronics: 190, Software: 170, Metals: 90 }, hoursPlayedRequired: 40, note: 'Retrofit the stack with recovered components after a longer grind.' }),
+      ],
+    }),
+  ],
+  storage: [
+    createUpgradeNode({ id: 'storage_1', treeId: 'storage', tier: 1, equipmentItemId: 'eq_pack_u1', cashCost: 380, junkCost: 10, materialCosts: { Waste: 12, Software: 10 }, rankRequired: 2, bonusLabel: '+8% search speed' }),
+    createUpgradeNode({ id: 'storage_2', treeId: 'storage', tier: 2, equipmentItemId: 'eq_pack_r1', cashCost: 1650, junkCost: 26, materialCosts: { Waste: 18, Software: 26 }, rankRequired: 7, bonusLabel: '+18% search speed' }),
+    createUpgradeNode({ id: 'storage_3', treeId: 'storage', tier: 3, equipmentItemId: 'eq_pack_e1', cashCost: 5600, junkCost: 82, materialCosts: { Software: 44, Electronics: 28 }, rankRequired: 16, bonusLabel: '+28% search speed' }),
+    createUpgradeNode({
+      id: 'storage_4',
+      treeId: 'storage',
+      tier: 4,
+      equipmentItemId: 'eq_pack_l1',
+      rankRequired: 28,
+      bonusLabel: '+40% search speed, +8% capacity',
+      costOptions: [
+        createUpgradeCostOption({ id: 'storage_4_premium', label: 'Fleet Courier Build', cashCost: 22500, junkCost: 500, materialCosts: { Software: 115, Electronics: 70, Waste: 30 }, hoursPlayedRequired: 9, note: 'High-cash route for a near-immediate courier frame.' }),
+        createUpgradeCostOption({ id: 'storage_4_salvage', label: 'Depot Rebuild', cashCost: 14200, junkCost: 340, materialCosts: { Software: 95, Electronics: 50, Waste: 20 }, hoursPlayedRequired: 20, note: 'Cheaper depot rebuild unlocked by more time in play.' }),
+      ],
+    }),
+    createUpgradeNode({
+      id: 'storage_5',
+      treeId: 'storage',
+      tier: 5,
+      equipmentItemId: 'eq_pack_i1',
+      rankRequired: 45,
+      bonusLabel: '+55% search speed, +15% capacity',
+      costOptions: [
+        createUpgradeCostOption({ id: 'storage_5_premium', label: 'Smuggler Outfit', cashCost: 108000, junkCost: 2200, materialCosts: { Software: 250, Electronics: 170, Waste: 130 }, hoursPlayedRequired: 17, note: 'Buy the full contraband pack system from a syndicate broker.' }),
+        createUpgradeCostOption({ id: 'storage_5_salvage', label: 'Tunnel Stitch Route', cashCost: 70000, junkCost: 1650, materialCosts: { Software: 220, Electronics: 150, Waste: 110 }, hoursPlayedRequired: 39, note: 'Stitch the illegal harness together after many more hours in the field.' }),
+      ],
+    }),
+  ],
+};
+
+const ALL_UPGRADE_NODES = Object.values(UPGRADE_TREE_DEFINITIONS).flat();
+
+export function createInitialUpgradeTreeProgress(): UpgradeTreeProgress {
+  return {
+    transport: null,
+    equipment: null,
+    lighting: null,
+    storage: null,
+  };
+}
+
+export function getRankFromTotalScavenged(totalScavenged: number) {
+  return Math.min(100, Math.max(1, Math.floor(Math.sqrt(Math.max(0, totalScavenged) / 25)) + 1));
+}
+
+export function getRankTierLabel(rank: number) {
+  if (rank < 10) return 'Bronze';
+  if (rank < 25) return 'Silver';
+  if (rank < 50) return 'Gold';
+  if (rank < 75) return 'Platinum';
+  return 'Diamond';
+}
+
+export function getRankProgress(totalScavenged: number) {
+  const currentRank = getRankFromTotalScavenged(totalScavenged);
+  const currentRankRequirement = Math.max(0, ((currentRank - 1) ** 2) * 25);
+  const nextRankRequirement = (currentRank ** 2) * 25;
+  const span = Math.max(1, nextRankRequirement - currentRankRequirement);
+  return {
+    currentRank,
+    currentRankRequirement,
+    nextRankRequirement,
+    progress: Math.min(1, Math.max(0, (totalScavenged - currentRankRequirement) / span)),
+  };
+}
+
+export function getCompletedUpgradeCount(progress: UpgradeTreeProgress) {
+  return (Object.keys(progress) as UpgradeTreeId[]).reduce((total, treeId) => {
+    const currentNodeId = progress[treeId];
+    if (!currentNodeId) {
+      return total;
+    }
+
+    const nodeIndex = UPGRADE_TREE_DEFINITIONS[treeId].findIndex((node) => node.id === currentNodeId);
+    return total + Math.max(0, nodeIndex + 1);
+  }, 0);
+}
+
+export function getTotalJunkMaterials(storage: JunkyardStorageBin[]) {
+  return storage.reduce((total, entry) => total + entry.storedValue, 0);
+}
+
+export function getEffectiveProgressionHours(progressionHoursPlayed: number, progressionSessionStartedAt: number) {
+  return Math.round((progressionHoursPlayed + Math.max(0, Date.now() - progressionSessionStartedAt) / (60 * 60 * 1000)) * 10) / 10;
+}
 
 export const MARKET_CATEGORIES: Array<'All' | MarketCategory> = ['All', 'Electronics', 'Metals', 'Software', 'Illegal', 'Vehicles'];
 
@@ -1066,6 +1363,42 @@ function spendJunkyardMaterials(storage: JunkyardStorageBin[], materialCost: num
   });
 }
 
+function hasCategorizedMaterials(storage: JunkyardStorageBin[], materialCosts: Partial<Record<JunkyardStorageCategory, number>>) {
+  return Object.entries(materialCosts).every(([category, amount]) => {
+    const cost = amount ?? 0;
+    if (cost <= 0) {
+      return true;
+    }
+
+    const bin = storage.find((entry) => entry.category === category);
+    return Boolean(bin && bin.storedValue >= cost);
+  });
+}
+
+function spendCategorizedMaterials(storage: JunkyardStorageBin[], materialCosts: Partial<Record<JunkyardStorageCategory, number>>) {
+  return storage.map((entry) => {
+    const spend = materialCosts[entry.category] ?? 0;
+    return spend > 0 ? { ...entry, storedValue: Math.max(0, entry.storedValue - spend) } : entry;
+  });
+}
+
+function getUpgradeNodeById(nodeId: string) {
+  return ALL_UPGRADE_NODES.find((node) => node.id === nodeId) ?? null;
+}
+
+function getUpgradeCostOption(node: UpgradeTreeNode, costOptionId?: string) {
+  if (!costOptionId) {
+    return node.costOptions[0] ?? null;
+  }
+
+  return node.costOptions.find((option) => option.id === costOptionId) ?? null;
+}
+
+function getCurrentUpgradeNode(progress: UpgradeTreeProgress, treeId: UpgradeTreeId) {
+  const currentNodeId = progress[treeId];
+  return currentNodeId ? UPGRADE_TREE_DEFINITIONS[treeId].find((node) => node.id === currentNodeId) ?? null : null;
+}
+
 const MOCK_INVENTORY: InventoryItem[] = [
   { id: '1', name: 'Copper Wire', icon: '🔌', rarity: 'common', quantity: 12, weight: 0.5, value: 15, description: 'Stripped copper wiring. Useful for basic electronics.' },
   { id: '2', name: 'Broken Smartphone', icon: '📱', rarity: 'uncommon', quantity: 3, weight: 0.3, value: 45, description: 'Cracked screen, missing battery. Parts still valuable.' },
@@ -1162,7 +1495,7 @@ export const useGameStore = create<GameState>((set, get) => {
     currentDistrict: 'slums',
     player: {
       username: 'Scavenger_X',
-      rank: 12,
+      rank: getRankFromTotalScavenged(2500),
       reputation: 340,
       cash: 4750,
       heat: 32,
@@ -1191,6 +1524,8 @@ export const useGameStore = create<GameState>((set, get) => {
     junkyardApplicants: createInitialJunkyardApplicants(),
     junkyardFacilities: createInitialJunkyardFacilities(),
     junkyardStats: createInitialJunkyardStats(),
+    upgradeTreeProgress: createInitialUpgradeTreeProgress(),
+    progressionHoursPlayed: 11.5,
     maxParallelJobs: 3,
     maxWorkerSlots: 3,
     tradeHistory: [],
@@ -1207,6 +1542,7 @@ export const useGameStore = create<GameState>((set, get) => {
     junkyardSessionRevenue: 0,
     junkyardSessionJobsCompleted: 0,
     junkyardSessionStartedAt: Date.now(),
+    progressionSessionStartedAt: Date.now(),
 
     setPage: (page) => set({ currentPage: page }),
     setDistrict: (district) => set({ currentDistrict: district }),
@@ -1232,9 +1568,10 @@ export const useGameStore = create<GameState>((set, get) => {
         const totalScavenged = shouldCountAsScavengedLoot
           ? s.player.totalScavenged + item.value * item.quantity
           : s.player.totalScavenged;
+        const rank = getRankFromTotalScavenged(totalScavenged);
         return {
           inventory,
-          player: { ...s.player, usedCapacity, totalScavenged },
+          player: { ...s.player, usedCapacity, totalScavenged, rank },
         };
       }),
     consumeEnergy: (amount) =>
@@ -2325,6 +2662,97 @@ export const useGameStore = create<GameState>((set, get) => {
 
       store.addNotification(`⬆️ Upgraded ${kind === 'parallel' ? 'parallel processing' : 'worker slots'} to ${currentLevel + 1}.`, 'success');
     },
+    purchaseUpgradeNode: (nodeId, costOptionId) => {
+      const store = get();
+      const node = getUpgradeNodeById(nodeId);
+
+      if (!node) {
+        store.addNotification('Upgrade node not found.', 'warning');
+        return;
+      }
+
+      const treeNodes = UPGRADE_TREE_DEFINITIONS[node.treeId];
+      const currentNode = getCurrentUpgradeNode(store.upgradeTreeProgress, node.treeId);
+      const currentIndex = currentNode ? treeNodes.findIndex((entry) => entry.id === currentNode.id) : -1;
+      const nextNode = treeNodes[currentIndex + 1];
+
+      if (!nextNode || nextNode.id !== node.id) {
+        store.addNotification('That upgrade path is locked behind an earlier tier.', 'warning');
+        return;
+      }
+
+      const selectedCostOption = getUpgradeCostOption(node, costOptionId);
+      if (!selectedCostOption) {
+        store.addNotification('Upgrade cost option not found.', 'warning');
+        return;
+      }
+
+      if (store.player.rank < node.rankRequired) {
+        store.addNotification(`Requires Rank ${node.rankRequired} before ${node.name} comes online.`, 'warning');
+        return;
+      }
+
+      const effectiveHoursPlayed = getEffectiveProgressionHours(store.progressionHoursPlayed, store.progressionSessionStartedAt);
+      if (effectiveHoursPlayed < selectedCostOption.hoursPlayedRequired) {
+        store.addNotification(`${node.name} unlocks after ${selectedCostOption.hoursPlayedRequired}h played. Current progress: ${effectiveHoursPlayed.toFixed(1)}h.`, 'warning');
+        return;
+      }
+
+      if (store.player.cash < selectedCostOption.cashCost) {
+        store.addNotification(`Need $${selectedCostOption.cashCost.toLocaleString()} to craft ${node.name}.`, 'warning');
+        return;
+      }
+
+      if (!hasCategorizedMaterials(store.junkyardStorage, selectedCostOption.materialCosts)) {
+        store.addNotification(`Need more junkyard materials before ${node.name} can be assembled.`, 'warning');
+        return;
+      }
+
+      const totalJunkMaterials = getTotalJunkMaterials(store.junkyardStorage);
+      if (totalJunkMaterials < selectedCostOption.junkCost) {
+        store.addNotification(`Need ${selectedCostOption.junkCost} total junk reserves before ${node.name} can be assembled.`, 'warning');
+        return;
+      }
+
+      const upgradeItem = EQUIPMENT_ITEM_BLUEPRINTS[node.equipmentItemId];
+      const previousItemId = currentNode?.equipmentItemId ?? null;
+      const storageAfterMaterials = spendCategorizedMaterials(store.junkyardStorage, selectedCostOption.materialCosts);
+      const nextStorage = spendJunkyardMaterials(storageAfterMaterials, selectedCostOption.junkCost);
+      const baseInventory = previousItemId
+        ? store.inventory.filter((item) => item.id !== previousItemId)
+        : store.inventory;
+      const existingNextItem = baseInventory.find((item) => item.id === upgradeItem.id);
+      const inventory = existingNextItem
+        ? baseInventory.map((item) => (
+            item.id === upgradeItem.id
+              ? { ...item, quantity: item.quantity + 1, foundAt: 'Workbench', foundTime: Date.now() }
+              : item
+          ))
+        : [...baseInventory, { ...upgradeItem, quantity: 1, foundAt: 'Workbench', foundTime: Date.now() }];
+      const usedCapacity = inventory.reduce((total, item) => total + item.weight * item.quantity, 0);
+
+      set((s) => ({
+        player: {
+          ...s.player,
+          cash: s.player.cash - selectedCostOption.cashCost,
+          usedCapacity,
+          equipment: {
+            ...s.player.equipment,
+            [node.equipmentSlot]: upgradeItem.id,
+          },
+        },
+        inventory,
+        junkyardStorage: nextStorage,
+        upgradeTreeProgress: {
+          ...s.upgradeTreeProgress,
+          [node.treeId]: node.id,
+        },
+        progressionHoursPlayed: effectiveHoursPlayed,
+        progressionSessionStartedAt: Date.now(),
+      }));
+
+      store.addNotification(`⚡ Installed ${node.name} via ${selectedCostOption.label}. ${node.bonusLabel}.`, 'success');
+    },
     disassembleItem: (itemId, quantity) => {
       const store = get();
       const item = store.inventory.find((i) => i.id === itemId);
@@ -2472,6 +2900,8 @@ export const useGameStore = create<GameState>((set, get) => {
         junkyardApplicants: snapshot.junkyardApplicants,
         junkyardFacilities: snapshot.junkyardFacilities,
         junkyardStats: snapshot.junkyardStats,
+        upgradeTreeProgress: snapshot.upgradeTreeProgress,
+        progressionHoursPlayed: snapshot.progressionHoursPlayed,
         maxParallelJobs: snapshot.maxParallelJobs,
         maxWorkerSlots: snapshot.maxWorkerSlots,
         tradeHistory: snapshot.tradeHistory,
@@ -2479,8 +2909,10 @@ export const useGameStore = create<GameState>((set, get) => {
         junkyardSessionRevenue: 0,
         junkyardSessionJobsCompleted: 0,
         junkyardSessionStartedAt: Date.now(),
+        progressionSessionStartedAt: Date.now(),
         player: {
           ...snapshot.player,
+          rank: getRankFromTotalScavenged(snapshot.player.totalScavenged),
           usedCapacity,
           lastScavengeTime: snapshot.player.lastScavengeTime || Date.now(),
         },

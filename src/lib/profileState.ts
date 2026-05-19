@@ -1,4 +1,4 @@
-import { DISTRICTS, createInitialAuctionListings, createInitialDirectTradeOffers, createInitialJunkyardApplicants, createInitialJunkyardFacilities, createInitialJunkyardStats, createInitialJunkyardStorage, createInitialJunkyardWorkers, createInitialMarketListings, type AuctionListing, type DirectTradeOffer, type DirectTradeStatus, type District, type InventoryItem, type JunkyardFacility, type JunkyardFacilityId, type JunkyardFacilityStatus, type JunkyardJob, type JunkyardJobStatus, type JunkyardStats, type JunkyardStorageBin, type JunkyardStorageCategory, type JunkyardWorker, type JunkyardWorkerSpecialization, type JunkyardWorkerStatus, type MarketCategory, type MarketListing, type NavPage, type PersistedGameState, type Player, type TradeHistoryEntry, type TradeHistoryType } from '@/store/gameStore';
+import { DISTRICTS, UPGRADE_TREE_DEFINITIONS, createInitialAuctionListings, createInitialDirectTradeOffers, createInitialJunkyardApplicants, createInitialJunkyardFacilities, createInitialJunkyardStats, createInitialJunkyardStorage, createInitialJunkyardWorkers, createInitialMarketListings, createInitialUpgradeTreeProgress, type AuctionListing, type DirectTradeOffer, type DirectTradeStatus, type District, type InventoryItem, type JunkyardFacility, type JunkyardFacilityId, type JunkyardFacilityStatus, type JunkyardJob, type JunkyardJobStatus, type JunkyardStats, type JunkyardStorageBin, type JunkyardStorageCategory, type JunkyardWorker, type JunkyardWorkerSpecialization, type JunkyardWorkerStatus, type MarketCategory, type MarketListing, type NavPage, type PersistedGameState, type Player, type TradeHistoryEntry, type TradeHistoryType, type UpgradeTreeId, type UpgradeTreeProgress } from '@/store/gameStore';
 
 type PlayerEquipment = Player['equipment'];
 
@@ -19,6 +19,8 @@ export type AccountSettings = {
   junkyardApplicants: JunkyardWorker[];
   junkyardFacilities: JunkyardFacility[];
   junkyardStats: JunkyardStats;
+  upgradeTreeProgress: UpgradeTreeProgress;
+  progressionHoursPlayed: number;
   maxParallelJobs: number;
   maxWorkerSlots: number;
   tradeHistory: TradeHistoryEntry[];
@@ -68,10 +70,14 @@ const DEFAULT_SETTINGS: AccountSettings = {
   junkyardApplicants: [],
   junkyardFacilities: [],
   junkyardStats: createInitialJunkyardStats(),
+  upgradeTreeProgress: createInitialUpgradeTreeProgress(),
+  progressionHoursPlayed: 0,
   maxParallelJobs: 3,
   maxWorkerSlots: 3,
   tradeHistory: [],
 };
+
+const VALID_UPGRADE_NODE_IDS = new Set(Object.values(UPGRADE_TREE_DEFINITIONS).flat().map((node) => node.id));
 
 function isTradeHistoryType(value: unknown): value is TradeHistoryType {
   return value === 'auction_listed'
@@ -306,6 +312,18 @@ function isJunkyardStats(value: unknown): value is JunkyardStats {
     && (typeof candidate.lastProcessedDay === 'string' || candidate.lastProcessedDay === null);
 }
 
+function isUpgradeTreeProgress(value: unknown): value is UpgradeTreeProgress {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const candidate = value as Partial<Record<UpgradeTreeId, unknown>>;
+  return (['transport', 'equipment', 'lighting', 'storage'] as UpgradeTreeId[]).every((treeId) => {
+    const nodeId = candidate[treeId];
+    return nodeId === null || (typeof nodeId === 'string' && VALID_UPGRADE_NODE_IDS.has(nodeId));
+  });
+}
+
 function isInventoryItem(value: unknown): value is InventoryItem {
   if (!value || typeof value !== 'object') {
     return false;
@@ -369,6 +387,8 @@ export function parseSettingsJson(raw: string): AccountSettings {
       junkyardApplicants: Array.isArray(parsed.junkyardApplicants) ? parsed.junkyardApplicants.filter(isJunkyardWorker) : DEFAULT_SETTINGS.junkyardApplicants,
       junkyardFacilities: Array.isArray(parsed.junkyardFacilities) ? parsed.junkyardFacilities.filter(isJunkyardFacility) : DEFAULT_SETTINGS.junkyardFacilities,
       junkyardStats: isJunkyardStats(parsed.junkyardStats) ? parsed.junkyardStats : DEFAULT_SETTINGS.junkyardStats,
+      upgradeTreeProgress: isUpgradeTreeProgress(parsed.upgradeTreeProgress) ? parsed.upgradeTreeProgress : DEFAULT_SETTINGS.upgradeTreeProgress,
+      progressionHoursPlayed: typeof parsed.progressionHoursPlayed === 'number' ? parsed.progressionHoursPlayed : DEFAULT_SETTINGS.progressionHoursPlayed,
       maxParallelJobs: typeof parsed.maxParallelJobs === 'number' ? parsed.maxParallelJobs : DEFAULT_SETTINGS.maxParallelJobs,
       maxWorkerSlots: typeof parsed.maxWorkerSlots === 'number' ? parsed.maxWorkerSlots : DEFAULT_SETTINGS.maxWorkerSlots,
       tradeHistory: Array.isArray(parsed.tradeHistory) ? parsed.tradeHistory.filter(isTradeHistoryEntry) : DEFAULT_SETTINGS.tradeHistory,
@@ -423,6 +443,8 @@ export function buildPersistedGameState(args: {
     junkyardApplicants: settings.junkyardApplicants.length > 0 ? settings.junkyardApplicants : createInitialJunkyardApplicants(),
     junkyardFacilities: settings.junkyardFacilities.length > 0 ? settings.junkyardFacilities : createInitialJunkyardFacilities(),
     junkyardStats: settings.junkyardStats,
+    upgradeTreeProgress: settings.upgradeTreeProgress,
+    progressionHoursPlayed: settings.progressionHoursPlayed,
     maxParallelJobs: settings.maxParallelJobs,
     maxWorkerSlots: settings.maxWorkerSlots,
     tradeHistory: settings.tradeHistory,

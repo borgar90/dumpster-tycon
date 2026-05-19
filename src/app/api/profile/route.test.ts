@@ -219,6 +219,13 @@ describe('/api/profile route', () => {
             activeDays: 4,
             lastProcessedDay: '2026-05-19',
           },
+          upgradeTreeProgress: {
+            transport: 'transport_1',
+            equipment: null,
+            lighting: 'lighting_1',
+            storage: null,
+          },
+          progressionHoursPlayed: 12.5,
           maxParallelJobs: 4,
           maxWorkerSlots: 5,
           tradeHistory: [
@@ -271,6 +278,8 @@ describe('/api/profile route', () => {
           expect.objectContaining({ id: 'furnace', status: 'active' }),
         ]),
         junkyardStats: expect.objectContaining({ lifetimeMaterialsProcessed: 240, activeDays: 4 }),
+        upgradeTreeProgress: expect.objectContaining({ transport: 'transport_1', lighting: 'lighting_1' }),
+        progressionHoursPlayed: 12.5,
         maxParallelJobs: 4,
         maxWorkerSlots: 5,
         tradeHistory: expect.arrayContaining([
@@ -304,7 +313,7 @@ describe('/api/profile route', () => {
   it('updates persisted state and increments items found from inventory growth', async () => {
     mocks.getServerAuthSession.mockResolvedValue({ user: { id: 'user-1' } });
     mocks.playerProfileFindUnique.mockResolvedValue({
-      settingsJson: JSON.stringify({ tutorialSeen: false, notifications: true, theme: 'neon', itemsFound: 1, sessionStreak: 2, lastActiveDate: '2026-05-19', marketCycle: 1, marketListings: [], auctionListings: [], directTradeOffers: [], junkyardStorage: [], junkyardJobs: [], junkyardWorkers: [], junkyardApplicants: [], junkyardFacilities: [], junkyardStats: { lifetimeMaterialsProcessed: 0, lifetimeJobsCompleted: 0, activeDays: 0, lastProcessedDay: null }, maxParallelJobs: 3, maxWorkerSlots: 3, tradeHistory: [] }),
+      settingsJson: JSON.stringify({ tutorialSeen: false, notifications: true, theme: 'neon', itemsFound: 1, sessionStreak: 2, lastActiveDate: '2026-05-19', marketCycle: 1, marketListings: [], auctionListings: [], directTradeOffers: [], junkyardStorage: [], junkyardJobs: [], junkyardWorkers: [], junkyardApplicants: [], junkyardFacilities: [], junkyardStats: { lifetimeMaterialsProcessed: 0, lifetimeJobsCompleted: 0, activeDays: 0, lastProcessedDay: null }, upgradeTreeProgress: { transport: null, equipment: null, lighting: null, storage: null }, progressionHoursPlayed: 0, maxParallelJobs: 3, maxWorkerSlots: 3, tradeHistory: [] }),
       inventoryJson: JSON.stringify([{ id: 'old', name: 'Old', icon: 'O', rarity: 'common', quantity: 1, weight: 1, value: 1, description: 'old' }]),
     });
     mocks.playerProfileUpdate.mockResolvedValue({});
@@ -467,6 +476,13 @@ describe('/api/profile route', () => {
             activeDays: 2,
             lastProcessedDay: '2026-05-19',
           },
+          upgradeTreeProgress: {
+            transport: 'transport_1',
+            equipment: 'equipment_1',
+            lighting: null,
+            storage: 'storage_1',
+          },
+          progressionHoursPlayed: 19.25,
           maxParallelJobs: 4,
           maxWorkerSlots: 5,
           tradeHistory: [
