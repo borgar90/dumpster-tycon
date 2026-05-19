@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0a0a0a;
+  --foreground: #d4d4d4;
+  --neon-green: #39ff14;
+  --neon-yellow: #ffe600;
+  --neon-orange: #ff6a00;
+  --charcoal: #141414;
+  --panel: #1a1a1a;
+  --border: #2a2a2a;
+  --border-glow: #39ff1440;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Courier New', monospace;
+  overflow-x: hidden;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: #111;
+}
+::-webkit-scrollbar-thumb {
+  background: #39ff14;
+  border-radius: 2px;
+}
+
+.glow-green {
+  box-shadow: 0 0 8px #39ff1466, 0 0 20px #39ff1422;
+}
+.glow-orange {
+  box-shadow: 0 0 8px #ff6a0066, 0 0 20px #ff6a0022;
+}
+.glow-yellow {
+  box-shadow: 0 0 8px #ffe60066, 0 0 20px #ffe60022;
+}
+.text-glow-green {
+  text-shadow: 0 0 8px #39ff14, 0 0 20px #39ff1466;
+}
+.text-glow-orange {
+  text-shadow: 0 0 8px #ff6a00, 0 0 20px #ff6a0066;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+}
+
+.panel-glow {
+  background: var(--panel);
+  border: 1px solid #39ff1430;
+  box-shadow: 0 0 15px #39ff1410;
+}
+
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  92% { opacity: 1; }
+  93% { opacity: 0.8; }
+  94% { opacity: 1; }
+}
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 8px #39ff1466; }
+  50% { box-shadow: 0 0 20px #39ff14aa, 0 0 40px #39ff1444; }
+}
+
+.animate-flicker {
+  animation: flicker 4s infinite;
+}
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.rarity-common { color: #9ca3af; }
+.rarity-uncommon { color: #22c55e; }
+.rarity-rare { color: #3b82f6; }
+.rarity-epic { color: #a855f7; }
+.rarity-legendary { color: #f97316; }
+.rarity-illegal { color: #ef4444; }
+
+.rarity-border-common { border-color: #9ca3af44; }
+.rarity-border-uncommon { border-color: #22c55e44; }
+.rarity-border-rare { border-color: #3b82f644; }
+.rarity-border-epic { border-color: #a855f744; }
+.rarity-border-legendary { border-color: #f9731644; }
+.rarity-border-illegal { border-color: #ef444444; }
+
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
