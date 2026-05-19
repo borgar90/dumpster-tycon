@@ -323,7 +323,7 @@ export default function InventoryPage() {
         <div className="lg:col-span-2">
           <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
             {filtered.map((item) => (
-              <motion.button
+              <motion.div
                 key={item.id}
                 draggable={sort === 'slot'}
                 onDragStart={() => setDraggedId(item.id)}
@@ -332,6 +332,14 @@ export default function InventoryPage() {
                 whileHover={{ scale: 1.08 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setSelected(selected?.id === item.id ? null : item)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    setSelected(selected?.id === item.id ? null : item);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
                 className="relative aspect-square rounded flex flex-col items-center justify-center gap-0.5 transition-all"
                 style={{
                   background: selected?.id === item.id ? RARITY_BG[item.rarity] : '#1a1a1a',
@@ -359,7 +367,7 @@ export default function InventoryPage() {
                   </span>
                 )}
                 <div className="absolute top-0.5 left-0.5 w-1.5 h-1.5 rounded-full" style={{ background: RARITY_COLORS[item.rarity] }} />
-              </motion.button>
+              </motion.div>
             ))}
             {Array.from({ length: Math.max(0, 8 - filtered.length) }).map((_, i) => (
               <div key={`empty-${i}`} className="aspect-square rounded" style={{ background: '#111', border: '1px dashed #2a2a2a' }} />

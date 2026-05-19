@@ -4,7 +4,7 @@ import { enabledAuthProviders } from '@/auth';
 import { getServerAuthSession } from '@/auth';
 import { normalizeAvatar, normalizeBio, normalizeDisplayName, validateAvatar, validateBio, validateDisplayName } from '@/lib/authValidation';
 import { prisma } from '@/lib/prisma';
-import { buildPersistedGameState, getInventoryItemCount, getUnlockedDistrictCount, parseInventoryJson, parseSettingsJson, serializePersistedGameState } from '@/lib/profileState';
+import { buildPersistedGameState, getInventoryItemCount, getUnlockedDistrictCount, parseInventoryJson, parseSettingsJson, serializePersistedGameState, serializeSettingsJson } from '@/lib/profileState';
 import type { PersistedGameState } from '@/store/gameStore';
 
 export async function GET() {
@@ -148,9 +148,22 @@ export async function PUT(request: Request) {
     where: { userId: session.user.id },
     data: {
       ...nextProfile,
-      settingsJson: JSON.stringify({
+      settingsJson: serializeSettingsJson({
         ...previousSettings,
         itemsFound,
+        marketCycle: body.snapshot.marketCycle,
+        marketListings: body.snapshot.marketListings,
+        auctionListings: body.snapshot.auctionListings,
+        directTradeOffers: body.snapshot.directTradeOffers,
+        junkyardStorage: body.snapshot.junkyardStorage,
+        junkyardJobs: body.snapshot.junkyardJobs,
+        junkyardWorkers: body.snapshot.junkyardWorkers,
+        junkyardApplicants: body.snapshot.junkyardApplicants,
+        junkyardFacilities: body.snapshot.junkyardFacilities,
+        junkyardStats: body.snapshot.junkyardStats,
+        maxParallelJobs: body.snapshot.maxParallelJobs,
+        maxWorkerSlots: body.snapshot.maxWorkerSlots,
+        tradeHistory: body.snapshot.tradeHistory,
       }),
     },
   });

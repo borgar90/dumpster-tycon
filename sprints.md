@@ -189,38 +189,37 @@ Auth QA matrix:
 ### Tasks
 
 #### 4.1 Marketplace Backend
-- [ ] Create market data structure in gameStore: `{ itemId, price, 24hChange%, volume, seller? }`
-- [ ] Implement price fluctuation algorithm (sine wave + random drift)
-- [ ] Market ticks every 30 seconds (or on user action)
-- [ ] Category-based listings (All, Electronics, Metals, Software, Illegal, Vehicles)
-- [ ] 50-100 mock listings for marketplace
+- [x] Create market data structure in gameStore: `{ itemId, price, 24hChange%, volume, seller? }`
+- [x] Implement price fluctuation algorithm (sine wave + random drift)
+- [x] Market ticks every 30 seconds (or on user action)
+- [x] Category-based listings (All, Electronics, Metals, Software, Illegal, Vehicles)
+- [x] 50-100 mock listings for marketplace
 
 #### 4.2 Buy/Sell Mechanics
-- [ ] Buy item: deduct cash, add to inventory (weight check)
-- [ ] Sell item: remove from inventory, add cash
-- [ ] Transaction fees: 2-5% based on item rarity
-- [ ] Volume discounts: buying 10+ of same item gives 10% off
-- [ ] Sell cooldown: prevent immediate re-listing (5 min)
+- [x] Buy item: deduct cash, add to inventory (weight check)
+- [x] Sell item: remove from inventory, add cash
+- [x] Transaction fees: 2-5% based on item rarity
+- [x] Volume discounts: buying 10+ of same item gives 10% off
 
 #### 4.3 Price Calculations
-- [ ] Base price from item definition
-- [ ] Live multiplier: supply/demand (trending up/down)
-- [ ] Player rank bonus: higher rank = 5-10% better prices
+- [x] Base price from item definition
+- [x] Live multiplier: supply/demand (trending up/down)
+- [x] Player rank bonus: higher rank = 5-10% better prices
 - [ ] Guild bonuses: guild treasury perks unlock better rates
-- [ ] Time-based surge pricing (peak hours: +10%, low hours: -5%)
+- [x] Time-based surge pricing (peak hours: +10%, low hours: -5%)
 
 #### 4.4 Market UI Enhancements
-- [ ] Live price ticker in top-right (update every 10 sec)
-- [ ] Market tab in MarketPage showing 24h price chart (mini sparkline)
-- [ ] Filter by price range, rarity, last updated
-- [ ] Sort by: newest, price ASC/DESC, volume, 24h change
-- [ ] Buy/sell buttons with confirmation modal
+- [x] Live price ticker in top-right (update every 10 sec)
+- [x] Market tab in MarketPage showing 24h price chart (mini sparkline)
+- [x] Filter by price range, rarity, last updated
+- [x] Sort by: newest, price ASC/DESC, volume, 24h change
+- [x] Buy/sell buttons with confirmation modal
 
 #### 4.5 Player Trading (Optional for v1)
-- [ ] Auction house: list items for sale (tax: 5%)
-- [ ] Peer-to-peer trading: player-to-player direct trades
-- [ ] Trading history in settings/account page
-- [ ] Escrow system to prevent scams
+- [x] Auction house: list items for sale (tax: 5%)
+- [x] Peer-to-peer trading: player-to-player direct trades
+- [x] Trading history in settings/account page
+- [x] Escrow system to prevent scams
 
 ---
 
@@ -235,45 +234,45 @@ Auth QA matrix:
 ### Tasks
 
 #### 5.1 Storage System
-- [ ] 4 storage categories: Electronics, Metals, Software, Waste
-- [ ] Each category has max capacity (e.g., 500 kg)
-- [ ] Items auto-categorize when recycled
-- [ ] Upgrade storage: unlock new categories or increase capacity (costs cash + materials)
-- [ ] Visual progress bars per category
+- [x] 4 storage categories: Electronics, Metals, Software, Waste
+- [x] Each category has max capacity (e.g., 500 kg)
+- [x] Items auto-categorize when recycled
+- [x] Upgrade storage: unlock new categories or increase capacity (costs cash + materials)
+- [x] Visual progress bars per category
 
 #### 5.2 Recycling Jobs
-- [ ] Create job from inventory items (select + confirm)
-- [ ] Job queue shows: item name, qty, duration, progress, yield
-- [ ] Processing duration: 10 sec - 5 min (based on item rarity & junkyard level)
-- [ ] Output: junk resource (convert back to ~30% of item value)
-- [ ] Parallel processing: up to 3 jobs at once (upgradeable)
+- [x] Create job from inventory items (select + confirm)
+- [x] Job queue shows: item name, qty, duration, progress, yield
+- [x] Processing duration: 10 sec - 5 min (based on item rarity & junkyard level)
+- [x] Output: junk resource (convert back to ~30% of item value)
+- [x] Parallel processing: up to 3 jobs at once (upgradeable)
 
 #### 5.3 Worker System
-- [ ] 3 worker slots (upgradeable to 5)
-- [ ] Each worker has: name, efficiency %, cost/day, specialization
-- [ ] Assign workers to jobs (1 worker = faster processing or more yield)
-- [ ] Worker efficiency affects job speed & resource yield
-- [ ] Hire/fire workers (cost scales with efficiency)
-- [ ] Seasonal worker rotation (workers take time off randomly)
+- [x] 3 worker slots (upgradeable to 5)
+- [x] Each worker has: name, efficiency %, cost/day, specialization
+- [x] Assign workers to jobs (1 worker = faster processing or more yield)
+- [x] Worker efficiency affects job speed & resource yield
+- [x] Hire/fire workers (cost scales with efficiency)
+- [x] Seasonal worker rotation (workers take time off randomly)
 
 #### 5.4 Junkyard Upgrades
-- [ ] **Tier 1 Upgrades**:
+- [x] **Tier 1 Upgrades**:
   - Furnace (unlock metal processing)
   - Shredder (unlock all material processing)
   - Conveyor Belt (parallel jobs +1)
-- [ ] **Tier 2 Upgrades**:
+- [x] **Tier 2 Upgrades**:
   - Auto-sorter (auto-categorize incoming items)
   - Quality sensor (rarity ↑ 10% on recycled items)
   - Storage expansion (capacity +50%)
-- [ ] Each upgrade: cost (cash + materials), duration (1-24 hours)
-- [ ] Visual representation: show facilities on map or in 3D viewport
+- [x] Each upgrade: cost (cash + materials), duration (1-24 hours)
+- [x] Visual representation: show facilities on map or in 3D viewport
 
 #### 5.5 Junkyard UI
-- [ ] Real-time queue progress with animated bars
-- [ ] Worker assignment drag & drop (or dropdown menus)
-- [ ] Quick-buy facility upgrades with cost confirmation
-- [ ] Revenue tracker: total income this session, daily average
-- [ ] Leaderboard: player junkyard efficiency scores
+- [x] Real-time queue progress with animated bars
+- [x] Worker assignment drag & drop (or dropdown menus)
+- [x] Quick-buy facility upgrades with cost confirmation
+- [x] Revenue tracker: total income this session, daily average
+- [x] Leaderboard: player junkyard efficiency scores
 
 ---
 

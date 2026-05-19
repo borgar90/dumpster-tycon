@@ -11,6 +11,19 @@ export default function GameBootstrap({ children }: { children: React.ReactNode 
   const currentDistrict = useGameStore((state) => state.currentDistrict);
   const player = useGameStore((state) => state.player);
   const inventory = useGameStore((state) => state.inventory);
+  const marketListings = useGameStore((state) => state.marketListings);
+  const marketCycle = useGameStore((state) => state.marketCycle);
+  const auctionListings = useGameStore((state) => state.auctionListings);
+  const directTradeOffers = useGameStore((state) => state.directTradeOffers);
+  const junkyardStorage = useGameStore((state) => state.junkyardStorage);
+  const junkyardJobs = useGameStore((state) => state.junkyardJobs);
+  const junkyardWorkers = useGameStore((state) => state.junkyardWorkers);
+  const junkyardApplicants = useGameStore((state) => state.junkyardApplicants);
+  const junkyardFacilities = useGameStore((state) => state.junkyardFacilities);
+  const junkyardStats = useGameStore((state) => state.junkyardStats);
+  const maxParallelJobs = useGameStore((state) => state.maxParallelJobs);
+  const maxWorkerSlots = useGameStore((state) => state.maxWorkerSlots);
+  const tradeHistory = useGameStore((state) => state.tradeHistory);
   const addNotification = useGameStore((state) => state.addNotification);
 
   const [isReady, setIsReady] = useState(false);
@@ -54,7 +67,20 @@ export default function GameBootstrap({ children }: { children: React.ReactNode 
     currentDistrict,
     player,
     inventory,
-  }), [currentDistrict, currentPage, inventory, player]);
+    marketListings,
+    marketCycle,
+    auctionListings,
+    directTradeOffers,
+    junkyardStorage,
+    junkyardJobs,
+    junkyardWorkers,
+    junkyardApplicants,
+    junkyardFacilities,
+    junkyardStats,
+    maxParallelJobs,
+    maxWorkerSlots,
+    tradeHistory,
+  }), [auctionListings, currentDistrict, currentPage, directTradeOffers, inventory, junkyardApplicants, junkyardFacilities, junkyardJobs, junkyardStats, junkyardStorage, junkyardWorkers, marketCycle, marketListings, maxParallelJobs, maxWorkerSlots, player, tradeHistory]);
 
   const serializedSnapshot = useMemo(() => JSON.stringify(snapshot), [snapshot]);
 

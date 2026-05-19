@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState, useTransition } from 'react';
 import { signIn, signOut } from 'next-auth/react';
 import { motion } from 'framer-motion';
 
+import { useGameStore } from '@/store/gameStore';
+
 type ProfileResponse = {
   profile: {
     email: string | null;
@@ -43,6 +45,9 @@ const PROVIDER_ACCENTS: Record<string, string> = {
 };
 
 export default function SettingsPage() {
+  const tradeHistory = useGameStore((state) => state.tradeHistory);
+  const auctionListings = useGameStore((state) => state.auctionListings);
+  const directTradeOffers = useGameStore((state) => state.directTradeOffers);
   const [profile, setProfile] = useState<ProfileResponse['profile'] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -93,6 +98,9 @@ export default function SettingsPage() {
   }, []);
 
   const connectedProviders = useMemo(() => new Set(profile?.providers ?? []), [profile?.providers]);
+  const activeAuctionListings = useMemo(() => auctionListings.filter((listing) => listing.ownedByPlayer), [auctionListings]);
+  const activeDirectOffers = useMemo(() => directTradeOffers.filter((offer) => offer.offeredByPlayer), [directTradeOffers]);
+  const recentTradeHistory = useMemo(() => tradeHistory.slice(0, 8), [tradeHistory]);
 
   const saveProfile = () => {
     setFeedback(null);
@@ -378,6 +386,63 @@ export default function SettingsPage() {
             <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={() => signOut({ callbackUrl: '/' })} className="px-6 py-2 rounded text-xs uppercase tracking-widest" style={{ background: '#ef444415', border: '1px solid #ef444440', color: '#fca5a5' }}>
               Sign Out
             </motion.button>
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg p-5 space-y-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
+            <h2 className="flex items-center gap-2 text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>
+              <span>📒</span> Trading History
+            </h2>
+
+            {activeAuctionListings.length > 0 && (
+              <div>
+                <p className="text-xs uppercase tracking-widest" style={{ color: '#6b7280' }}>Active Listings</p>
+                <div className="mt-2 space-y-2 text-xs">
+                  {activeAuctionListings.map((listing) => (
+                    <div key={listing.id} className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+                      <p style={{ color: '#d1d5db' }}>{listing.icon} {listing.name}</p>
+                      <p className="mt-1" style={{ color: '#6b7280' }}>{listing.quantity}x at ${listing.price.toLocaleString()} each</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {activeDirectOffers.length > 0 && (
+              <div>
+                <p className="text-xs uppercase tracking-widest" style={{ color: '#6b7280' }}>Direct Escrow Offers</p>
+                <div className="mt-2 space-y-2 text-xs">
+                  {activeDirectOffers.map((offer) => (
+                    <div key={offer.id} className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+                      <p style={{ color: '#d1d5db' }}>{offer.itemIcon} {offer.itemName}</p>
+                      <p className="mt-1" style={{ color: '#6b7280' }}>{offer.quantity}x to {offer.recipient} · {offer.status.replaceAll('_', ' ')} · ${ (offer.askingPrice * offer.quantity).toLocaleString() }</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <p className="text-xs uppercase tracking-widest" style={{ color: '#6b7280' }}>Recent Trades</p>
+              <div className="mt-2 space-y-2 text-xs">
+                {recentTradeHistory.length === 0 && (
+                  <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937', color: '#6b7280' }}>
+                    No trade activity recorded yet.
+                  </div>
+                )}
+                {recentTradeHistory.map((entry) => (
+                  <div key={entry.id} className="rounded p-3 flex items-start justify-between gap-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+                    <div>
+                      <p style={{ color: '#d1d5db' }}>{entry.itemIcon} {entry.itemName}</p>
+                      <p className="mt-1" style={{ color: '#6b7280' }}>{entry.type.replaceAll('_', ' ')} · {entry.quantity}x · {entry.counterparty}</p>
+                    </div>
+                    <div className="text-right">
+                      <p style={{ color: entry.type === 'auction_sold' ? '#22c55e' : entry.type === 'auction_bought' ? '#60a5fa' : '#d1d5db' }}>${entry.total.toLocaleString()}</p>
+                      <p className="mt-1" style={{ color: '#6b7280' }}>{new Date(entry.createdAt).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </motion.div>
         </div>
       </div>
