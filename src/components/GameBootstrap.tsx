@@ -2,12 +2,24 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { getEffectiveProgressionHours, useGameStore } from '@/store/gameStore';
+import { FACTION_DEFINITIONS, getActiveOnboardingPrompt, getEffectiveProgressionHours, useGameStore } from '@/store/gameStore';
 import type { PersistedGameState } from '@/store/gameStore';
+
+const PAGE_LABELS = {
+  city: 'City',
+  inventory: 'Inventory',
+  market: 'Market',
+  junkyard: 'Junkyard',
+  upgrades: 'Upgrades',
+  missions: 'Missions',
+  guild: 'Faction HQ',
+  settings: 'Settings',
+} as const;
 
 export default function GameBootstrap({ children }: { children: React.ReactNode }) {
   const hydratePersistedState = useGameStore((state) => state.hydratePersistedState);
   const currentPage = useGameStore((state) => state.currentPage);
+  const setPage = useGameStore((state) => state.setPage);
   const currentDistrict = useGameStore((state) => state.currentDistrict);
   const player = useGameStore((state) => state.player);
   const inventory = useGameStore((state) => state.inventory);
@@ -27,9 +39,16 @@ export default function GameBootstrap({ children }: { children: React.ReactNode 
   const maxParallelJobs = useGameStore((state) => state.maxParallelJobs);
   const maxWorkerSlots = useGameStore((state) => state.maxWorkerSlots);
   const tradeHistory = useGameStore((state) => state.tradeHistory);
+  const missions = useGameStore((state) => state.missions);
+  const missionStats = useGameStore((state) => state.missionStats);
+  const factionStandings = useGameStore((state) => state.factionStandings);
+  const factionRewardHistory = useGameStore((state) => state.factionRewardHistory);
+  const guild = useGameStore((state) => state.guild);
+  const lastMissionRefreshAt = useGameStore((state) => state.lastMissionRefreshAt);
   const addNotification = useGameStore((state) => state.addNotification);
 
   const [isReady, setIsReady] = useState(false);
+  const [dismissedOnboardingIds, setDismissedOnboardingIds] = useState<string[]>([]);
   const lastSavedSnapshot = useRef<string>('');
 
   useEffect(() => {
@@ -85,9 +104,16 @@ export default function GameBootstrap({ children }: { children: React.ReactNode 
     maxParallelJobs,
     maxWorkerSlots,
     tradeHistory,
-  }), [auctionListings, currentDistrict, currentPage, directTradeOffers, inventory, junkyardApplicants, junkyardFacilities, junkyardJobs, junkyardStats, junkyardStorage, junkyardWorkers, marketCycle, marketListings, maxParallelJobs, maxWorkerSlots, player, progressionHoursPlayed, progressionSessionStartedAt, tradeHistory, upgradeTreeProgress]);
+    missions,
+    missionStats,
+    factionStandings,
+    factionRewardHistory,
+    guild,
+    lastMissionRefreshAt,
+  }), [auctionListings, currentDistrict, currentPage, directTradeOffers, factionRewardHistory, factionStandings, guild, inventory, junkyardApplicants, junkyardFacilities, junkyardJobs, junkyardStats, junkyardStorage, junkyardWorkers, lastMissionRefreshAt, marketCycle, marketListings, maxParallelJobs, maxWorkerSlots, missionStats, missions, player, progressionHoursPlayed, progressionSessionStartedAt, tradeHistory, upgradeTreeProgress]);
 
   const serializedSnapshot = useMemo(() => JSON.stringify(snapshot), [snapshot]);
+  const onboardingPrompt = useMemo(() => getActiveOnboardingPrompt(missions), [missions]);
 
   useEffect(() => {
     if (!isReady || serializedSnapshot === lastSavedSnapshot.current) {
@@ -133,5 +159,80 @@ export default function GameBootstrap({ children }: { children: React.ReactNode 
     );
   }
 
-  return <>{children}</>;
+  const onboardingFaction = onboardingPrompt
+    ? onboardingPrompt.mission.sponsorFaction ?? onboardingPrompt.stage.chain.sponsorFaction
+    : null;
+  const questgiver = onboardingFaction
+    ? FACTION_DEFINITIONS[onboardingFaction].questgiver
+    : null;
+  const shouldShowOnboardingPopup = Boolean(
+    onboardingPrompt
+    && !dismissedOnboardingIds.includes(onboardingPrompt.stage.chain.chainId)
+    && onboardingPrompt.mission.status === 'available',
+  );
+
+  return (
+    <>
+      {children}
+      {shouldShowOnboardingPopup && onboardingPrompt && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-3xl overflow-hidden rounded-2xl border" style={{ background: '#0c0c0c', borderColor: '#f9731655' }}>
+            <div className="grid md:grid-cols-[1.05fr_1.2fr]">
+              <div
+                className="relative min-h-[280px] p-6 flex flex-col justify-end overflow-hidden"
+                style={{ background: 'linear-gradient(180deg, #111827 0%, #030712 100%)' }}>
+                {questgiver && (
+                  <img
+                    src={questgiver.portraitPath}
+                    alt={questgiver.name}
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                )}
+                <div
+                  className="absolute inset-0"
+                  style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.14) 0%, rgba(0,0,0,0.82) 74%)' }}
+                />
+                <div className="relative z-10">
+                <p className="text-[11px] uppercase tracking-[0.28em]" style={{ color: '#fdba74' }}>Faction Questline</p>
+                <h2 className="mt-2 text-2xl font-semibold" style={{ color: '#f9fafb' }}>{onboardingPrompt.stage.popupTitle}</h2>
+                <p className="mt-2 text-sm" style={{ color: '#e5e7eb' }}>{questgiver?.name ?? onboardingPrompt.mission.title}</p>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.28em]" style={{ color: '#6b7280' }}>Campaign</p>
+                  <p className="mt-2 text-sm" style={{ color: '#d1d5db' }}>{onboardingPrompt.stage.popupBody}</p>
+                </div>
+
+                <div className="rounded-xl p-4" style={{ background: '#111', border: '1px solid #1f2937' }}>
+                  <p className="text-[11px] uppercase tracking-[0.28em]" style={{ color: '#6b7280' }}>First Contract</p>
+                  <p className="mt-2 text-lg font-semibold" style={{ color: '#f3f4f6' }}>{onboardingPrompt.mission.title}</p>
+                  <p className="mt-1 text-sm" style={{ color: '#9ca3af' }}>{onboardingPrompt.mission.description}</p>
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    onClick={() => {
+                      setPage(onboardingPrompt.stage.ctaPage);
+                      setDismissedOnboardingIds((current) => [...current, onboardingPrompt.stage.chain.chainId]);
+                    }}
+                    className="px-4 py-2 rounded text-xs uppercase tracking-[0.24em]"
+                    style={{ background: '#f9731618', border: '1px solid #f9731680', color: '#fdba74' }}>
+                    Open {PAGE_LABELS[onboardingPrompt.stage.ctaPage]}
+                  </button>
+                  <button
+                    onClick={() => setDismissedOnboardingIds((current) => [...current, onboardingPrompt.stage.chain.chainId])}
+                    className="px-4 py-2 rounded text-xs uppercase tracking-[0.24em]"
+                    style={{ background: 'transparent', border: '1px solid #374151', color: '#9ca3af' }}>
+                    Dismiss For Now
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }

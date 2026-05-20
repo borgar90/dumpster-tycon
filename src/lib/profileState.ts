@@ -1,4 +1,4 @@
-import { DISTRICTS, UPGRADE_TREE_DEFINITIONS, createInitialAuctionListings, createInitialDirectTradeOffers, createInitialJunkyardApplicants, createInitialJunkyardFacilities, createInitialJunkyardStats, createInitialJunkyardStorage, createInitialJunkyardWorkers, createInitialMarketListings, createInitialUpgradeTreeProgress, type AuctionListing, type DirectTradeOffer, type DirectTradeStatus, type District, type InventoryItem, type JunkyardFacility, type JunkyardFacilityId, type JunkyardFacilityStatus, type JunkyardJob, type JunkyardJobStatus, type JunkyardStats, type JunkyardStorageBin, type JunkyardStorageCategory, type JunkyardWorker, type JunkyardWorkerSpecialization, type JunkyardWorkerStatus, type MarketCategory, type MarketListing, type NavPage, type PersistedGameState, type Player, type TradeHistoryEntry, type TradeHistoryType, type UpgradeTreeId, type UpgradeTreeProgress } from '@/store/gameStore';
+import { DISTRICTS, UPGRADE_TREE_DEFINITIONS, createDailyMissionBoard, createInitialAuctionListings, createInitialDirectTradeOffers, createInitialFactionRewardHistory, createInitialFactionStandings, createInitialGuildState, createInitialJunkyardApplicants, createInitialJunkyardFacilities, createInitialJunkyardStats, createInitialJunkyardStorage, createInitialJunkyardWorkers, createInitialMarketListings, createInitialMissionStats, createInitialUpgradeTreeProgress, type AuctionListing, type DirectTradeOffer, type DirectTradeStatus, type District, type FactionId, type FactionRewardHistoryEntry, type FactionStandings, type GuildState, type InventoryItem, type JunkyardFacility, type JunkyardFacilityId, type JunkyardFacilityStatus, type JunkyardJob, type JunkyardJobStatus, type JunkyardStats, type JunkyardStorageBin, type JunkyardStorageCategory, type JunkyardWorker, type JunkyardWorkerSpecialization, type JunkyardWorkerStatus, type MarketCategory, type MarketListing, type MissionBranchOption, type MissionChainStep, type MissionObjective, type MissionRecord, type MissionStats, type MissionStatus, type NavPage, type PersistedGameState, type Player, type TradeHistoryEntry, type TradeHistoryType, type UpgradeTreeId, type UpgradeTreeProgress } from '@/store/gameStore';
 
 type PlayerEquipment = Player['equipment'];
 
@@ -24,6 +24,12 @@ export type AccountSettings = {
   maxParallelJobs: number;
   maxWorkerSlots: number;
   tradeHistory: TradeHistoryEntry[];
+  missions: MissionRecord[];
+  missionStats: MissionStats;
+  factionStandings: FactionStandings;
+  factionRewardHistory: FactionRewardHistoryEntry[];
+  guild: GuildState;
+  lastMissionRefreshAt: number;
 };
 
 type DbProfileShape = {
@@ -75,7 +81,203 @@ const DEFAULT_SETTINGS: AccountSettings = {
   maxParallelJobs: 3,
   maxWorkerSlots: 3,
   tradeHistory: [],
+  missions: [],
+  missionStats: createInitialMissionStats(),
+  factionStandings: createInitialFactionStandings(),
+  factionRewardHistory: createInitialFactionRewardHistory(),
+  guild: createInitialGuildState('Scavenger'),
+  lastMissionRefreshAt: 0,
 };
+
+function isFactionId(value: unknown): value is FactionId {
+  return value === 'scavengers' || value === 'corp' || value === 'gangs' || value === 'police' || value === 'neutrals';
+}
+
+function isFactionStandings(value: unknown): value is FactionStandings {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const candidate = value as Partial<Record<FactionId, unknown>>;
+  return (['scavengers', 'corp', 'gangs', 'police', 'neutrals'] as FactionId[]).every((factionId) => typeof candidate[factionId] === 'number');
+}
+
+function isFactionRewardHistoryEntry(value: unknown): value is FactionRewardHistoryEntry {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const candidate = value as Partial<FactionRewardHistoryEntry>;
+  return typeof candidate.id === 'string'
+    && typeof candidate.milestoneId === 'string'
+    && isFactionId(candidate.factionId)
+    && typeof candidate.repRequired === 'number'
+    && typeof candidate.badgeLabel === 'string'
+    && typeof candidate.title === 'string'
+    && typeof candidate.summary === 'string'
+    && typeof candidate.claimedAt === 'number';
+}
+
+function isGuildState(value: unknown): value is GuildState {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const candidate = value as Partial<GuildState>;
+  return typeof candidate.membershipStatus === 'string'
+    && typeof candidate.name === 'string'
+    && typeof candidate.tag === 'string'
+    && typeof candidate.level === 'number'
+    && typeof candidate.treasury === 'number'
+    && typeof candidate.treasuryCapacity === 'number'
+    && typeof candidate.prestige === 'number'
+    && typeof candidate.memberSlots === 'number'
+    && typeof candidate.taxRate === 'number'
+    && typeof candidate.guildHallUnlocked === 'boolean'
+    && Array.isArray(candidate.territory)
+    && Array.isArray(candidate.members)
+    && Array.isArray(candidate.activityLog)
+    && Array.isArray(candidate.chatMessages)
+    && Array.isArray(candidate.bulletinPosts)
+    && Array.isArray(candidate.vault)
+    && Boolean(candidate.weeklyQuest)
+    && Boolean(candidate.war)
+    && Array.isArray(candidate.availableGuilds)
+    && typeof candidate.lastMaintenanceAt === 'number';
+}
+
+function isMissionChainStep(value: unknown): value is MissionChainStep {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const candidate = value as Partial<MissionChainStep>;
+  return typeof candidate.id === 'string'
+    && typeof candidate.title === 'string'
+    && typeof candidate.summary === 'string'
+    && isMissionObjective(candidate.objective);
+}
+
+function isMissionBranchOption(value: unknown): value is MissionBranchOption {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const candidate = value as Partial<MissionBranchOption>;
+  return typeof candidate.id === 'string'
+    && typeof candidate.label === 'string'
+    && typeof candidate.description === 'string'
+    && (candidate.rewardDelta === undefined || candidate.rewardDelta === null || typeof candidate.rewardDelta === 'object')
+    && (candidate.replacementSteps === undefined || (Array.isArray(candidate.replacementSteps) && candidate.replacementSteps.every(isMissionChainStep)));
+}
+
+function isMissionStatus(value: unknown): value is MissionStatus {
+  return value === 'available' || value === 'active' || value === 'claimable' || value === 'completed' || value === 'expired';
+}
+
+function isMissionObjective(value: unknown): value is MissionObjective {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const candidate = value as Partial<MissionObjective> & Record<string, unknown>;
+  if (candidate.kind === 'scavenge') {
+    return typeof candidate.district === 'string' && typeof candidate.requiredCount === 'number';
+  }
+
+  if (candidate.kind === 'delivery') {
+    return typeof candidate.district === 'string' && typeof candidate.requiredVisits === 'number';
+  }
+
+  if (candidate.kind === 'item_hunt') {
+    return typeof candidate.itemName === 'string' && typeof candidate.requiredCount === 'number';
+  }
+
+  if (candidate.kind === 'recycle') {
+    return typeof candidate.requiredWeight === 'number';
+  }
+
+  if (candidate.kind === 'page_visit') {
+    return typeof candidate.page === 'string' && typeof candidate.requiredVisits === 'number';
+  }
+
+  if (candidate.kind === 'interaction') {
+    return typeof candidate.action === 'string' && typeof candidate.requiredCount === 'number';
+  }
+
+  return false;
+}
+
+function isMissionRecord(value: unknown): value is MissionRecord {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const candidate = value as Partial<MissionRecord>;
+  const resourceReward = candidate.reward?.resourceReward;
+  const factionRep = candidate.reward?.factionRep;
+  return typeof candidate.id === 'string'
+    && typeof candidate.templateId === 'string'
+    && typeof candidate.type === 'string'
+    && typeof candidate.title === 'string'
+    && typeof candidate.description === 'string'
+    && typeof candidate.icon === 'string'
+    && typeof candidate.difficulty === 'string'
+    && typeof candidate.timeLimitHours === 'number'
+    && isMissionObjective(candidate.objective)
+    && Boolean(candidate.reward)
+    && typeof candidate.reward?.cash === 'number'
+    && typeof candidate.reward?.scavengedValue === 'number'
+    && typeof candidate.reward?.reputation === 'number'
+    && (
+      resourceReward === undefined
+      || resourceReward === null
+      || (
+        typeof resourceReward === 'object'
+        && (resourceReward.kind === 'material' || resourceReward.kind === 'junk')
+        && typeof resourceReward.amount === 'number'
+        && (resourceReward.category === undefined || typeof resourceReward.category === 'string')
+      )
+    )
+    && (
+      factionRep === undefined
+      || factionRep === null
+      || (
+        typeof factionRep === 'object'
+        && Object.entries(factionRep).every(([key, delta]) => isFactionId(key) && typeof delta === 'number')
+      )
+    )
+    && (candidate.sponsorFaction === undefined || candidate.sponsorFaction === null || isFactionId(candidate.sponsorFaction))
+    && (candidate.rivalFaction === undefined || candidate.rivalFaction === null || isFactionId(candidate.rivalFaction))
+    && (candidate.chainId === undefined || candidate.chainId === null || typeof candidate.chainId === 'string')
+    && (candidate.chainTitle === undefined || candidate.chainTitle === null || typeof candidate.chainTitle === 'string')
+    && (candidate.steps === undefined || candidate.steps === null || (Array.isArray(candidate.steps) && candidate.steps.every(isMissionChainStep)))
+    && (candidate.currentStepIndex === undefined || typeof candidate.currentStepIndex === 'number')
+    && (candidate.branchOptions === undefined || candidate.branchOptions === null || (Array.isArray(candidate.branchOptions) && candidate.branchOptions.every(isMissionBranchOption)))
+    && (candidate.selectedBranchId === undefined || candidate.selectedBranchId === null || typeof candidate.selectedBranchId === 'string')
+    && (candidate.isBossMission === undefined || typeof candidate.isBossMission === 'boolean')
+    && isMissionStatus(candidate.status)
+    && typeof candidate.progress === 'number'
+    && typeof candidate.required === 'number'
+    && (typeof candidate.acceptedAt === 'number' || candidate.acceptedAt === null)
+    && (typeof candidate.expiresAt === 'number' || candidate.expiresAt === null)
+    && (typeof candidate.completedAt === 'number' || candidate.completedAt === null)
+    && (typeof candidate.claimedAt === 'number' || candidate.claimedAt === null);
+}
+
+function isMissionStats(value: unknown): value is MissionStats {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const candidate = value as Partial<MissionStats>;
+  return Boolean(candidate.districtVisits)
+    && Boolean(candidate.pageVisits)
+    && Boolean(candidate.scavengeBuckets)
+    && Boolean(candidate.interactionCounts)
+    && Boolean(candidate.recycledWeightByCategory)
+    && typeof candidate.recycledWeightTotal === 'number';
+}
 
 const VALID_UPGRADE_NODE_IDS = new Set(Object.values(UPGRADE_TREE_DEFINITIONS).flat().map((node) => node.id));
 
@@ -392,6 +594,12 @@ export function parseSettingsJson(raw: string): AccountSettings {
       maxParallelJobs: typeof parsed.maxParallelJobs === 'number' ? parsed.maxParallelJobs : DEFAULT_SETTINGS.maxParallelJobs,
       maxWorkerSlots: typeof parsed.maxWorkerSlots === 'number' ? parsed.maxWorkerSlots : DEFAULT_SETTINGS.maxWorkerSlots,
       tradeHistory: Array.isArray(parsed.tradeHistory) ? parsed.tradeHistory.filter(isTradeHistoryEntry) : DEFAULT_SETTINGS.tradeHistory,
+      missions: Array.isArray(parsed.missions) ? parsed.missions.filter(isMissionRecord) : DEFAULT_SETTINGS.missions,
+      missionStats: isMissionStats(parsed.missionStats) ? parsed.missionStats : DEFAULT_SETTINGS.missionStats,
+      factionStandings: isFactionStandings(parsed.factionStandings) ? parsed.factionStandings : DEFAULT_SETTINGS.factionStandings,
+      factionRewardHistory: Array.isArray(parsed.factionRewardHistory) ? parsed.factionRewardHistory.filter(isFactionRewardHistoryEntry) : DEFAULT_SETTINGS.factionRewardHistory,
+      guild: isGuildState(parsed.guild) ? parsed.guild : DEFAULT_SETTINGS.guild,
+      lastMissionRefreshAt: typeof parsed.lastMissionRefreshAt === 'number' ? parsed.lastMissionRefreshAt : DEFAULT_SETTINGS.lastMissionRefreshAt,
     };
   } catch {
     return DEFAULT_SETTINGS;
@@ -448,6 +656,12 @@ export function buildPersistedGameState(args: {
     maxParallelJobs: settings.maxParallelJobs,
     maxWorkerSlots: settings.maxWorkerSlots,
     tradeHistory: settings.tradeHistory,
+    missions: settings.missions.length > 0 ? settings.missions : createDailyMissionBoard(),
+    missionStats: settings.missionStats,
+    factionStandings: settings.factionStandings,
+    factionRewardHistory: settings.factionRewardHistory,
+    guild: settings.guild.membershipStatus === 'none' && !settings.guild.id ? createInitialGuildState(args.username) : settings.guild,
+    lastMissionRefreshAt: settings.lastMissionRefreshAt,
     player: {
       username: args.username,
       rank: args.profile.rank,

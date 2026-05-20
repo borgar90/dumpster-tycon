@@ -72,6 +72,7 @@ export default function CityPage() {
     setDistrict,
     player,
     generateLoot,
+    trackMissionScavenge,
     consumeEnergy,
     recoverEnergy,
     useConsumable,
@@ -210,6 +211,7 @@ export default function CityPage() {
 
       if (loot) {
         addToInventory(loot);
+        trackMissionScavenge(loot, currentDistrict as keyof typeof DISTRICTS);
         setLastLoot(loot);
 
         // Calculate heat gain based on rarity

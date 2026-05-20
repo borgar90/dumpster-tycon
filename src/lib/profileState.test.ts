@@ -8,7 +8,7 @@ import {
 
 describe('profileState', () => {
   it('falls back to defaults for invalid settings json', () => {
-    expect(parseSettingsJson('invalid-json')).toEqual({
+    expect(parseSettingsJson('invalid-json')).toMatchObject({
       tutorialSeen: false,
       notifications: true,
       theme: 'neon',
@@ -40,6 +40,60 @@ describe('profileState', () => {
       maxParallelJobs: 3,
       maxWorkerSlots: 3,
       tradeHistory: [],
+      missions: [],
+      missionStats: {
+        districtVisits: {
+          slums: 0,
+          tech: 0,
+          financial: 0,
+          harbor: 0,
+          university: 0,
+          rich_hills: 0,
+        },
+        pageVisits: {
+          city: 0,
+          inventory: 0,
+          market: 0,
+          junkyard: 0,
+          upgrades: 0,
+          missions: 0,
+          guild: 0,
+          settings: 0,
+        },
+        scavengeBuckets: {},
+        interactionCounts: {
+          buy_market: 0,
+          sell_market: 0,
+          purchase_upgrade: 0,
+          accept_mission: 0,
+          claim_mission: 0,
+        },
+        recycledWeightByCategory: {
+          Electronics: 0,
+          Metals: 0,
+          Software: 0,
+          Waste: 0,
+        },
+        recycledWeightTotal: 0,
+      },
+      factionStandings: {
+        scavengers: 0,
+        corp: 0,
+        gangs: 0,
+        police: 0,
+        neutrals: 0,
+      },
+      factionRewardHistory: [],
+      guild: {
+        membershipStatus: 'none',
+        id: null,
+        name: '',
+        tag: '',
+        level: 1,
+        treasury: 0,
+        guildHallUnlocked: false,
+      },
+      lastMissionRefreshAt: 0,
     });
   });
 
@@ -249,6 +303,36 @@ describe('profileState', () => {
               createdAt: 123456,
             },
           ],
+          missions: [
+            {
+              id: 'mission-1',
+              templateId: 'delivery-harbor',
+              type: 'delivery',
+              sponsorFaction: 'gangs',
+              rivalFaction: 'police',
+              title: 'Harbor Drop',
+              description: 'Take this package to Harbor District.',
+              icon: '📦',
+              difficulty: 'Easy',
+              timeLimitHours: 10,
+              objective: { kind: 'delivery', district: 'harbor', requiredVisits: 1 },
+              reward: { cash: 300, scavengedValue: 60, reputation: 2 },
+              status: 'available',
+              progress: 0,
+              required: 1,
+              acceptedAt: null,
+              expiresAt: null,
+              completedAt: null,
+              claimedAt: null,
+            },
+          ],
+          factionStandings: {
+            scavengers: 2,
+            corp: -1,
+            gangs: 10,
+            police: -3,
+            neutrals: 0,
+          },
         }),
         createdAt: new Date('2026-05-10T00:00:00.000Z'),
         updatedAt: new Date('2026-05-19T10:00:00.000Z'),
@@ -273,6 +357,10 @@ describe('profileState', () => {
     expect(snapshot.maxParallelJobs).toBe(4);
     expect(snapshot.maxWorkerSlots).toBe(5);
     expect(snapshot.tradeHistory).toHaveLength(1);
+    expect(snapshot.missions[0]).toMatchObject({ sponsorFaction: 'gangs', rivalFaction: 'police' });
+    expect(snapshot.factionStandings).toMatchObject({ gangs: 10, police: -3 });
+    expect(snapshot.factionRewardHistory).toEqual([]);
+    expect(snapshot.guild.membershipStatus).toBe('none');
 
     expect(serializePersistedGameState(snapshot)).toMatchObject({
       currentPage: 'inventory',

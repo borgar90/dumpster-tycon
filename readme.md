@@ -127,6 +127,7 @@ The next major work is already laid out in `sprints.md`. The highest-priority op
 ## Repository Notes
 
 - Main roadmap and sprint tracker: `sprints.md`
+- Item catalog and loot expansion notes: `item-catalog.md`
 - Auth and session configuration: `src/auth.ts`
 - Gameplay state store: `src/store/gameStore.ts`
 - Profile persistence API: `src/app/api/profile/route.ts`

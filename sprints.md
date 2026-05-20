@@ -334,44 +334,61 @@ Auth QA matrix:
 ### Tasks
 
 #### 7.1 Mission System
-- [ ] Mission types: Scavenging Contracts, Delivery Missions, Item Hunts, Recycling Quotas
-- [ ] Mission structure: title, description, objective, reward (cash + XP), difficulty, time limit
-- [ ] Daily refresh: 5 new missions every 24h
-- [ ] Limited slots: 5 active missions max
-- [ ] Mission completion: validate objective (item in inventory, location visit, etc.) → claim reward
+- [x] Mission types: Scavenging Contracts, Delivery Missions, Item Hunts, Recycling Quotas
+- [x] Mission structure: title, description, objective, reward (cash + XP + bonus resources), difficulty, time limit
+- [x] Daily refresh: 5 new missions every 24h
+- [x] Limited slots: 5 active missions max
+- [x] Mission completion: validate objective (item in inventory, location visit, etc.) → claim reward
 
 #### 7.2 Contract Mechanics
-- [ ] Scavenging Contracts: "Find 3 Rare Electronics in Tech District" (reward: 500 cash)
-- [ ] Delivery Missions: "Take this package to Harbor District" (reward: 300 cash + faction rep)
-- [ ] Item Hunts: "Find and deliver 1 Legendary Keyboard" (reward: 1000 cash, 1 material)
-- [ ] Recycling Quotas: "Recycle 100 kg of waste" (reward: 200 cash + junk)
-- [ ] Difficulty: Easy/Medium/Hard/Hardcore (affects reward & time limit)
+- [x] Scavenging Contracts: "Find 3 Rare Electronics in Tech District" (reward: 500 cash)
+- [x] Delivery Missions: "Take this package to Harbor District" (reward: 300 cash + faction rep)
+- [x] Item Hunts: "Find and deliver 1 Legendary Keyboard" (reward: 1000 cash, 1 material)
+- [x] Recycling Quotas: "Recycle 100 kg of waste" (reward: 200 cash + junk)
+- [x] Difficulty: Easy/Medium/Hard/Hardcore (affects reward & time limit)
 
 #### 7.3 Mission Chains
-- [ ] Multi-step missions: "Deliver package → Find replacement item → Return to hub"
-- [ ] Story progression: "Get hired by Local Gang" → Reputation +10 → Unlock gang missions
-- [ ] Branching: some missions have choices affecting rep with factions
-- [ ] Boss missions: high-risk, high-reward contracts every 7 days
+- [x] Multi-step missions: "Deliver package → Find replacement item → Return to hub"
+- [x] Story progression: "Get hired by Local Gang" → Reputation +10 → Unlock gang missions
+- [x] Branching: some missions have choices affecting rep with factions
+- [x] Boss missions: high-risk, high-reward contracts every 7 days
 
 #### 7.4 Faction System
-- [ ] Factions: Scavengers, Corp, Gangs, Police, Neutrals
-- [ ] Reputation: -100 to +100 per faction
-- [ ] Faction perks: unlock special missions, better prices, safe zones
-- [ ] Reputation penalties: refuse mission, fail contract, or align with rivals
-- [ ] Faction events: dynamic missions during territorial disputes
+- [x] Factions: Scavengers, Corp, Gangs, Police, Neutrals
+- [x] Reputation: -100 to +100 per faction
+- [x] Faction perks: unlock special missions, better prices, safe zones
+- [x] Reputation penalties: refuse mission, fail contract, or align with rivals
+- [x] Faction events: dynamic missions during territorial disputes
 
 #### 7.5 MissionsPage Updates
-- [ ] Tab overview: Active (3/5), Available (8), Completed (23), Locked (5)
-- [ ] Mission card: title, objective, reward, difficulty badge, time remaining
-- [ ] Accept/Decline buttons with confirmation
-- [ ] Progress tracking: visual bar for multi-step missions
-- [ ] Mission history: show last 10 completed with timestamps
+- [x] Tab overview: Active (3/5), Available (8), Completed (23), Locked (5)
+- [x] Mission card: title, objective, reward, difficulty badge, time remaining
+- [x] Accept/Decline buttons with confirmation
+- [x] Progress tracking: visual bar for multi-step missions
+- [x] Mission history: show last 10 completed with timestamps
 
-#### 7.6 Leaderboards
-- [ ] Global leaderboard: Top 100 by missions completed, total rewards claimed
-- [ ] Weekly leaderboard: resets Sundays, seasonal rewards
-- [ ] Friend leaderboards: compare with guild members
-- [ ] Reward tiers: Gold/Silver/Bronze for top rankings
+#### 7.6 Faction Questlines & Onboarding
+- [x] Slum Rats onboarding campaign: multi-week mission arc that teaches the core game loops
+- [x] Onboarding popup: first Slum Rats mission appears as a join-time popup for new players
+- [x] Maintainable onboarding config: page/action tutorial objectives are data-driven and easy to extend for future features
+- [x] Next faction introduction: Slum Rats campaign bridges into UMG unlocks
+- [x] Ongoing faction support: Slum Rats continue offering missions after UMG is introduced
+
+#### 7.7 Faction HQ
+- [x] Dedicated faction screen: questgivers, portraits, faction summaries, and current arcs in one place
+- [x] Faction roster: show unlocked/locked factions with active chain progress
+- [x] Questgiver detail cards: milestones, perk previews, and faction-specific contract hooks
+
+#### 7.8 Faction Rewards & Milestones
+- [x] Milestone badges: show reputation breakpoints and unlocked perk tiers
+- [x] Claimable faction rewards: rep milestones can grant explicit rewards beyond passive perks
+- [x] Reward history: show earned faction unlocks and long-term progression rewards
+
+#### 7.9 Leaderboards
+- [x] Global leaderboard: Top 100 by missions completed, total rewards claimed
+- [x] Weekly leaderboard: resets Sundays, seasonal rewards
+- [x] Friend leaderboards: compare with guild members
+- [x] Reward tiers: Gold/Silver/Bronze for top rankings
 
 ---
 
@@ -386,47 +403,53 @@ Auth QA matrix:
 ### Tasks
 
 #### 8.1 Guild Fundamentals
-- [ ] Create guild: costs 1000 cash, pick name & tag (3-4 chars)
-- [ ] Join guild: apply or invite-only
-- [ ] Guild hierarchy: Owner, Officers (manage members), Members
-- [ ] Guild stats: Level, Treasury, Member count, Territory size, Prestige
-- [ ] Guild page: display info, member list, treasury balance, activity feed
+- [x] Create guild: costs 1000 cash, pick name & tag (3-4 chars)
+- [x] Join guild: apply or invite-only
+- [x] Guild hierarchy: Owner, Officers (manage members), Members
+- [x] Guild stats: Level, Treasury, Member count, Territory size, Prestige
+- [x] Guild page: display info, member list, treasury balance, activity feed
 
 #### 8.2 Guild Perks
-- [ ] **Treasury**: Deposit cash (members contribute, owner withdraws)
-- [ ] **Discounts**: Guild treasury level unlocks shop discounts (2-10% off market prices)
-- [ ] **Safe zones**: Guild territory = no police heat in those districts
-- [ ] **Skill bonuses**: Higher guild level = +2% scavenging yield for all members
-- [ ] **Guild quest**: Weekly group objectives (total scavenged value, collective recycling) → treasury reward
+- [x] **Treasury**: Deposit cash (members contribute, owner withdraws)
+- [x] **Discounts**: Guild treasury level unlocks shop discounts (2-10% off market prices)
+- [x] **Safe zones**: Guild territory = no police heat in those districts
+- [x] **Skill bonuses**: Higher guild level = +2% scavenging yield for all members
+- [x] **Guild quest**: Weekly group objectives (total scavenged value, collective recycling) → treasury reward
 
 #### 8.3 Guild Upgrades
-- [ ] Guild Hall unlocked at Guild Level 5 (costs 50k cash)
-- [ ] Upgrade trees: Treasury Capacity, Training Grounds (XP bonus), Vault Security (reduce theft)
-- [ ] Tax settings: owner sets % of member sales that go to treasury (0-20%)
-- [ ] Weekly maintenance cost: scales with member count (ignore if treasury empty)
+- [x] Guild Hall unlocked at Guild Level 5 (costs 50k cash)
+- [x] Upgrade trees: Treasury Capacity, Training Grounds (XP bonus), Vault Security (reduce theft)
+- [x] Tax settings: owner sets % of member sales that go to treasury (0-20%)
+- [x] Weekly maintenance cost: scales with member count (ignore if treasury empty)
 
 #### 8.4 Guild Wars (Optional for v1)
-- [ ] Territory control: Guilds fight for map zones
-- [ ] War declarations: cooldown 7 days between wars
-- [ ] Territory bonuses: control = +10% loot value in that zone
-- [ ] Occupation timer: need to hold 72 hours to claim territory
-- [ ] War results: rewards for winners, debuff for losers (1 week)
+- [x] Territory control: Guilds fight for map zones
+- [x] War declarations: cooldown 7 days between wars
+- [x] Territory bonuses: control = +10% loot value in that zone
+- [x] Occupation timer: need to hold 72 hours to claim territory
+- [x] War results: rewards for winners, debuff for losers (1 week)
 
 #### 8.5 Social Features
-- [ ] Guild chat (in-game messaging)
-- [ ] Guild bulletin board: announcements, events
-- [ ] Member activity log: who logged in, completed missions, scavenged this session
-- [ ] Guild vault: shared storage (1 item per member, guild level ↑ capacity)
-- [ ] Member roles & custom permissions
+- [x] Guild chat (in-game messaging)
+- [x] Guild bulletin board: announcements, events
+- [x] Member activity log: who logged in, completed missions, scavenged this session
+- [x] Guild vault: shared storage (1 item per member, guild level ↑ capacity)
+- [x] Member roles & custom permissions
 
 #### 8.6 GuildPage Enhancements
-- [ ] Guild info card: name, tag, level, treasury, territory control %
-- [ ] Members table: name, rank, contribution, hours online, last login
-- [ ] Activity stream: scrollable feed of member actions
-- [ ] Quick donate button (5 / 10 / 50 / 100 cash to treasury)
-- [ ] Guild settings modal (owner only): tax rate, member slots, war status
+- [x] Guild info card: name, tag, level, treasury, territory control %
+- [x] Members table: name, rank, contribution, hours online, last login
+- [x] Activity stream: scrollable feed of member actions
+- [x] Quick donate button (5 / 10 / 50 / 100 cash to treasury)
+- [x] Guild settings modal (owner only): tax rate, member slots, war status
 
 ---
+
+## sprint xx: travel between areas: to travel need to buy bussfair(litle capacity for trash) build a scooter, car, truck, lorrie, hellicopter, plane, cargoplane, train. 
+
+---
+
+## sprint ??: get grabage contracts: set employees to collect garbage for district upon being granted a garbage collection contract. Requires employees of your guild dump to have skillsets. 
 
 ## Sprint 9: Polish, Performance & Testing (Weeks 17-18)
 

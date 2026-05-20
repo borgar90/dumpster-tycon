@@ -242,6 +242,7 @@ describe('/api/profile route', () => {
               createdAt: 12001,
             },
           ],
+          factionStandings: { scavengers: 1, corp: 0, gangs: 4, police: -2, neutrals: 0 },
         }),
         createdAt: new Date('2026-05-10T00:00:00.000Z'),
         updatedAt: new Date('2026-05-19T00:00:00.000Z'),
@@ -285,6 +286,7 @@ describe('/api/profile route', () => {
         tradeHistory: expect.arrayContaining([
           expect.objectContaining({ id: 'trade-1', total: 84 }),
         ]),
+        factionStandings: expect.objectContaining({ gangs: 4, police: -2 }),
       }),
       profile: expect.objectContaining({
         emailVerified: true,
@@ -313,7 +315,7 @@ describe('/api/profile route', () => {
   it('updates persisted state and increments items found from inventory growth', async () => {
     mocks.getServerAuthSession.mockResolvedValue({ user: { id: 'user-1' } });
     mocks.playerProfileFindUnique.mockResolvedValue({
-      settingsJson: JSON.stringify({ tutorialSeen: false, notifications: true, theme: 'neon', itemsFound: 1, sessionStreak: 2, lastActiveDate: '2026-05-19', marketCycle: 1, marketListings: [], auctionListings: [], directTradeOffers: [], junkyardStorage: [], junkyardJobs: [], junkyardWorkers: [], junkyardApplicants: [], junkyardFacilities: [], junkyardStats: { lifetimeMaterialsProcessed: 0, lifetimeJobsCompleted: 0, activeDays: 0, lastProcessedDay: null }, upgradeTreeProgress: { transport: null, equipment: null, lighting: null, storage: null }, progressionHoursPlayed: 0, maxParallelJobs: 3, maxWorkerSlots: 3, tradeHistory: [] }),
+      settingsJson: JSON.stringify({ tutorialSeen: false, notifications: true, theme: 'neon', itemsFound: 1, sessionStreak: 2, lastActiveDate: '2026-05-19', marketCycle: 1, marketListings: [], auctionListings: [], directTradeOffers: [], junkyardStorage: [], junkyardJobs: [], junkyardWorkers: [], junkyardApplicants: [], junkyardFacilities: [], junkyardStats: { lifetimeMaterialsProcessed: 0, lifetimeJobsCompleted: 0, activeDays: 0, lastProcessedDay: null }, upgradeTreeProgress: { transport: null, equipment: null, lighting: null, storage: null }, progressionHoursPlayed: 0, maxParallelJobs: 3, maxWorkerSlots: 3, tradeHistory: [], factionStandings: { scavengers: 0, corp: 0, gangs: 0, police: 0, neutrals: 0 } }),
       inventoryJson: JSON.stringify([{ id: 'old', name: 'Old', icon: 'O', rarity: 'common', quantity: 1, weight: 1, value: 1, description: 'old' }]),
     });
     mocks.playerProfileUpdate.mockResolvedValue({});
@@ -499,6 +501,7 @@ describe('/api/profile route', () => {
               createdAt: 123450,
             },
           ],
+          factionStandings: { scavengers: 0, corp: 3, gangs: -2, police: 0, neutrals: 1 },
           player: {
             username: 'yardboss',
             rank: 1,
@@ -552,6 +555,11 @@ describe('/api/profile route', () => {
     expect(mocks.playerProfileUpdate).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
         settingsJson: expect.stringContaining('"junkyardWorkers"'),
+      }),
+    }));
+    expect(mocks.playerProfileUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        settingsJson: expect.stringContaining('"factionStandings"'),
       }),
     }));
   });

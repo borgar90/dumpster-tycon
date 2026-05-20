@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { signOut, useSession } from 'next-auth/react';
 import { useGameStore, NavPage } from '@/store/gameStore';
 import { motion } from 'framer-motion';
+import Image from 'next/image';
+import logo from '../../public/logo.png';
 
 const NAV_ITEMS: { id: NavPage; label: string; icon: string }[] = [
   { id: 'city', label: 'City', icon: '🏙️' },
@@ -12,7 +14,7 @@ const NAV_ITEMS: { id: NavPage; label: string; icon: string }[] = [
   { id: 'junkyard', label: 'Junkyard', icon: '🏭' },
   { id: 'upgrades', label: 'Upgrades', icon: '⚡' },
   { id: 'missions', label: 'Missions', icon: '📋' },
-  { id: 'guild', label: 'Guild', icon: '👥' },
+  { id: 'guild', label: 'Guild Ops', icon: '👥' },
   { id: 'settings', label: 'Settings', icon: '⚙️' },
 ];
 
@@ -48,11 +50,8 @@ export default function TopNav() {
       style={{ background: '#0d0d0d', borderColor: '#39ff1430' }}>
       {/* Logo */}
       <div className="flex items-center gap-2 min-w-[160px]">
-        <span className="text-xl">🗑️</span>
-        <span className="text-sm font-bold tracking-widest uppercase text-glow-green"
-          style={{ color: '#39ff14' }}>
-          DUMPSTER<span style={{ color: '#ff6a00' }}>TYCOON</span>
-        </span>
+        
+        <Image src={logo} alt="Dumpster Tycoon" width={120} height={24} />
       </div>
 
       {/* Nav Links */}
@@ -89,16 +88,7 @@ export default function TopNav() {
 
       {/* Quick Stats */}
       <div className="flex items-center gap-4 text-xs min-w-[160px] justify-end">
-        <span style={{ color: '#d1fae5' }}>👤 {displayName}</span>
-        {tickerItem && (
-          <span style={{ color: tickerItem.change24h >= 0 ? '#22c55e' : '#ef4444' }}>
-            📈 {tickerItem.icon} {tickerItem.name} ${tickerItem.price.toLocaleString()} {tickerItem.change24h > 0 ? '+' : ''}{tickerItem.change24h}%
-          </span>
-        )}
-        <span style={{ color: '#22c55e' }}>💵 ${player.cash.toLocaleString()}</span>
-        <span style={{ color: '#fbbf24' }}>⚡ {player.energy}/{player.maxEnergy}</span>
-        <span style={{ color: player.heat > 50 ? '#ef4444' : '#9ca3af' }}>🌡️ {player.heat}%</span>
-        <button
+         <button
           onClick={() => signOut({ callbackUrl: '/' })}
           className="px-2 py-1 rounded uppercase tracking-wider"
           style={{ color: '#f87171', border: '1px solid #7f1d1d', background: '#450a0a55' }}>

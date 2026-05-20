@@ -166,6 +166,12 @@ export async function PUT(request: Request) {
         maxParallelJobs: body.snapshot.maxParallelJobs,
         maxWorkerSlots: body.snapshot.maxWorkerSlots,
         tradeHistory: body.snapshot.tradeHistory,
+        missions: body.snapshot.missions,
+        missionStats: body.snapshot.missionStats,
+        factionStandings: body.snapshot.factionStandings,
+        factionRewardHistory: body.snapshot.factionRewardHistory,
+        guild: body.snapshot.guild,
+        lastMissionRefreshAt: body.snapshot.lastMissionRefreshAt,
       }),
     },
   });
