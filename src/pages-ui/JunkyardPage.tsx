@@ -3,7 +3,39 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 
-import { useGameStore } from '@/store/gameStore';
+import { DUMPSTER_ASSEMBLY_RECIPES, getActiveProperty, getAvailableAssemblyRecipes, getBreakdownComponentYield, getPropertyStorageUpgradeCost, getPropertyStoredWeight, getPropertyTierLabel, hasJunkyardAccess, useGameStore } from '@/store/gameStore';
+
+const LEGACY_ITEM_TEMPLATE_IDS: Partial<Record<string, string[]>> = {
+  c1: ['1'],
+  c2: ['7'],
+};
+
+function matchesItemTemplateId(itemId: string, templateId: string) {
+  const legacyIds = LEGACY_ITEM_TEMPLATE_IDS[templateId] ?? [];
+  return itemId === templateId || itemId.startsWith(`${templateId}-`) || legacyIds.includes(itemId);
+}
+
+function getCombinedIngredientQuantity(inventory: ReturnType<typeof useGameStore.getState>['inventory'], storedItems: ReturnType<typeof useGameStore.getState>['inventory'], itemId: string) {
+  const inventoryQuantity = inventory
+    .filter((entry) => matchesItemTemplateId(entry.id, itemId))
+    .reduce((total, entry) => total + entry.quantity, 0);
+  const storedQuantity = storedItems
+    .filter((entry) => matchesItemTemplateId(entry.id, itemId))
+    .reduce((total, entry) => total + entry.quantity, 0);
+  return inventoryQuantity + storedQuantity;
+}
+
+function canBreakDownStoredItem(item: ReturnType<typeof useGameStore.getState>['inventory'][number], activeProperty: NonNullable<ReturnType<typeof getActiveProperty>>) {
+  if (activeProperty.canRecycle) {
+    return ['uncommon', 'rare', 'epic', 'legendary', 'illegal'].includes(item.rarity);
+  }
+
+  if (activeProperty.canDisassemble) {
+    return ['rare', 'epic', 'legendary', 'illegal'].includes(item.rarity);
+  }
+
+  return false;
+}
 
 function ProgressBar({ value, max, color }: { value: number; max: number; color: string }) {
   return (
@@ -17,7 +49,312 @@ function ProgressBar({ value, max, color }: { value: number; max: number; color:
   );
 }
 
+function BaseOperationsPanel({
+  activeProperty,
+  inventory,
+  onRetrieve,
+  onBreakDown,
+  onUpgradeStorage,
+  onRequestAssemble,
+}: {
+  activeProperty: ReturnType<typeof getActiveProperty> | undefined;
+  inventory: ReturnType<typeof useGameStore.getState>['inventory'];
+  onRetrieve: (itemId: string, quantity: number) => void;
+  onBreakDown: (itemId: string, quantity: number) => void;
+  onUpgradeStorage: (propertyId: string) => void;
+  onRequestAssemble: (recipeId: string) => void;
+}) {
+  const [selectedStoredItemId, setSelectedStoredItemId] = useState<string | null>(null);
+  const stashWeight = activeProperty ? getPropertyStoredWeight(activeProperty) : 0;
+  const activePropertyStorageUpgrade = activeProperty?.tier === 'shack' ? getPropertyStorageUpgradeCost(activeProperty) : null;
+  const componentQuantity = activeProperty ? getCombinedIngredientQuantity(inventory, activeProperty.storedItems, 'mat_components') : 0;
+  const availableAssemblyRecipes = activeProperty ? getAvailableAssemblyRecipes(activeProperty.assemblyTier) : [];
+  const selectedStoredItem = activeProperty?.storedItems.find((item) => item.id === selectedStoredItemId) ?? activeProperty?.storedItems[0] ?? null;
+
+  useEffect(() => {
+    if (!activeProperty) {
+      setSelectedStoredItemId(null);
+      return;
+    }
+
+    if (selectedStoredItemId && activeProperty.storedItems.some((item) => item.id === selectedStoredItemId)) {
+      return;
+    }
+
+    setSelectedStoredItemId(activeProperty.storedItems[0]?.id ?? null);
+  }, [activeProperty, selectedStoredItemId]);
+
+  if (!activeProperty) {
+    return (
+      <div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
+        <p className="text-xs uppercase tracking-widest mb-2" style={{ color: '#39ff1480' }}>Base Operations</p>
+        <p className="text-xs" style={{ color: '#374151' }}>No active base available.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Base Stash</p>
+            <p className="mt-2 text-lg font-semibold" style={{ color: '#f8fafc' }}>{activeProperty.name}</p>
+            <p className="mt-1 text-xs" style={{ color: '#6b7280' }}>{getPropertyTierLabel(activeProperty.tier)} · {stashWeight.toFixed(1)}/{activeProperty.storageCapacity} kg stored</p>
+            <p className="mt-1 text-xs" style={{ color: '#60a5fa' }}>
+              Assembly {activeProperty.assemblyTier} · {activeProperty.canRecycle
+                ? 'Craft bench and recycling online'
+                : activeProperty.canDisassemble
+                  ? 'Rare tear-down online'
+                  : activeProperty.tier === 'dumpster'
+                    ? 'No tear-down rack yet'
+                    : 'No disassembly bench yet'}
+            </p>
+          </div>
+          {activeProperty.tier === 'shack' && activePropertyStorageUpgrade && (
+            <button
+              onClick={() => onUpgradeStorage(activeProperty.id)}
+              className="px-3 py-2 rounded text-xs uppercase tracking-widest"
+              style={{ background: '#f59e0b18', border: '1px solid #f59e0b55', color: '#fbbf24' }}>
+              Expand Stash +15
+            </button>
+          )}
+        </div>
+        {activeProperty.tier === 'shack' && activePropertyStorageUpgrade && (
+          <p className="mt-2 text-[11px]" style={{ color: '#9ca3af' }}>
+            Upgrade cost: ${activePropertyStorageUpgrade.cashCost} + {activePropertyStorageUpgrade.componentCost} Components
+          </p>
+        )}
+        {(activeProperty.canDisassemble || activeProperty.canRecycle) && (
+          <p className="mt-2 text-[11px]" style={{ color: '#fbbf24' }}>
+            {activeProperty.canRecycle
+              ? 'Stash breakdown online: uncommon+ items can be recycled straight into components here.'
+              : 'Stash teardown online: rare+ items can be stripped for parts straight from storage here.'}
+          </p>
+        )}
+        <div className="mt-4 space-y-2 max-h-52 overflow-y-auto pr-1">
+          {activeProperty.storedItems.length > 0 ? activeProperty.storedItems.map((item) => (
+            <div
+              key={item.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => setSelectedStoredItemId(item.id)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  setSelectedStoredItemId(item.id);
+                }
+              }}
+              className="w-full rounded p-2 text-left"
+              style={{
+                background: selectedStoredItem?.id === item.id ? '#111827' : '#0a0a0a',
+                border: `1px solid ${selectedStoredItem?.id === item.id ? '#60a5fa55' : '#1f2937'}`,
+              }}>
+              <div className="flex items-center justify-between gap-2">
+                <div className="overflow-hidden">
+                  <p className="text-xs truncate" style={{ color: '#d1d5db' }}>{item.icon} {item.name}</p>
+                  <p className="text-[11px]" style={{ color: '#6b7280' }}>x{item.quantity} · {(item.weight * item.quantity).toFixed(1)} kg</p>
+                </div>
+                <div className="flex gap-1">
+                  {canBreakDownStoredItem(item, activeProperty) && (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setSelectedStoredItemId(item.id);
+                        onBreakDown(item.id, item.quantity);
+                      }}
+                      className="px-2 py-1 rounded text-[10px] uppercase"
+                      style={{ background: '#f59e0b18', border: '1px solid #f59e0b50', color: '#fbbf24' }}>
+                      {(activeProperty.canRecycle ? 'Recycle' : 'Strip') + ` +${getBreakdownComponentYield(item.rarity, activeProperty.canRecycle) * item.quantity}c`}
+                    </button>
+                  )}
+                  <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setSelectedStoredItemId(item.id);
+                        onRetrieve(item.id, 1);
+                      }}
+                    className="px-2 py-1 rounded text-[10px] uppercase"
+                    style={{ background: '#60a5fa15', border: '1px solid #60a5fa40', color: '#93c5fd' }}>
+                    1
+                  </button>
+                  <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setSelectedStoredItemId(item.id);
+                        onRetrieve(item.id, item.quantity);
+                      }}
+                    className="px-2 py-1 rounded text-[10px] uppercase"
+                    style={{ background: '#39ff1415', border: '1px solid #39ff1440', color: '#86efac' }}>
+                    All
+                  </button>
+                </div>
+              </div>
+              </div>
+          )) : (
+            <p className="text-xs" style={{ color: '#374151' }}>No items stored at this base yet.</p>
+          )}
+        </div>
+          {selectedStoredItem && (
+            <div className="mt-3 rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] uppercase tracking-widest" style={{ color: '#60a5fa' }}>Selected Stash Item</p>
+                  <p className="mt-1 text-sm font-semibold" style={{ color: '#f8fafc' }}>{selectedStoredItem.icon} {selectedStoredItem.name}</p>
+                  <p className="mt-1 text-[11px]" style={{ color: '#6b7280' }}>x{selectedStoredItem.quantity} · {selectedStoredItem.rarity} · {(selectedStoredItem.weight * selectedStoredItem.quantity).toFixed(1)} kg</p>
+                  <p className="mt-2 text-[11px]" style={{ color: '#9ca3af' }}>{selectedStoredItem.description}</p>
+                </div>
+                <div className="grid gap-2">
+                  {canBreakDownStoredItem(selectedStoredItem, activeProperty) && (
+                    <button
+                      onClick={() => onBreakDown(selectedStoredItem.id, selectedStoredItem.quantity)}
+                      className="px-3 py-2 rounded text-[11px] uppercase tracking-widest"
+                      style={{ background: '#f59e0b18', border: '1px solid #f59e0b50', color: '#fbbf24' }}>
+                      Break Down Selected +{getBreakdownComponentYield(selectedStoredItem.rarity, activeProperty.canRecycle) * selectedStoredItem.quantity}c
+                    </button>
+                  )}
+                  <button
+                    onClick={() => onRetrieve(selectedStoredItem.id, 1)}
+                    className="px-3 py-2 rounded text-[11px] uppercase tracking-widest"
+                    style={{ background: '#60a5fa15', border: '1px solid #60a5fa40', color: '#93c5fd' }}>
+                    Take 1 Back
+                  </button>
+                  <button
+                    onClick={() => onRetrieve(selectedStoredItem.id, selectedStoredItem.quantity)}
+                    className="px-3 py-2 rounded text-[11px] uppercase tracking-widest"
+                    style={{ background: '#39ff1415', border: '1px solid #39ff1440', color: '#86efac' }}>
+                    Take All Back
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+      </div>
+
+      <div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
+        <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#39ff1480' }}>{activeProperty.tier === 'dumpster' ? 'Dumpster Builds' : activeProperty.assemblyTier >= 1 ? 'Base Workbench' : 'Workbench Locked'}</p>
+        <div className="space-y-2">
+          {activeProperty.tier === 'dumpster' ? DUMPSTER_ASSEMBLY_RECIPES.map((recipe) => {
+            const missingIngredients = recipe.ingredients.filter((ingredient) => getCombinedIngredientQuantity(inventory, activeProperty.storedItems, ingredient.itemId) < ingredient.quantity);
+            const isInstalled = Boolean(
+              (recipe.unlocksDisassembly && activeProperty.canDisassemble)
+                || (recipe.unlocksRecycling && activeProperty.canRecycle)
+                || (recipe.assemblyTierGrant && activeProperty.assemblyTier >= recipe.assemblyTierGrant),
+            );
+            const canCraftRecipe = !isInstalled && missingIngredients.length === 0;
+
+            return (
+              <div key={recipe.id} className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-xs font-semibold" style={{ color: '#f8fafc' }}>{recipe.icon} {recipe.name}</p>
+                    <p className="mt-1 text-[11px]" style={{ color: '#6b7280' }}>{recipe.description}</p>
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {recipe.ingredients.map((ingredient) => {
+                        const ownedQuantity = getCombinedIngredientQuantity(inventory, activeProperty.storedItems, ingredient.itemId);
+                        const ingredientReady = ownedQuantity >= ingredient.quantity;
+
+                        return (
+                          <span
+                            key={ingredient.itemId}
+                            className="rounded px-2 py-1 text-[10px]"
+                            style={{
+                              background: ingredientReady ? '#39ff1412' : '#11182766',
+                              border: `1px solid ${ingredientReady ? '#39ff1440' : '#374151'}`,
+                              color: ingredientReady ? '#86efac' : '#9ca3af',
+                            }}>
+                            {ingredient.icon} {ingredient.itemName} {ownedQuantity}/{ingredient.quantity}
+                          </span>
+                        );
+                      })}
+                    </div>
+                    <p className="mt-2 text-[11px]" style={{ color: isInstalled ? '#5eead4' : missingIngredients.length === 0 ? '#86efac' : '#f59e0b' }}>
+                      {isInstalled
+                        ? recipe.unlocksRecycling
+                          ? 'Installed on this dumpster. Recycled parts can now be turned into crafted items and gear.'
+                          : 'Installed on this dumpster. Rare salvage can now be stripped for parts.'
+                        : missingIngredients.length === 0
+                          ? 'Everything is in the pile. Build it against the dumpster wall.'
+                          : `Still missing ${missingIngredients.map((ingredient) => ingredient.itemName).join(', ')}.`}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => canCraftRecipe && onRequestAssemble(recipe.id)}
+                    disabled={!canCraftRecipe}
+                    className="px-2 py-1 rounded text-[11px] uppercase tracking-widest"
+                    style={{ background: '#14b8a618', border: '1px solid #14b8a660', color: '#5eead4', opacity: canCraftRecipe ? 1 : 0.45 }}>
+                    {isInstalled ? 'Installed' : 'Build'}
+                  </button>
+                </div>
+              </div>
+            );
+          }) : activeProperty.assemblyTier >= 1 ? availableAssemblyRecipes.map((recipe) => {
+            const maxBatches = Math.floor(componentQuantity / recipe.componentCost);
+            const canCraftRecipe = maxBatches > 0;
+
+            return (
+              <div key={recipe.id} className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-xs font-semibold" style={{ color: '#f8fafc' }}>{recipe.icon} {recipe.name}</p>
+                    <p className="mt-1 text-[11px]" style={{ color: '#6b7280' }}>{recipe.description}</p>
+                    <p className="mt-2 text-[11px]" style={{ color: '#5eead4' }}>{recipe.componentCost} components per batch · Available {maxBatches}</p>
+                  </div>
+                  <button
+                    onClick={() => canCraftRecipe && onRequestAssemble(recipe.id)}
+                    disabled={!canCraftRecipe}
+                    className="px-2 py-1 rounded text-[11px] uppercase tracking-widest"
+                    style={{ background: '#14b8a618', border: '1px solid #14b8a660', color: '#5eead4', opacity: canCraftRecipe ? 1 : 0.45 }}>
+                    Craft
+                  </button>
+                </div>
+              </div>
+            );
+          }) : (
+            <p className="text-xs" style={{ color: '#6b7280' }}>Upgrade beyond the dumpster to unlock larger workbench recipes.</p>
+          )}
+        </div>
+      </div>
+
+      {activeProperty.tier === 'dumpster' && activeProperty.assemblyTier >= 1 && (
+        <div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
+          <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#39ff1480' }}>Bench Crafts</p>
+          <div className="space-y-2">
+            {availableAssemblyRecipes.map((recipe) => {
+              const maxBatches = Math.floor(componentQuantity / recipe.componentCost);
+              const canCraftRecipe = maxBatches > 0;
+
+              return (
+                <div key={recipe.id} className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-xs font-semibold" style={{ color: '#f8fafc' }}>{recipe.icon} {recipe.name}</p>
+                      <p className="mt-1 text-[11px]" style={{ color: '#6b7280' }}>{recipe.description}</p>
+                      <p className="mt-2 text-[11px]" style={{ color: '#5eead4' }}>Tier {recipe.requiredAssemblyTier} · {recipe.componentCost} components per batch · Available {maxBatches}</p>
+                    </div>
+                    <button
+                      onClick={() => canCraftRecipe && onRequestAssemble(recipe.id)}
+                      disabled={!canCraftRecipe}
+                      className="px-2 py-1 rounded text-[11px] uppercase tracking-widest"
+                      style={{ background: '#14b8a618', border: '1px solid #14b8a660', color: '#5eead4', opacity: canCraftRecipe ? 1 : 0.45 }}>
+                      Craft
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function JunkyardPage() {
+  const property = useGameStore((state) => state.property);
   const junkyardStorage = useGameStore((state) => state.junkyardStorage);
   const junkyardJobs = useGameStore((state) => state.junkyardJobs);
   const junkyardWorkers = useGameStore((state) => state.junkyardWorkers);
@@ -39,9 +376,27 @@ export default function JunkyardPage() {
   const assignWorkerToJunkyardJob = useGameStore((state) => state.assignWorkerToJunkyardJob);
   const startJunkyardFacilityUpgrade = useGameStore((state) => state.startJunkyardFacilityUpgrade);
   const upgradeJunkyardOperations = useGameStore((state) => state.upgradeJunkyardOperations);
+  const retrieveItemFromPropertyStorage = useGameStore((state) => state.retrieveItemFromPropertyStorage);
+  const disassembleItem = useGameStore((state) => state.disassembleItem);
+  const upgradePropertyStorage = useGameStore((state) => state.upgradePropertyStorage);
+  const assembleRecipe = useGameStore((state) => state.assembleRecipe);
   const [confirmFacilityId, setConfirmFacilityId] = useState<string | null>(null);
+  const [confirmAssemblyRecipeId, setConfirmAssemblyRecipeId] = useState<string | null>(null);
+  const activeProperty = useMemo(() => getActiveProperty(property), [property]);
+  const hasUnlockedJunkyard = useMemo(() => hasJunkyardAccess(property), [property]);
+  const selectedAssemblyRecipe = useMemo(
+    () => confirmAssemblyRecipeId
+      ? DUMPSTER_ASSEMBLY_RECIPES.find((entry) => entry.id === confirmAssemblyRecipeId)
+        ?? SHACK_ASSEMBLY_RECIPES.find((entry) => entry.id === confirmAssemblyRecipeId)
+      : null,
+    [confirmAssemblyRecipeId],
+  );
 
   useEffect(() => {
+    if (!hasUnlockedJunkyard) {
+      return undefined;
+    }
+
     tickJunkyard();
     const intervalId = window.setInterval(() => {
       tickJunkyard();
@@ -50,7 +405,7 @@ export default function JunkyardPage() {
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [tickJunkyard]);
+  }, [hasUnlockedJunkyard, tickJunkyard]);
 
   const unlockedBins = useMemo(() => junkyardStorage.filter((bin) => bin.unlocked), [junkyardStorage]);
   const hasStorageExpansion = useMemo(() => junkyardFacilities.some((facility) => facility.id === 'storage_expansion' && facility.status === 'active'), [junkyardFacilities]);
@@ -108,12 +463,105 @@ export default function JunkyardPage() {
   const formatWorkerState = (workerStatus: string) => workerStatus.replaceAll('_', ' ');
   const getEffectiveBinCapacity = (baseCapacity: number) => baseCapacity * (hasStorageExpansion ? 1.5 : 1);
 
+  if (!hasUnlockedJunkyard && activeProperty) {
+    return (
+      <div className="p-6 space-y-6">
+        <div>
+          <h1 className="text-xl font-bold tracking-widest uppercase" style={{ color: '#39ff14' }}>Base</h1>
+          <p className="text-xs mt-0.5" style={{ color: '#6b7280' }}>Manage your stash, install early workbench gear, and grow toward full junkyard operations.</p>
+        </div>
+
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+          <div className="rounded-lg p-5" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
+            <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Active Base</p>
+            <h2 className="mt-3 text-2xl font-semibold" style={{ color: '#f8fafc' }}>{activeProperty.name}</h2>
+            <p className="mt-2 text-sm" style={{ color: '#d1d5db' }}>{getPropertyTierLabel(activeProperty.tier)} in {activeProperty.district === 'rich_hills' ? 'Rich Hills' : activeProperty.district.replace('_', ' ')}</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-lg p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+                <p className="text-[11px] uppercase tracking-widest" style={{ color: '#6b7280' }}>Storage</p>
+                <p className="mt-2 text-lg font-semibold" style={{ color: '#f8fafc' }}>{activeProperty.storageCapacity}</p>
+              </div>
+              <div className="rounded-lg p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+                <p className="text-[11px] uppercase tracking-widest" style={{ color: '#6b7280' }}>Assembly</p>
+                <p className="mt-2 text-lg font-semibold" style={{ color: '#f8fafc' }}>Tier {activeProperty.assemblyTier}</p>
+              </div>
+              <div className="rounded-lg p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+                <p className="text-[11px] uppercase tracking-widest" style={{ color: '#6b7280' }}>Employees</p>
+                <p className="mt-2 text-lg font-semibold" style={{ color: '#f8fafc' }}>{activeProperty.employeeCapacity}</p>
+              </div>
+            </div>
+            <p className="mt-4 text-sm leading-6" style={{ color: '#94a3b8' }}>
+              Dumpster and Shack tiers are intentionally limited. Recycling queues, facilities, and worker automation stay locked until you upgrade through Workshop into a full Junkyard.
+            </p>
+          </div>
+
+          <BaseOperationsPanel
+            activeProperty={activeProperty}
+            inventory={inventory}
+            onRetrieve={retrieveItemFromPropertyStorage}
+            onBreakDown={disassembleItem}
+            onUpgradeStorage={upgradePropertyStorage}
+            onRequestAssemble={setConfirmAssemblyRecipeId}
+          />
+        </div>
+
+        <div className="rounded-lg p-5" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
+          <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Upgrade Path</p>
+          <div className="mt-4 space-y-3 text-sm">
+            {['Dumpster', 'Shack', 'Workshop', 'Junkyard'].map((tier, index) => (
+              <div key={tier} className="rounded-lg p-3" style={{ background: '#0a0a0a', border: `1px solid ${index === 0 ? '#39ff1440' : '#1f2937'}` }}>
+                <p style={{ color: '#f8fafc' }}>{index + 1}. {tier}</p>
+                <p className="mt-1 text-xs" style={{ color: '#6b7280' }}>
+                  {tier === 'Dumpster' ? 'Starter stash in Slums. One improvised teardown build only.' : tier === 'Shack' ? 'Adds simple storage upgrades and basic bench crafting.' : tier === 'Workshop' ? 'Expanded repair and crafting depth, still no full yard automation.' : 'Unlocks recycling queues, facilities, and employees.'}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {selectedAssemblyRecipe && (
+          <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: '#00000088' }} onClick={() => setConfirmAssemblyRecipeId(null)}>
+            <motion.div onClick={(event) => event.stopPropagation()} className="rounded-lg p-4 space-y-3" style={{ background: '#1a1a1a', border: '1px solid #39ff1440', minWidth: '320px' }}>
+              <p className="text-sm font-bold" style={{ color: '#39ff14' }}>Confirm Build</p>
+              <p className="text-xs" style={{ color: '#9ca3af' }}>
+                {'componentCost' in selectedAssemblyRecipe
+                  ? `Craft 1x ${selectedAssemblyRecipe.name} using ${selectedAssemblyRecipe.componentCost} Salvaged Components?`
+                  : `Build ${selectedAssemblyRecipe.name} using ${selectedAssemblyRecipe.ingredients.map((ingredient) => `${ingredient.quantity}x ${ingredient.itemName}`).join(', ')}?`}
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button onClick={() => setConfirmAssemblyRecipeId(null)} className="px-3 py-1.5 rounded text-xs tracking-wider uppercase" style={{ background: '#2a2a2a', border: '1px solid #3a3a3a', color: '#9ca3af' }}>Cancel</button>
+                <button
+                  onClick={() => {
+                    assembleRecipe(selectedAssemblyRecipe.id, 1);
+                    setConfirmAssemblyRecipeId(null);
+                  }}
+                  className="px-3 py-1.5 rounded text-xs tracking-wider uppercase"
+                  style={{ background: '#14b8a615', border: '1px solid #14b8a660', color: '#5eead4' }}>
+                  Confirm
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-xl font-bold tracking-widest uppercase" style={{ color: '#39ff14' }}>Junkyard</h1>
-        <p className="text-xs mt-0.5" style={{ color: '#6b7280' }}>Queue timed recycling jobs from inventory, assign workers, and expand the yard with long-form facility upgrades.</p>
+        <h1 className="text-xl font-bold tracking-widest uppercase" style={{ color: '#39ff14' }}>Base</h1>
+        <p className="text-xs mt-0.5" style={{ color: '#6b7280' }}>Manage stash and workbench upgrades here, then run full junkyard operations once this base reaches yard tier.</p>
       </div>
+
+      <BaseOperationsPanel
+        activeProperty={activeProperty}
+        inventory={inventory}
+        onRetrieve={retrieveItemFromPropertyStorage}
+        onBreakDown={disassembleItem}
+        onUpgradeStorage={upgradePropertyStorage}
+        onRequestAssemble={setConfirmAssemblyRecipeId}
+      />
 
       <div className="grid gap-4 md:grid-cols-4">
         <div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
@@ -156,6 +604,31 @@ export default function JunkyardPage() {
                   <div key={facility.id} className="rounded-lg p-4" style={{ background: '#0a0a0a', border: `1px solid ${facility.status === 'active' ? '#22c55e55' : facility.status === 'building' ? '#f59e0b55' : '#1f2937'}` }}>
                     <div className="flex items-start justify-between gap-3">
                       <div>
+
+                      {selectedAssemblyRecipe && (
+                        <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: '#00000088' }} onClick={() => setConfirmAssemblyRecipeId(null)}>
+                          <motion.div onClick={(event) => event.stopPropagation()} className="rounded-lg p-4 space-y-3" style={{ background: '#1a1a1a', border: '1px solid #39ff1440', minWidth: '320px' }}>
+                            <p className="text-sm font-bold" style={{ color: '#39ff14' }}>Confirm Build</p>
+                            <p className="text-xs" style={{ color: '#9ca3af' }}>
+                              {'componentCost' in selectedAssemblyRecipe
+                                ? `Craft 1x ${selectedAssemblyRecipe.name} using ${selectedAssemblyRecipe.componentCost} Salvaged Components?`
+                                : `Build ${selectedAssemblyRecipe.name} using ${selectedAssemblyRecipe.ingredients.map((ingredient) => `${ingredient.quantity}x ${ingredient.itemName}`).join(', ')}?`}
+                            </p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <button onClick={() => setConfirmAssemblyRecipeId(null)} className="px-3 py-1.5 rounded text-xs tracking-wider uppercase" style={{ background: '#2a2a2a', border: '1px solid #3a3a3a', color: '#9ca3af' }}>Cancel</button>
+                              <button
+                                onClick={() => {
+                                  assembleRecipe(selectedAssemblyRecipe.id, 1);
+                                  setConfirmAssemblyRecipeId(null);
+                                }}
+                                className="px-3 py-1.5 rounded text-xs tracking-wider uppercase"
+                                style={{ background: '#14b8a615', border: '1px solid #14b8a660', color: '#5eead4' }}>
+                                Confirm
+                              </button>
+                            </div>
+                          </motion.div>
+                        </motion.div>
+                      )}
                         <p className="text-sm" style={{ color: '#d1d5db' }}>{facility.icon} {facility.name}</p>
                         <p className="mt-1 text-[11px] uppercase tracking-widest" style={{ color: facility.tier === 1 ? '#93c5fd' : '#fca5a5' }}>Tier {facility.tier}</p>
                       </div>

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import { LOOT_TEMPLATES, MARKET_SOURCE_ITEMS } from '../lib/lootCatalog';
+import { getLootTemplatesForDistrict, getNextGeneratedLootSequence, LOOT_TEMPLATES, MARKET_SOURCE_ITEMS } from '../lib/lootCatalog';
 
 const MARKET_ITEM_CATALOG = MARKET_SOURCE_ITEMS.reduce<Record<string, InventoryItem>>((catalog, item) => {
   catalog[item.id] = item;
@@ -37,6 +37,121 @@ export interface DistrictInfo {
   minRank: number; // minimum player rank to access
   lootMultiplier: Record<Rarity, number>; // rarity bonuses per district
   description: string;
+}
+
+export type TravelMode = 'bus' | 'train' | 'scooter' | 'car' | 'truck' | 'lorry';
+
+export type VehicleTravelMode = Exclude<TravelMode, 'bus' | 'train'>;
+
+export type TravelStatus = 'idle' | 'travelling';
+
+export interface TravelState {
+  status: TravelStatus;
+  mode: TravelMode | null;
+  origin: District;
+  destination: District | null;
+  departureAt: number | null;
+  arrivalAt: number | null;
+  fareCost: number;
+  cargoCapacity: number;
+  durationMs: number;
+}
+
+export interface TravelQuote {
+  mode: TravelMode;
+  origin: District;
+  destination: District;
+  fareCost: number;
+  cargoCapacity: number;
+  durationMs: number;
+}
+
+export type PropertyTier = 'dumpster' | 'shack' | 'workshop' | 'junkyard' | 'industrial_yard';
+
+export type PropertyOccupancyStatus = 'active' | 'inactive' | 'rented_out';
+
+export type PropertyLettingMode = 'friends' | 'public';
+
+export interface PropertyLettingDetails {
+  mode: PropertyLettingMode;
+  dailyRate: number;
+  depositAmount: number;
+  durationDays: number;
+  listedAt: number;
+  expiresAt: number;
+  renterName: string | null;
+}
+
+export interface ShackUnlockProgress {
+  unlocked: boolean;
+  completedAt: number | null;
+}
+
+export interface ShackAssemblyRecipe {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  componentCost: number;
+  requiredAssemblyTier: number;
+  outputItemId?: string;
+  output: Omit<InventoryItem, 'quantity' | 'foundAt' | 'foundTime' | 'id'>;
+}
+
+export interface DumpsterAssemblyIngredient {
+  itemId: string;
+  itemName: string;
+  icon: string;
+  quantity: number;
+}
+
+export interface DumpsterAssemblyRecipe {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  ingredients: DumpsterAssemblyIngredient[];
+  unlocksDisassembly: boolean;
+  unlocksRecycling?: boolean;
+  assemblyTierGrant?: number;
+}
+
+export interface PropertyUnit {
+  id: string;
+  name: string;
+  district: District;
+  tier: PropertyTier;
+  occupancyStatus: PropertyOccupancyStatus;
+  storageCapacity: number;
+  assemblyTier: number;
+  canDisassemble: boolean;
+  canRecycle: boolean;
+  employeeCapacity: number;
+  storageUpgradeLevel: number;
+  storedItems: InventoryItem[];
+  letting: PropertyLettingDetails | null;
+}
+
+export interface PropertyState {
+  activePropertyId: string;
+  shackAccess: ShackUnlockProgress;
+  properties: PropertyUnit[];
+}
+
+export interface PropertyListing {
+  district: District;
+  tier: Extract<PropertyTier, 'shack'>;
+  label: string;
+  purchasePrice: number;
+  rentPerDay: number;
+  storageCapacity: number;
+  assemblyTier: number;
+  canDisassemble: boolean;
+  canRecycle: boolean;
+  employeeCapacity: number;
+  riskNote: string;
+  publicDailyRate: number;
+  friendDailyRate: number;
 }
 
 export interface InventoryItem {
@@ -523,6 +638,8 @@ export interface Player {
 export interface PersistedGameState {
   currentPage: NavPage;
   currentDistrict: District;
+  travel: TravelState;
+  property: PropertyState;
   player: Player;
   inventory: InventoryItem[];
   marketListings: MarketListing[];
@@ -558,6 +675,8 @@ interface PoliceChase {
 interface GameState {
   currentPage: NavPage;
   currentDistrict: District;
+  travel: TravelState;
+  property: PropertyState;
   player: Player;
   inventory: InventoryItem[];
   marketListings: MarketListing[];
@@ -593,6 +712,18 @@ interface GameState {
 
   setPage: (page: NavPage) => void;
   setDistrict: (district: District) => void;
+  startTravel: (destination: District, mode?: TravelMode) => void;
+  refreshTravelState: () => void;
+  refreshPropertyState: () => void;
+  setActiveProperty: (propertyId: string) => void;
+  unlockShackTier: () => void;
+  purchaseShack: (district: District) => void;
+  listPropertyForRent: (propertyId: string, mode: PropertyLettingMode) => void;
+  endPropertyRental: (propertyId: string) => void;
+  moveItemToPropertyStorage: (itemId: string, quantity: number) => void;
+  retrieveItemFromPropertyStorage: (itemId: string, quantity: number) => void;
+  upgradePropertyStorage: (propertyId: string) => void;
+  assembleRecipe: (recipeId: string, batches: number) => void;
   addNotification: (message: string, type: 'success' | 'warning' | 'error' | 'info') => void;
   removeNotification: (id: string) => void;
   setScavenging: (val: boolean) => void;
@@ -916,6 +1047,25 @@ export function getRankProgress(totalScavenged: number) {
     currentRankRequirement,
     nextRankRequirement,
     progress: Math.min(1, Math.max(0, (totalScavenged - currentRankRequirement) / span)),
+  };
+}
+
+export function getPlayerCoreStats(rank: number) {
+  const safeRank = Math.max(1, rank);
+  return {
+    maxHp: 90 + safeRank * 6,
+    strength: 6 + Math.floor(safeRank * 0.65),
+    agility: 6 + Math.floor(safeRank * 0.55),
+  };
+}
+
+export function getPlayerScavengeBonuses(rank: number) {
+  const coreStats = getPlayerCoreStats(rank);
+  return {
+    carryBonusPercent: Math.floor(Math.max(0, coreStats.strength - 6) * 1.5),
+    searchSpeedBonusPercent: Math.floor(Math.max(0, coreStats.agility - 6) * 1.6),
+    successBonusPercent: Math.floor(Math.max(0, coreStats.agility - 6) * 0.9 + Math.max(0, coreStats.strength - 6) * 0.45),
+    heatReductionPercent: Math.floor(Math.max(0, coreStats.agility - 6) * 0.35),
   };
 }
 
@@ -3457,6 +3607,789 @@ export const DISTRICTS: Record<District, DistrictInfo> = {
   },
 };
 
+const DISTRICT_TRAVEL_GRID: Record<District, { x: number; y: number }> = {
+  slums: { x: 0, y: 2 },
+  harbor: { x: 0, y: 0 },
+  university: { x: 1, y: 1 },
+  tech: { x: 2, y: 1 },
+  financial: { x: 3, y: 1 },
+  rich_hills: { x: 4, y: 2 },
+};
+
+export const BUS_TRAVEL_CAPACITY = 35;
+export const TRAIN_TRAVEL_CAPACITY = 90;
+export const TRAIN_MIN_RANK = 10;
+const TRAIN_SERVICE_DISTRICTS: District[] = ['harbor', 'university', 'tech', 'financial', 'rich_hills'];
+
+type VehicleTravelSpec = {
+  mode: VehicleTravelMode;
+  label: string;
+  icon: string;
+  unlockTier: number;
+  cargoCapacity: number;
+  baseFare: number;
+  farePerDistance: number;
+  fareDangerDivisor: number;
+  baseDurationMs: number;
+  durationPerDistanceMs: number;
+  durationDangerFactor: number;
+  summary: string;
+};
+
+export const VEHICLE_TRAVEL_SPECS: Record<VehicleTravelMode, VehicleTravelSpec> = {
+  scooter: {
+    mode: 'scooter',
+    label: 'Scooter',
+    icon: '🛵',
+    unlockTier: 1,
+    cargoCapacity: 18,
+    baseFare: 8,
+    farePerDistance: 5,
+    fareDangerDivisor: 18,
+    baseDurationMs: 8_000,
+    durationPerDistanceMs: 12_000,
+    durationDangerFactor: 100,
+    summary: 'Cheap and quick, but barely handles more than a light haul.',
+  },
+  car: {
+    mode: 'car',
+    label: 'Car',
+    icon: '🚗',
+    unlockTier: 2,
+    cargoCapacity: 55,
+    baseFare: 18,
+    farePerDistance: 8,
+    fareDangerDivisor: 14,
+    baseDurationMs: 7_000,
+    durationPerDistanceMs: 10_000,
+    durationDangerFactor: 95,
+    summary: 'Balanced district runner with decent space and steady fuel burn.',
+  },
+  truck: {
+    mode: 'truck',
+    label: 'Truck',
+    icon: '🚚',
+    unlockTier: 3,
+    cargoCapacity: 95,
+    baseFare: 32,
+    farePerDistance: 10,
+    fareDangerDivisor: 12,
+    baseDurationMs: 10_000,
+    durationPerDistanceMs: 13_500,
+    durationDangerFactor: 120,
+    summary: 'Heavier freight option for moving bigger scrap loads between districts.',
+  },
+  lorry: {
+    mode: 'lorry',
+    label: 'Lorry',
+    icon: '🚛',
+    unlockTier: 4,
+    cargoCapacity: 150,
+    baseFare: 48,
+    farePerDistance: 13,
+    fareDangerDivisor: 10,
+    baseDurationMs: 12_000,
+    durationPerDistanceMs: 16_000,
+    durationDangerFactor: 145,
+    summary: 'Slow and expensive, but built for serious cross-district hauling.',
+  },
+};
+
+function getTravelDistance(origin: District, destination: District) {
+  const start = DISTRICT_TRAVEL_GRID[origin];
+  const end = DISTRICT_TRAVEL_GRID[destination];
+  return Math.max(1, Math.abs(start.x - end.x) + Math.abs(start.y - end.y));
+}
+
+export function createInitialTravelState(origin: District): TravelState {
+  return {
+    status: 'idle',
+    mode: null,
+    origin,
+    destination: null,
+    departureAt: null,
+    arrivalAt: null,
+    fareCost: 0,
+    cargoCapacity: 0,
+    durationMs: 0,
+  };
+}
+
+export function getPropertyTierLabel(tier: PropertyTier) {
+  switch (tier) {
+    case 'dumpster':
+      return 'Dumpster';
+    case 'shack':
+      return 'Shack';
+    case 'workshop':
+      return 'Workshop';
+    case 'junkyard':
+      return 'Junkyard';
+    case 'industrial_yard':
+      return 'Industrial Yard';
+    default:
+      return 'Property';
+  }
+}
+
+export function createInitialPropertyState(username = 'Scavenger_X'): PropertyState {
+  return {
+    activePropertyId: 'starter-dumpster',
+    shackAccess: {
+      unlocked: false,
+      completedAt: null,
+    },
+    properties: [
+      {
+        id: 'starter-dumpster',
+        name: `${username}'s Dumpster`,
+        district: 'slums',
+        tier: 'dumpster',
+        occupancyStatus: 'active',
+        storageCapacity: 25,
+        assemblyTier: 0,
+        canDisassemble: false,
+        canRecycle: false,
+        employeeCapacity: 0,
+        storageUpgradeLevel: 0,
+        storedItems: [],
+        letting: null,
+      },
+    ],
+  };
+}
+
+export function normalizePropertyState(property: PropertyState, username = 'Scavenger_X'): PropertyState {
+  const fallbackState = createInitialPropertyState(username);
+  const properties = property.properties.length > 0 ? property.properties : fallbackState.properties;
+
+  return {
+    shackAccess: property.shackAccess ?? fallbackState.shackAccess,
+    activePropertyId: properties.some((entry) => entry.id === property.activePropertyId)
+      ? property.activePropertyId
+      : properties[0].id,
+    properties: properties.map((entry) => ({
+      ...entry,
+      storageUpgradeLevel: typeof entry.storageUpgradeLevel === 'number' ? entry.storageUpgradeLevel : 0,
+      storedItems: Array.isArray(entry.storedItems) ? entry.storedItems : [],
+      letting: entry.letting ?? null,
+    })),
+  };
+}
+
+export const SHACK_PROPERTY_LISTINGS: Record<District, PropertyListing> = {
+  slums: {
+    district: 'slums',
+    tier: 'shack',
+    label: 'Back-Alley Shack',
+    purchasePrice: 1800,
+    rentPerDay: 120,
+    storageCapacity: 60,
+    assemblyTier: 2,
+    canDisassemble: true,
+    canRecycle: false,
+    employeeCapacity: 0,
+    riskNote: 'Cheap entry point, high theft risk, closest upgrade from the starter dumpster.',
+    publicDailyRate: 140,
+    friendDailyRate: 95,
+  },
+  tech: {
+    district: 'tech',
+    tier: 'shack',
+    label: 'Maker Shack',
+    purchasePrice: 2400,
+    rentPerDay: 165,
+    storageCapacity: 65,
+    assemblyTier: 2,
+    canDisassemble: true,
+    canRecycle: false,
+    employeeCapacity: 0,
+    riskNote: 'Higher rent, better access to electronics and bench space.',
+    publicDailyRate: 195,
+    friendDailyRate: 130,
+  },
+  financial: {
+    district: 'financial',
+    tier: 'shack',
+    label: 'Service Alley Unit',
+    purchasePrice: 3200,
+    rentPerDay: 230,
+    storageCapacity: 70,
+    assemblyTier: 2,
+    canDisassemble: true,
+    canRecycle: false,
+    employeeCapacity: 0,
+    riskNote: 'Expensive but cleaner routes and stronger resale access.',
+    publicDailyRate: 260,
+    friendDailyRate: 175,
+  },
+  harbor: {
+    district: 'harbor',
+    tier: 'shack',
+    label: 'Dockside Shed',
+    purchasePrice: 2700,
+    rentPerDay: 190,
+    storageCapacity: 72,
+    assemblyTier: 2,
+    canDisassemble: true,
+    canRecycle: false,
+    employeeCapacity: 0,
+    riskNote: 'Bulk-friendly storage with rougher traffic and slower access roads.',
+    publicDailyRate: 215,
+    friendDailyRate: 145,
+  },
+  university: {
+    district: 'university',
+    tier: 'shack',
+    label: 'Campus Workshop Shack',
+    purchasePrice: 2600,
+    rentPerDay: 175,
+    storageCapacity: 68,
+    assemblyTier: 2,
+    canDisassemble: true,
+    canRecycle: false,
+    employeeCapacity: 0,
+    riskNote: 'Balanced costs with safer routes and cleaner scrap sources.',
+    publicDailyRate: 205,
+    friendDailyRate: 138,
+  },
+  rich_hills: {
+    district: 'rich_hills',
+    tier: 'shack',
+    label: 'Caretaker Outbuilding',
+    purchasePrice: 4200,
+    rentPerDay: 310,
+    storageCapacity: 78,
+    assemblyTier: 2,
+    canDisassemble: true,
+    canRecycle: false,
+    employeeCapacity: 0,
+    riskNote: 'Premium location with prestige, high buy-in, and tighter scrutiny.',
+    publicDailyRate: 345,
+    friendDailyRate: 240,
+  },
+};
+
+export const SHACK_ASSEMBLY_RECIPES: ShackAssemblyRecipe[] = [
+  {
+    id: 'patchwork_repair_kit',
+    name: 'Patchwork Repair Kit',
+    icon: '🧰',
+    description: 'Rough repair bundle for field fixes and early workshop tasks.',
+    componentCost: 3,
+    requiredAssemblyTier: 1,
+    output: {
+      name: 'Patchwork Repair Kit',
+      icon: '🧰',
+      rarity: 'uncommon',
+      weight: 0.6,
+      value: 85,
+      description: 'A rough repair kit assembled from salvaged components at a Shack workbench.',
+    },
+  },
+  {
+    id: 'scrap_filter',
+    name: 'Scrap Filter Module',
+    icon: '🧪',
+    description: 'Basic filtering rig that supports cleaner salvage and future recipes.',
+    componentCost: 5,
+    requiredAssemblyTier: 2,
+    output: {
+      name: 'Scrap Filter Module',
+      icon: '🧪',
+      rarity: 'rare',
+      weight: 0.8,
+      value: 150,
+      description: 'An improvised filter module built from cleaned scrap and salvaged circuits.',
+    },
+  },
+  {
+    id: 'streetlight_controller',
+    name: 'Streetlight Controller',
+    icon: '💡',
+    description: 'A compact controller assembled from reclaimed boards and power relays.',
+    componentCost: 7,
+    requiredAssemblyTier: 2,
+    output: {
+      name: 'Streetlight Controller',
+      icon: '💡',
+      rarity: 'rare',
+      weight: 1.1,
+      value: 220,
+      description: 'A bench-built lighting controller with resale and future upgrade value.',
+    },
+  },
+  {
+    id: 'stitched_work_gloves',
+    name: 'Stitched Work Gloves',
+    icon: '🧤',
+    description: 'Fingerless salvage gloves stitched from tarp strips and lined with recovered grips.',
+    componentCost: 3,
+    requiredAssemblyTier: 1,
+    outputItemId: 'eq_glove_u1',
+    output: {
+      name: 'Work Gloves',
+      icon: '🧤',
+      rarity: 'uncommon',
+      weight: 0.2,
+      value: 70,
+      description: 'Worn leather. +2% rarity chance.',
+    },
+  },
+  {
+    id: 'strapbound_pack',
+    name: 'Strapbound Pack',
+    icon: '🎒',
+    description: 'A reinforced haul pack stitched from sign canvas and salvage straps for faster alley runs.',
+    componentCost: 4,
+    requiredAssemblyTier: 1,
+    outputItemId: 'eq_pack_u1',
+    output: {
+      name: 'Weathered Backpack',
+      icon: '🎒',
+      rarity: 'uncommon',
+      weight: 2.5,
+      value: 95,
+      description: 'Torn straps. +8% search speed.',
+    },
+  },
+  {
+    id: 'rail_runner_cart',
+    name: 'Rail-Runner Cart',
+    icon: '🛒',
+    description: 'A low-slung hand cart built from bearings and drawer rails for bigger hauls and cleaner resale loads.',
+    componentCost: 6,
+    requiredAssemblyTier: 2,
+    outputItemId: 'eq_cart_u1',
+    output: {
+      name: 'Old Shopping Cart',
+      icon: '🛒',
+      rarity: 'uncommon',
+      weight: 8.0,
+      value: 120,
+      description: 'Dented but sturdy. +10% capacity.',
+    },
+  },
+  {
+    id: 'lantern_splice_torch',
+    name: 'Lantern-Splice Torch',
+    icon: '🔦',
+    description: 'A rewired inspection light with shielded wiring and a steadier beam for safer searches.',
+    componentCost: 6,
+    requiredAssemblyTier: 2,
+    outputItemId: 'eq_light_u1',
+    output: {
+      name: 'LED Flashlight',
+      icon: '🔦',
+      rarity: 'uncommon',
+      weight: 0.3,
+      value: 80,
+      description: 'Decent battery. -3% heat gain.',
+    },
+  },
+];
+
+export const DUMPSTER_ASSEMBLY_RECIPES: DumpsterAssemblyRecipe[] = [
+  {
+    id: 'milk_crate_teardown_rack',
+    name: 'Milk-Crate Tear-Down Rack',
+    icon: '🗃️',
+    description: 'A wobbling teardown rig lashed together from curb scrap and wedged against the dumpster wall.',
+    ingredients: [
+      { itemId: 'c2', itemName: 'Steel Scrap', icon: '⚙️', quantity: 1 },
+      { itemId: 'c1', itemName: 'Copper Wire', icon: '🔌', quantity: 1 },
+      { itemId: 'c28', itemName: 'Scrap Hinges', icon: '🚪', quantity: 1 },
+      { itemId: 'c34', itemName: 'Metal Drawer Rails', icon: '🗄️', quantity: 1 },
+    ],
+    unlocksDisassembly: true,
+  },
+  {
+    id: 'crate_lid_tinker_bench',
+    name: 'Crate-Lid Tinker Bench',
+    icon: '🛠️',
+    description: 'A crate-top bench braced with bent rails and clamp scrap so you can turn recycled parts into sellable kit.',
+    ingredients: [
+      { itemId: 'c2', itemName: 'Steel Scrap', icon: '⚙️', quantity: 1 },
+      { itemId: 'c1', itemName: 'Copper Wire', icon: '🔌', quantity: 1 },
+      { itemId: 'c34', itemName: 'Metal Drawer Rails', icon: '🗄️', quantity: 1 },
+      { itemId: 'c25', itemName: 'Pipe Clamp', icon: '🗜️', quantity: 1 },
+    ],
+    unlocksDisassembly: false,
+    unlocksRecycling: true,
+    assemblyTierGrant: 1,
+  },
+];
+
+const SHACK_UNLOCK_CASH_COST = 900;
+const SHACK_UNLOCK_COMPONENT_COST = 6;
+const SHACK_UNLOCK_MIN_RANK = 8;
+const SHACK_UNLOCK_MIN_STASH_WEIGHT = 10;
+const SHACK_STORAGE_UPGRADE_BASE_COST = 650;
+const SHACK_STORAGE_UPGRADE_BASE_COMPONENTS = 2;
+const SHACK_STORAGE_UPGRADE_CAP = 4;
+const RENT_DAY_MS = 24 * 60 * 60 * 1000;
+
+export function getShackAssemblyRecipe(recipeId: string) {
+  return SHACK_ASSEMBLY_RECIPES.find((entry) => entry.id === recipeId);
+}
+
+export function getAvailableAssemblyRecipes(assemblyTier: number) {
+  return SHACK_ASSEMBLY_RECIPES.filter((entry) => entry.requiredAssemblyTier <= assemblyTier);
+}
+
+export function getDumpsterAssemblyRecipe(recipeId: string) {
+  return DUMPSTER_ASSEMBLY_RECIPES.find((entry) => entry.id === recipeId);
+}
+
+export function getShackUnlockStatus(property: PropertyState, player: Player, inventory: InventoryItem[]) {
+  const activeProperty = getActiveProperty(property);
+  const componentStack = inventory.find((entry) => entry.id === 'mat_components');
+  return {
+    activeProperty,
+    hasCorrectBase: activeProperty?.tier === 'dumpster',
+    rankReady: player.rank >= SHACK_UNLOCK_MIN_RANK,
+    componentReady: (componentStack?.quantity ?? 0) >= SHACK_UNLOCK_COMPONENT_COST,
+    stashReady: Boolean(activeProperty && getPropertyStoredWeight(activeProperty) >= SHACK_UNLOCK_MIN_STASH_WEIGHT),
+    cashReady: player.cash >= SHACK_UNLOCK_CASH_COST,
+  };
+}
+
+export function getPropertyStorageUpgradeCost(propertyUnit: PropertyUnit) {
+  const nextLevel = propertyUnit.storageUpgradeLevel + 1;
+  return {
+    cashCost: SHACK_STORAGE_UPGRADE_BASE_COST * nextLevel,
+    componentCost: SHACK_STORAGE_UPGRADE_BASE_COMPONENTS * nextLevel,
+    capacityIncrease: 15,
+  };
+}
+
+export function getActiveProperty(property: PropertyState) {
+  return property.properties.find((entry) => entry.id === property.activePropertyId) ?? property.properties[0];
+}
+
+export function getPropertyListing(district: District) {
+  return SHACK_PROPERTY_LISTINGS[district];
+}
+
+export function getPropertyStoredWeight(propertyUnit: PropertyUnit) {
+  return propertyUnit.storedItems.reduce((total, item) => total + item.weight * item.quantity, 0);
+}
+
+function upsertInventoryStack(items: InventoryItem[], incoming: InventoryItem) {
+  const existing = items.find((entry) => entry.id === incoming.id);
+  if (!existing) {
+    return [...items, incoming];
+  }
+
+  return items.map((entry) => (
+    entry.id === incoming.id
+      ? { ...entry, quantity: entry.quantity + incoming.quantity }
+      : entry
+  ));
+}
+
+function removeInventoryQuantity(items: InventoryItem[], itemId: string, quantity: number) {
+  return items
+    .map((entry) => (entry.id === itemId ? { ...entry, quantity: entry.quantity - quantity } : entry))
+    .filter((entry) => entry.quantity > 0);
+}
+
+const LEGACY_ITEM_TEMPLATE_IDS: Partial<Record<string, string[]>> = {
+  c1: ['1'],
+  c2: ['7'],
+};
+
+function matchesItemTemplateId(item: Pick<InventoryItem, 'id'>, templateId: string) {
+  const legacyIds = LEGACY_ITEM_TEMPLATE_IDS[templateId] ?? [];
+  return item.id === templateId
+    || item.id.startsWith(`${templateId}-`)
+    || legacyIds.includes(item.id);
+}
+
+function getCombinedItemQuantity(inventory: InventoryItem[], storedItems: InventoryItem[], itemId: string) {
+  const inventoryQuantity = inventory
+    .filter((entry) => matchesItemTemplateId(entry, itemId))
+    .reduce((total, entry) => total + entry.quantity, 0);
+  const storedQuantity = storedItems
+    .filter((entry) => matchesItemTemplateId(entry, itemId))
+    .reduce((total, entry) => total + entry.quantity, 0);
+  return inventoryQuantity + storedQuantity;
+}
+
+function removeCombinedItemQuantity(inventory: InventoryItem[], storedItems: InventoryItem[], itemId: string, quantity: number) {
+  let remainingQuantity = quantity;
+
+  const nextInventory = inventory
+    .map((entry) => {
+      if (!matchesItemTemplateId(entry, itemId) || remainingQuantity <= 0) {
+        return entry;
+      }
+
+      const removedQuantity = Math.min(entry.quantity, remainingQuantity);
+      remainingQuantity -= removedQuantity;
+      return {
+        ...entry,
+        quantity: entry.quantity - removedQuantity,
+      };
+    })
+    .filter((entry) => entry.quantity > 0);
+
+  const nextStoredItems = storedItems
+    .map((entry) => {
+      if (!matchesItemTemplateId(entry, itemId) || remainingQuantity <= 0) {
+        return entry;
+      }
+
+      const removedQuantity = Math.min(entry.quantity, remainingQuantity);
+      remainingQuantity -= removedQuantity;
+      return {
+        ...entry,
+        quantity: entry.quantity - removedQuantity,
+      };
+    })
+    .filter((entry) => entry.quantity > 0);
+
+  return {
+    inventory: nextInventory,
+    storedItems: nextStoredItems,
+  };
+}
+
+function hasShackAssemblyAccess(property: PropertyState) {
+  const activeProperty = getActiveProperty(property);
+  return Boolean(activeProperty && activeProperty.assemblyTier >= 1);
+}
+
+function hasDisassemblyAccess(property: PropertyState) {
+  const activeProperty = getActiveProperty(property);
+  return Boolean(activeProperty?.canDisassemble);
+}
+
+function canBreakDownRarity(rarity: Rarity, canRecycleUncommon: boolean) {
+  return (canRecycleUncommon
+    ? ['uncommon', 'rare', 'epic', 'legendary', 'illegal']
+    : ['rare', 'epic', 'legendary', 'illegal']).includes(rarity);
+}
+
+export function getBreakdownComponentYield(rarity: Rarity, canRecycleUncommon: boolean) {
+  const rarityYield: Record<Rarity, number> = {
+    common: 0,
+    uncommon: canRecycleUncommon ? 1 : 0,
+    rare: 2,
+    epic: 4,
+    legendary: 7,
+    illegal: 5,
+  };
+
+  return rarityYield[rarity] ?? 0;
+}
+
+function getAssemblyLockedMessage(property: PropertyState) {
+  const activeProperty = getActiveProperty(property);
+  if (activeProperty?.tier === 'dumpster') {
+    return 'Your Dumpster needs a Crate-Lid Tinker Bench before recycled components can be crafted into finished gear.';
+  }
+
+  const tierLabel = activeProperty ? getPropertyTierLabel(activeProperty.tier) : 'current base';
+  return `Assembly and disassembly stay locked while your active base is a ${tierLabel}. Secure a Shack or better first.`;
+}
+
+function isDumpsterAssemblyInstalled(property: PropertyUnit, recipe: DumpsterAssemblyRecipe) {
+  return Boolean(
+    (recipe.unlocksDisassembly && property.canDisassemble)
+      || (recipe.unlocksRecycling && property.canRecycle)
+      || (recipe.assemblyTierGrant && property.assemblyTier >= recipe.assemblyTierGrant),
+  );
+}
+
+function getDisassemblyLockedMessage(property: PropertyState) {
+  const activeProperty = getActiveProperty(property);
+  if (activeProperty?.tier === 'dumpster') {
+    return 'Your Dumpster needs a Milk-Crate Tear-Down Rack before you can strip items down for parts.';
+  }
+
+  return getAssemblyLockedMessage(property);
+}
+
+function getLeaseTerms(listing: PropertyListing, mode: PropertyLettingMode) {
+  const durationDays = mode === 'public' ? 5 : 3;
+  const dailyRate = mode === 'public' ? listing.publicDailyRate : listing.friendDailyRate;
+  const depositAmount = dailyRate * 2;
+  return { durationDays, dailyRate, depositAmount };
+}
+
+function settleExpiredPropertyLeases(state: GameState, now: number) {
+  const expiredProperties = state.property.properties.filter((entry) => entry.letting && entry.letting.expiresAt <= now);
+  if (expiredProperties.length === 0) {
+    return null;
+  }
+
+  const payout = expiredProperties.reduce((total, propertyUnit) => {
+    const letting = propertyUnit.letting;
+    if (!letting) {
+      return total;
+    }
+
+    return total + (letting.dailyRate * letting.durationDays) + letting.depositAmount;
+  }, 0);
+
+  return {
+    payout,
+    property: {
+      ...state.property,
+      properties: state.property.properties.map((entry) => (
+        entry.letting && entry.letting.expiresAt <= now
+          ? { ...entry, occupancyStatus: 'inactive' as PropertyOccupancyStatus, letting: null }
+          : entry
+      )),
+    },
+    expiredProperties,
+  };
+}
+
+export function hasJunkyardAccess(property: PropertyState) {
+  const activeProperty = getActiveProperty(property);
+  return activeProperty?.tier === 'junkyard' || activeProperty?.tier === 'industrial_yard';
+}
+
+function getJunkyardLockedMessage(property: PropertyState) {
+  const activeProperty = getActiveProperty(property);
+  const tierLabel = activeProperty ? getPropertyTierLabel(activeProperty.tier) : 'current base';
+  return `Junkyard operations are locked while your active base is a ${tierLabel}. Upgrade through Shack and Workshop first.`;
+}
+
+export function getBusTravelQuote(origin: District, destination: District): TravelQuote {
+  const distance = getTravelDistance(origin, destination);
+  const destinationDanger = DISTRICTS[destination].danger;
+
+  return {
+    mode: 'bus',
+    origin,
+    destination,
+    fareCost: Math.max(12, Math.round(6 + distance * 7 + destinationDanger / 12)),
+    cargoCapacity: BUS_TRAVEL_CAPACITY,
+    durationMs: Math.max(12_000, Math.round(distance * 18_000 + destinationDanger * 180)),
+  };
+}
+
+export function isTrainRouteAvailable(origin: District, destination: District) {
+  return TRAIN_SERVICE_DISTRICTS.includes(origin) && TRAIN_SERVICE_DISTRICTS.includes(destination) && origin !== destination;
+}
+
+export function getTrainTravelQuote(origin: District, destination: District): TravelQuote {
+  const distance = getTravelDistance(origin, destination);
+  const destinationDanger = DISTRICTS[destination].danger;
+
+  return {
+    mode: 'train',
+    origin,
+    destination,
+    fareCost: Math.max(28, Math.round(16 + distance * 11 + destinationDanger / 10)),
+    cargoCapacity: TRAIN_TRAVEL_CAPACITY,
+    durationMs: Math.max(9_000, Math.round(distance * 11_000 + destinationDanger * 110)),
+  };
+}
+
+export function getTravelModeLabel(mode: TravelMode) {
+  if (mode === 'bus') return 'Bus';
+  if (mode === 'train') return 'Train';
+  return VEHICLE_TRAVEL_SPECS[mode].label;
+}
+
+export function getTravelModeIcon(mode: TravelMode) {
+  if (mode === 'bus') return '🚌';
+  if (mode === 'train') return '🚆';
+  return VEHICLE_TRAVEL_SPECS[mode].icon;
+}
+
+export function getTransportUpgradeTier(progress: UpgradeTreeProgress) {
+  const currentNodeId = progress.transport;
+  if (!currentNodeId) {
+    return 0;
+  }
+
+  const match = currentNodeId.match(/transport_(\d+)/);
+  return match ? Number.parseInt(match[1], 10) : 0;
+}
+
+export function getUnlockedVehicleModes(progress: UpgradeTreeProgress): VehicleTravelMode[] {
+  const transportTier = getTransportUpgradeTier(progress);
+  return (Object.values(VEHICLE_TRAVEL_SPECS) as VehicleTravelSpec[])
+    .filter((vehicle) => transportTier >= vehicle.unlockTier)
+    .map((vehicle) => vehicle.mode);
+}
+
+function getVehicleTravelQuote(origin: District, destination: District, mode: VehicleTravelMode): TravelQuote {
+  const distance = getTravelDistance(origin, destination);
+  const destinationDanger = DISTRICTS[destination].danger;
+  const spec = VEHICLE_TRAVEL_SPECS[mode];
+
+  return {
+    mode,
+    origin,
+    destination,
+    fareCost: Math.max(spec.baseFare, Math.round(spec.baseFare + distance * spec.farePerDistance + destinationDanger / spec.fareDangerDivisor)),
+    cargoCapacity: spec.cargoCapacity,
+    durationMs: Math.max(7_000, Math.round(spec.baseDurationMs + distance * spec.durationPerDistanceMs + destinationDanger * spec.durationDangerFactor)),
+  };
+}
+
+export function getTravelQuote(origin: District, destination: District, mode: TravelMode): TravelQuote {
+  if (mode === 'train') {
+    return getTrainTravelQuote(origin, destination);
+  }
+
+  if (mode === 'bus') {
+    return getBusTravelQuote(origin, destination);
+  }
+
+  return getVehicleTravelQuote(origin, destination, mode);
+}
+
+function getTravelLockedMessage(mode: TravelMode) {
+  if (mode === 'train') {
+    return `Train routes unlock at Rank ${TRAIN_MIN_RANK}.`;
+  }
+
+  if (mode === 'bus') {
+    return null;
+  }
+
+  const spec = VEHICLE_TRAVEL_SPECS[mode];
+  return `${spec.label} unlocks once your Transport track reaches tier ${spec.unlockTier}.`;
+}
+
+function buildDistrictTransitionResult(args: {
+  currentDistrict: District;
+  nextDistrict: District;
+  missionStats: MissionStats;
+  missions: MissionRecord[];
+  inventory: InventoryItem[];
+  factionStandings: FactionStandings;
+  lastMissionRefreshAt: number;
+  now: number;
+}) {
+  const missionStats = args.currentDistrict === args.nextDistrict
+    ? args.missionStats
+    : {
+        ...args.missionStats,
+        districtVisits: {
+          ...args.missionStats.districtVisits,
+          [args.nextDistrict]: (args.missionStats.districtVisits[args.nextDistrict] ?? 0) + 1,
+        },
+      };
+
+  const refreshed = refreshMissionSet(args.missions, missionStats, args.inventory, args.factionStandings, args.lastMissionRefreshAt, args.now);
+
+  return {
+    currentDistrict: args.nextDistrict,
+    missionStats,
+    factionStandings: applyFactionStandingDelta(args.factionStandings, refreshed.factionStandingDelta ?? null),
+    missions: refreshed.missions,
+    lastMissionRefreshAt: refreshed.lastMissionRefreshAt,
+  };
+}
+
 export const createInitialMarketListings = () =>
   Array.from({ length: 60 }, (_, index) => {
     const template = MARKET_SOURCE_ITEMS[index % MARKET_SOURCE_ITEMS.length];
@@ -3675,13 +4608,13 @@ function getCurrentUpgradeNode(progress: UpgradeTreeProgress, treeId: UpgradeTre
 }
 
 const MOCK_INVENTORY: InventoryItem[] = [
-  { id: '1', name: 'Copper Wire', icon: '🔌', rarity: 'common', quantity: 12, weight: 0.5, value: 15, description: 'Stripped copper wiring. Useful for basic electronics.' },
+  { id: 'c1', name: 'Copper Wire', icon: '🔌', rarity: 'common', quantity: 12, weight: 0.5, value: 15, description: 'Stripped copper wiring. Useful for basic electronics.' },
   { id: '2', name: 'Broken Smartphone', icon: '📱', rarity: 'uncommon', quantity: 3, weight: 0.3, value: 45, description: 'Cracked screen, missing battery. Parts still valuable.' },
   { id: '3', name: 'Old GPU', icon: '🖥️', rarity: 'rare', quantity: 1, weight: 1.2, value: 320, description: 'GTX 1080 with burned VRAM. Can be repaired or salvaged.' },
   { id: '4', name: 'Crypto Wallet Drive', icon: '💾', rarity: 'epic', quantity: 1, weight: 0.1, value: 1200, description: 'Encrypted USB drive. Contents unknown. Highly sought after.' },
   { id: '5', name: 'Military Chip', icon: '🔬', rarity: 'legendary', quantity: 1, weight: 0.05, value: 8500, description: 'Unknown military prototype. Handle with extreme care.' },
   { id: '6', name: 'Stolen Keycard', icon: '💳', rarity: 'illegal', quantity: 2, weight: 0.05, value: 3000, description: 'Corporate access card. Possession is a crime.' },
-  { id: '7', name: 'Steel Scrap', icon: '⚙️', rarity: 'common', quantity: 25, weight: 2.0, value: 8, description: 'Bent steel plates. Good for recycling.' },
+  { id: 'c2', name: 'Steel Scrap', icon: '⚙️', rarity: 'common', quantity: 25, weight: 2.0, value: 8, description: 'Bent steel plates. Good for recycling.' },
   { id: '8', name: 'Fiber Optic Cable', icon: '🌐', rarity: 'uncommon', quantity: 5, weight: 0.8, value: 60, description: 'High-bandwidth cable from a demolished server farm.' },
   { id: '9', name: 'Prototype Battery', icon: '🔋', rarity: 'rare', quantity: 2, weight: 0.6, value: 450, description: 'Next-gen solid-state battery cell. Powers two districts.' },
   { id: '10', name: 'Empty Cans', icon: '🥫', rarity: 'common', quantity: 40, weight: 0.2, value: 3, description: 'Assorted tin cans. Recyclable for minor scrap value.' },
@@ -3757,8 +4690,9 @@ export const useGameStore = create<GameState>((set, get) => {
       }
     }
 
-    const template = LOOT_TEMPLATES[selectedRarity][Math.floor(Math.random() * LOOT_TEMPLATES[selectedRarity].length)];
-    const itemId = `${template.id}-${Date.now()}`;
+    const districtLootPool = getLootTemplatesForDistrict(district, selectedRarity);
+    const template = districtLootPool[Math.floor(Math.random() * districtLootPool.length)];
+    const itemId = `${template.id}-${Date.now()}-${getNextGeneratedLootSequence()}`;
     
     return {
       ...template,
@@ -3772,6 +4706,8 @@ export const useGameStore = create<GameState>((set, get) => {
   return {
     currentPage: 'city',
     currentDistrict: 'slums',
+    travel: createInitialTravelState('slums'),
+    property: createInitialPropertyState('Scavenger_X'),
     player: {
       username: 'Scavenger_X',
       rank: getRankFromTotalScavenged(2500),
@@ -3849,26 +4785,634 @@ export const useGameStore = create<GameState>((set, get) => {
       };
     }),
     setDistrict: (district) => set((s) => {
-      const missionStats = s.currentDistrict === district
-        ? s.missionStats
-        : {
-            ...s.missionStats,
-            districtVisits: {
-              ...s.missionStats.districtVisits,
-              [district]: (s.missionStats.districtVisits[district] ?? 0) + 1,
-            },
-          };
-      const refreshed = refreshMissionSet(s.missions, missionStats, s.inventory, s.factionStandings, s.lastMissionRefreshAt, Date.now());
-      const factionStandings = applyFactionStandingDelta(s.factionStandings, refreshed.factionStandingDelta ?? null);
-
       return {
-        currentDistrict: district,
-        missionStats,
-        factionStandings,
-        missions: refreshed.missions,
-        lastMissionRefreshAt: refreshed.lastMissionRefreshAt,
+        ...buildDistrictTransitionResult({
+          currentDistrict: s.currentDistrict,
+          nextDistrict: district,
+          missionStats: s.missionStats,
+          missions: s.missions,
+          inventory: s.inventory,
+          factionStandings: s.factionStandings,
+          lastMissionRefreshAt: s.lastMissionRefreshAt,
+          now: Date.now(),
+        }),
+        travel: createInitialTravelState(district),
       };
     }),
+    startTravel: (destination, mode = 'bus') => {
+      const store = get();
+
+      if (store.travel.status === 'travelling') {
+        store.addNotification('You are already on the move.', 'warning');
+        return;
+      }
+
+      if (destination === store.currentDistrict) {
+        store.addNotification(`You are already in ${DISTRICTS[destination].name}.`, 'info');
+        return;
+      }
+
+      if (store.isScavenging) {
+        store.addNotification('Finish the current action before leaving the district.', 'warning');
+        return;
+      }
+
+      if (store.policeChase.active) {
+        store.addNotification('You cannot leave while the police are chasing you.', 'warning');
+        return;
+      }
+
+      if (mode === 'train') {
+        if (store.player.rank < TRAIN_MIN_RANK) {
+          store.addNotification(`Train routes unlock at Rank ${TRAIN_MIN_RANK}.`, 'warning');
+          return;
+        }
+
+        if (!isTrainRouteAvailable(store.currentDistrict, destination)) {
+          store.addNotification(`No train line runs from ${DISTRICTS[store.currentDistrict].name} to ${DISTRICTS[destination].name}.`, 'warning');
+          return;
+        }
+      }
+
+      if (mode !== 'bus' && mode !== 'train') {
+        const unlockedVehicleModes = getUnlockedVehicleModes(store.upgradeTreeProgress);
+        if (!unlockedVehicleModes.includes(mode)) {
+          const lockedMessage = getTravelLockedMessage(mode);
+          if (lockedMessage) {
+            store.addNotification(lockedMessage, 'warning');
+          }
+          return;
+        }
+      }
+
+      if (DISTRICTS[destination].minRank > store.player.rank) {
+        store.addNotification(`Requires Rank ${DISTRICTS[destination].minRank} to travel there.`, 'warning');
+        return;
+      }
+
+      const quote = getTravelQuote(store.currentDistrict, destination, mode);
+      const transportLabel = quote.mode === 'train'
+        ? 'train ticket'
+        : quote.mode === 'bus'
+          ? 'bus fare'
+          : `${getTravelModeLabel(quote.mode)} upkeep`;
+
+      if (store.player.cash < quote.fareCost) {
+        store.addNotification(`Need $${quote.fareCost} for the ${transportLabel} to ${DISTRICTS[destination].name}.`, 'warning');
+        return;
+      }
+
+      if (store.player.usedCapacity > quote.cargoCapacity) {
+        store.addNotification(`${getTravelModeLabel(quote.mode)} travel only allows ${quote.cargoCapacity} carry weight. Offload some inventory first.`, 'warning');
+        return;
+      }
+
+      const departureAt = Date.now();
+      const arrivalAt = departureAt + quote.durationMs;
+
+      set((s) => ({
+        player: {
+          ...s.player,
+          cash: s.player.cash - quote.fareCost,
+        },
+        travel: {
+          status: 'travelling',
+          mode: quote.mode,
+          origin: s.currentDistrict,
+          destination,
+          departureAt,
+          arrivalAt,
+          fareCost: quote.fareCost,
+          cargoCapacity: quote.cargoCapacity,
+          durationMs: quote.durationMs,
+        },
+      }));
+
+      store.addNotification(`Departed for ${DISTRICTS[destination].name} by ${getTravelModeLabel(quote.mode).toLowerCase()}. ETA ${Math.ceil(quote.durationMs / 1000)}s.`, 'info');
+    },
+    refreshTravelState: () => {
+      const store = get();
+      if (store.travel.status !== 'travelling' || !store.travel.destination || !store.travel.arrivalAt) {
+        return;
+      }
+
+      if (store.travel.arrivalAt > Date.now()) {
+        return;
+      }
+
+      const destination = store.travel.destination;
+
+      set((s) => ({
+        ...buildDistrictTransitionResult({
+          currentDistrict: s.currentDistrict,
+          nextDistrict: destination,
+          missionStats: s.missionStats,
+          missions: s.missions,
+          inventory: s.inventory,
+          factionStandings: s.factionStandings,
+          lastMissionRefreshAt: s.lastMissionRefreshAt,
+          now: Date.now(),
+        }),
+        travel: createInitialTravelState(destination),
+      }));
+
+      store.addNotification(`Arrived in ${DISTRICTS[destination].name}.`, 'success');
+    },
+    refreshPropertyState: () => {
+      const store = get();
+      const settlement = settleExpiredPropertyLeases(store, Date.now());
+      if (!settlement) {
+        return;
+      }
+
+      set((state) => ({
+        player: {
+          ...state.player,
+          cash: state.player.cash + settlement.payout,
+        },
+        property: settlement.property,
+      }));
+
+      settlement.expiredProperties.forEach((entry) => {
+        const lease = entry.letting;
+        if (!lease) {
+          return;
+        }
+        store.addNotification(`Lease expired for ${entry.name}. Collected $${(lease.dailyRate * lease.durationDays + lease.depositAmount).toLocaleString()} after deposit release.`, 'success');
+      });
+    },
+    setActiveProperty: (propertyId) => {
+      const store = get();
+      const nextProperty = store.property.properties.find((entry) => entry.id === propertyId);
+
+      if (!nextProperty) {
+        store.addNotification('Property not found.', 'warning');
+        return;
+      }
+
+      if (propertyId === store.property.activePropertyId) {
+        store.addNotification(`${nextProperty.name} is already your active base.`, 'info');
+        return;
+      }
+
+      if (nextProperty.occupancyStatus === 'rented_out') {
+        store.addNotification(`${nextProperty.name} is currently rented out. End the rental before activating it.`, 'warning');
+        return;
+      }
+
+      set((state) => ({
+        property: {
+          ...state.property,
+          activePropertyId: propertyId,
+          properties: state.property.properties.map((entry) => ({
+            ...entry,
+            occupancyStatus: entry.id === propertyId ? 'active' : entry.occupancyStatus === 'rented_out' ? 'rented_out' : 'inactive' as PropertyOccupancyStatus,
+          })),
+        },
+      }));
+
+      store.addNotification(`Active base switched to ${nextProperty.name}.`, 'success');
+    },
+    unlockShackTier: () => {
+      const store = get();
+      const status = getShackUnlockStatus(store.property, store.player, store.inventory);
+
+      if (store.property.shackAccess.unlocked) {
+        store.addNotification('Shack tier is already unlocked.', 'info');
+        return;
+      }
+
+      if (!status.hasCorrectBase || !status.rankReady || !status.componentReady || !status.stashReady || !status.cashReady) {
+        store.addNotification('Dumpster-to-Shack upgrade path is not ready yet. Review the Shack market requirements.', 'warning');
+        return;
+      }
+
+      set((state) => ({
+        inventory: removeInventoryQuantity(state.inventory, 'mat_components', SHACK_UNLOCK_COMPONENT_COST),
+        player: {
+          ...state.player,
+          cash: state.player.cash - SHACK_UNLOCK_CASH_COST,
+          usedCapacity: removeInventoryQuantity(state.inventory, 'mat_components', SHACK_UNLOCK_COMPONENT_COST).reduce((total, entry) => total + entry.weight * entry.quantity, 0),
+        },
+        property: {
+          ...state.property,
+          shackAccess: {
+            unlocked: true,
+            completedAt: Date.now(),
+          },
+        },
+      }));
+
+      store.addNotification('Dumpster upgrade path cleared. Shack purchases are now unlocked across the city.', 'success');
+    },
+    purchaseShack: (district) => {
+      const store = get();
+      const listing = getPropertyListing(district);
+      const existingProperty = store.property.properties.find((entry) => entry.district === district && entry.tier === 'shack');
+
+      if (existingProperty) {
+        store.addNotification(`You already control a Shack in ${DISTRICTS[district].name}.`, 'info');
+        return;
+      }
+
+      if (!store.property.shackAccess.unlocked) {
+        store.addNotification('Finish the Dumpster-to-Shack upgrade path before buying Shack properties.', 'warning');
+        return;
+      }
+
+      if (store.player.cash < listing.purchasePrice) {
+        store.addNotification(`Need $${listing.purchasePrice.toLocaleString()} to secure ${listing.label}.`, 'warning');
+        return;
+      }
+
+      const propertyId = `shack-${district}-${Date.now()}`;
+      const propertyName = district === 'slums'
+        ? `${store.player.username}'s Shack`
+        : `${DISTRICTS[district].name} ${listing.label}`;
+
+      set((state) => ({
+        player: {
+          ...state.player,
+          cash: state.player.cash - listing.purchasePrice,
+        },
+        property: {
+          ...state.property,
+          activePropertyId: propertyId,
+          properties: [
+            ...state.property.properties.map((entry) => ({
+              ...entry,
+              occupancyStatus: (entry.occupancyStatus === 'rented_out' ? 'rented_out' : 'inactive') as PropertyOccupancyStatus,
+            })),
+            {
+              id: propertyId,
+              name: propertyName,
+              district,
+              tier: 'shack',
+              occupancyStatus: 'active',
+              storageCapacity: listing.storageCapacity,
+              assemblyTier: listing.assemblyTier,
+              canDisassemble: listing.canDisassemble,
+              canRecycle: listing.canRecycle,
+              employeeCapacity: listing.employeeCapacity,
+              storageUpgradeLevel: 0,
+              storedItems: [],
+              letting: null,
+            },
+          ],
+        },
+      }));
+
+      store.addNotification(`Secured ${listing.label} in ${DISTRICTS[district].name} for $${listing.purchasePrice.toLocaleString()}.`, 'success');
+    },
+    listPropertyForRent: (propertyId, mode) => {
+      const store = get();
+      const targetProperty = store.property.properties.find((entry) => entry.id === propertyId);
+
+      if (!targetProperty) {
+        store.addNotification('Property not found.', 'warning');
+        return;
+      }
+
+      if (propertyId === store.property.activePropertyId) {
+        store.addNotification('Switch to another active base before renting this property out.', 'warning');
+        return;
+      }
+
+      if (targetProperty.occupancyStatus === 'rented_out') {
+        store.addNotification(`${targetProperty.name} is already listed as rented out.`, 'info');
+        return;
+      }
+
+      const listing = getPropertyListing(targetProperty.district);
+      const leaseTerms = getLeaseTerms(listing, mode);
+
+      set((state) => ({
+        property: {
+          ...state.property,
+          properties: state.property.properties.map((entry) => (
+            entry.id === propertyId
+              ? {
+                  ...entry,
+                  occupancyStatus: 'rented_out',
+                  letting: {
+                    mode,
+                    dailyRate: leaseTerms.dailyRate,
+                    depositAmount: leaseTerms.depositAmount,
+                    durationDays: leaseTerms.durationDays,
+                    listedAt: Date.now(),
+                    expiresAt: Date.now() + (leaseTerms.durationDays * RENT_DAY_MS),
+                    renterName: mode === 'friends' ? 'Trusted Friend' : null,
+                  },
+                }
+              : entry
+          )),
+        },
+      }));
+
+      store.addNotification(`${targetProperty.name} is now rented for ${leaseTerms.durationDays} days at $${leaseTerms.dailyRate}/day with a $${leaseTerms.depositAmount} deposit.`, 'success');
+    },
+    endPropertyRental: (propertyId) => {
+      const store = get();
+      const targetProperty = store.property.properties.find((entry) => entry.id === propertyId);
+
+      if (!targetProperty) {
+        store.addNotification('Property not found.', 'warning');
+        return;
+      }
+
+      if (targetProperty.occupancyStatus !== 'rented_out') {
+        store.addNotification(`${targetProperty.name} is not currently rented out.`, 'info');
+        return;
+      }
+
+      const letting = targetProperty.letting;
+      const elapsedDays = letting ? Math.max(1, Math.ceil((Date.now() - letting.listedAt) / RENT_DAY_MS)) : 1;
+      const payout = letting ? Math.min(letting.durationDays, elapsedDays) * letting.dailyRate + letting.depositAmount : 0;
+
+      set((state) => ({
+        player: {
+          ...state.player,
+          cash: state.player.cash + payout,
+        },
+        property: {
+          ...state.property,
+          properties: state.property.properties.map((entry) => (
+            entry.id === propertyId
+              ? { ...entry, occupancyStatus: 'inactive', letting: null }
+              : entry
+          )),
+        },
+      }));
+
+      store.addNotification(`Ended rental for ${targetProperty.name}. Settled $${payout.toLocaleString()} including deposit release.`, 'success');
+    },
+    moveItemToPropertyStorage: (itemId, quantity) => {
+      const store = get();
+      const activeProperty = getActiveProperty(store.property);
+      const item = store.inventory.find((entry) => entry.id === itemId);
+
+      if (!activeProperty || !item || quantity <= 0) {
+        return;
+      }
+
+      const moveQuantity = Math.min(quantity, item.quantity);
+      const stashWeight = getPropertyStoredWeight(activeProperty);
+      const incomingWeight = item.weight * moveQuantity;
+
+      if (stashWeight + incomingWeight > activeProperty.storageCapacity) {
+        store.addNotification(`${activeProperty.name} does not have enough stash capacity for that load.`, 'warning');
+        return;
+      }
+
+      const storedItem: InventoryItem = {
+        ...item,
+        quantity: moveQuantity,
+      };
+
+      set((state) => ({
+        inventory: removeInventoryQuantity(state.inventory, itemId, moveQuantity),
+        player: {
+          ...state.player,
+          usedCapacity: removeInventoryQuantity(state.inventory, itemId, moveQuantity).reduce((total, entry) => total + entry.weight * entry.quantity, 0),
+        },
+        property: {
+          ...state.property,
+          properties: state.property.properties.map((entry) => (
+            entry.id === state.property.activePropertyId
+              ? { ...entry, storedItems: upsertInventoryStack(entry.storedItems, storedItem) }
+              : entry
+          )),
+        },
+      }));
+
+      store.addNotification(`Moved ${moveQuantity}x ${item.name} into ${activeProperty.name} storage.`, 'success');
+    },
+    retrieveItemFromPropertyStorage: (itemId, quantity) => {
+      const store = get();
+      const activeProperty = getActiveProperty(store.property);
+      const storedItem = activeProperty?.storedItems.find((entry) => entry.id === itemId);
+
+      if (!activeProperty || !storedItem || quantity <= 0) {
+        return;
+      }
+
+      const moveQuantity = Math.min(quantity, storedItem.quantity);
+      const effectiveCapacity = store.player.inventoryCapacity * (1 + store.getEquipmentStats().capacityBonus / 100);
+      const incomingWeight = storedItem.weight * moveQuantity;
+
+      if (store.player.usedCapacity + incomingWeight > effectiveCapacity) {
+        store.addNotification('Not enough carry capacity to pull that item out of storage.', 'warning');
+        return;
+      }
+
+      const inventoryItem: InventoryItem = {
+        ...storedItem,
+        quantity: moveQuantity,
+      };
+
+      const nextInventory = upsertInventoryStack(store.inventory, inventoryItem);
+
+      set((state) => ({
+        inventory: nextInventory,
+        player: {
+          ...state.player,
+          usedCapacity: nextInventory.reduce((total, entry) => total + entry.weight * entry.quantity, 0),
+        },
+        property: {
+          ...state.property,
+          properties: state.property.properties.map((entry) => (
+            entry.id === state.property.activePropertyId
+              ? { ...entry, storedItems: removeInventoryQuantity(entry.storedItems, itemId, moveQuantity) }
+              : entry
+          )),
+        },
+      }));
+
+      store.addNotification(`Pulled ${moveQuantity}x ${storedItem.name} out of ${activeProperty.name} storage.`, 'success');
+    },
+    upgradePropertyStorage: (propertyId) => {
+      const store = get();
+      const propertyUnit = store.property.properties.find((entry) => entry.id === propertyId);
+      const componentStack = store.inventory.find((entry) => entry.id === 'mat_components');
+
+      if (!propertyUnit || propertyUnit.tier !== 'shack') {
+        store.addNotification('Only Shack properties can take these storage upgrades right now.', 'warning');
+        return;
+      }
+
+      if (propertyUnit.storageUpgradeLevel >= SHACK_STORAGE_UPGRADE_CAP) {
+        store.addNotification(`${propertyUnit.name} has reached the current Shack storage cap.`, 'info');
+        return;
+      }
+
+      const upgradeCost = getPropertyStorageUpgradeCost(propertyUnit);
+      if (store.player.cash < upgradeCost.cashCost || (componentStack?.quantity ?? 0) < upgradeCost.componentCost) {
+        store.addNotification(`Need $${upgradeCost.cashCost.toLocaleString()} and ${upgradeCost.componentCost} Salvaged Components for the next storage bay upgrade.`, 'warning');
+        return;
+      }
+
+      const nextInventory = removeInventoryQuantity(store.inventory, 'mat_components', upgradeCost.componentCost);
+      set((state) => ({
+        inventory: nextInventory,
+        player: {
+          ...state.player,
+          cash: state.player.cash - upgradeCost.cashCost,
+          usedCapacity: nextInventory.reduce((total, entry) => total + entry.weight * entry.quantity, 0),
+        },
+        property: {
+          ...state.property,
+          properties: state.property.properties.map((entry) => (
+            entry.id === propertyId
+              ? {
+                  ...entry,
+                  storageUpgradeLevel: entry.storageUpgradeLevel + 1,
+                  storageCapacity: entry.storageCapacity + upgradeCost.capacityIncrease,
+                }
+              : entry
+          )),
+        },
+      }));
+
+      store.addNotification(`Expanded ${propertyUnit.name} storage by ${upgradeCost.capacityIncrease}.`, 'success');
+    },
+    assembleRecipe: (recipeId, batches) => {
+      const store = get();
+      const activeProperty = getActiveProperty(store.property);
+      const dumpsterRecipe = getDumpsterAssemblyRecipe(recipeId);
+      const recipe = getShackAssemblyRecipe(recipeId);
+
+      if (activeProperty?.tier === 'dumpster' && dumpsterRecipe) {
+        if (isDumpsterAssemblyInstalled(activeProperty, dumpsterRecipe)) {
+          store.addNotification(`${dumpsterRecipe.name} is already bolted into ${activeProperty.name}.`, 'info');
+          return;
+        }
+
+        const missingIngredient = dumpsterRecipe.ingredients.find((ingredient) => {
+          return getCombinedItemQuantity(store.inventory, activeProperty.storedItems, ingredient.itemId) < ingredient.quantity;
+        });
+
+        if (missingIngredient) {
+          store.addNotification(`Need ${missingIngredient.quantity}x ${missingIngredient.itemName} to build the ${dumpsterRecipe.name}.`, 'warning');
+          return;
+        }
+
+        const removedIngredients = dumpsterRecipe.ingredients.reduce(
+          (state, ingredient) => removeCombinedItemQuantity(state.inventory, state.storedItems, ingredient.itemId, ingredient.quantity),
+          {
+            inventory: store.inventory,
+            storedItems: activeProperty.storedItems,
+          },
+        );
+        const nextInventory = removedIngredients.inventory;
+        const usedCapacity = nextInventory.reduce((total, entry) => total + entry.weight * entry.quantity, 0);
+        const refreshed = refreshMissionSet(store.missions, store.missionStats, nextInventory, store.factionStandings, store.lastMissionRefreshAt, Date.now());
+
+        set((state) => ({
+          inventory: nextInventory,
+          player: {
+            ...state.player,
+            usedCapacity,
+          },
+          property: {
+            ...state.property,
+            properties: state.property.properties.map((entry) => (
+              entry.id === state.property.activePropertyId
+                ? {
+                    ...entry,
+                    storedItems: removedIngredients.storedItems,
+                    canDisassemble: dumpsterRecipe.unlocksDisassembly ? true : entry.canDisassemble,
+                    canRecycle: dumpsterRecipe.unlocksRecycling ? true : entry.canRecycle,
+                    assemblyTier: dumpsterRecipe.assemblyTierGrant ? Math.max(entry.assemblyTier, dumpsterRecipe.assemblyTierGrant) : entry.assemblyTier,
+                  }
+                : entry
+            )),
+          },
+          missions: refreshed.missions,
+          lastMissionRefreshAt: refreshed.lastMissionRefreshAt,
+          factionStandings: applyFactionStandingDelta(state.factionStandings, refreshed.factionStandingDelta ?? null),
+        }));
+
+        const upgradeNotes = [
+          dumpsterRecipe.unlocksDisassembly ? `${activeProperty.name} can now tear rare salvage down into parts.` : null,
+          dumpsterRecipe.unlocksRecycling ? `${activeProperty.name} can now recycle uncommon finds and craft finished gear.` : null,
+        ].filter(Boolean).join(' ');
+        store.addNotification(`Built the ${dumpsterRecipe.name}. ${upgradeNotes}`, 'success');
+        return;
+      }
+
+      if (!hasShackAssemblyAccess(store.property) || !activeProperty || !recipe) {
+        store.addNotification(getAssemblyLockedMessage(store.property), 'warning');
+        return;
+      }
+
+      if (activeProperty.assemblyTier < recipe.requiredAssemblyTier) {
+        store.addNotification(`${recipe.name} needs Assembly Tier ${recipe.requiredAssemblyTier}.`, 'warning');
+        return;
+      }
+
+      const combinedComponentQuantity = getCombinedItemQuantity(store.inventory, activeProperty.storedItems, 'mat_components');
+      if (combinedComponentQuantity <= 0) {
+        store.addNotification('No Salvaged Components available for assembly.', 'warning');
+        return;
+      }
+
+      const componentUnitWeight = store.inventory.find((entry) => entry.id === 'mat_components')?.weight
+        ?? activeProperty.storedItems.find((entry) => entry.id === 'mat_components')?.weight
+        ?? 0.1;
+      const inventoryComponentQuantity = store.inventory.find((entry) => entry.id === 'mat_components')?.quantity ?? 0;
+      const craftBatches = Math.min(batches, Math.floor(combinedComponentQuantity / recipe.componentCost));
+      if (craftBatches <= 0) {
+        store.addNotification(`Need at least ${recipe.componentCost} Salvaged Components per ${recipe.name}.`, 'warning');
+        return;
+      }
+
+      const removedComponents = removeCombinedItemQuantity(
+        store.inventory,
+        activeProperty.storedItems,
+        'mat_components',
+        craftBatches * recipe.componentCost,
+      );
+      const nextInventoryComponentQuantity = removedComponents.inventory.find((entry) => entry.id === 'mat_components')?.quantity ?? 0;
+      const removedInventoryComponentQuantity = Math.max(0, inventoryComponentQuantity - nextInventoryComponentQuantity);
+      const statBonuses = getPlayerScavengeBonuses(store.player.rank);
+      const effectiveCapacity = store.player.inventoryCapacity * (1 + (store.getEquipmentStats().capacityBonus + statBonuses.carryBonusPercent) / 100);
+      const outputWeight = recipe.output.weight * craftBatches;
+      const freedWeight = componentUnitWeight * removedInventoryComponentQuantity;
+      if (store.player.usedCapacity - freedWeight + outputWeight > effectiveCapacity) {
+        store.addNotification('Not enough carry capacity to assemble that many kits.', 'warning');
+        return;
+      }
+
+      set((state) => ({
+        inventory: removedComponents.inventory,
+        player: {
+          ...state.player,
+          usedCapacity: removedComponents.inventory.reduce((total, entry) => total + entry.weight * entry.quantity, 0),
+        },
+        property: {
+          ...state.property,
+          properties: state.property.properties.map((entry) => (
+            entry.id === state.property.activePropertyId
+              ? { ...entry, storedItems: removedComponents.storedItems }
+              : entry
+          )),
+        },
+      }));
+
+      store.addToInventory({
+        id: recipe.outputItemId ?? `assembled_${recipe.id}_${Date.now()}`,
+        name: recipe.output.name,
+        icon: recipe.output.icon,
+        rarity: recipe.output.rarity,
+        quantity: craftBatches,
+        weight: recipe.output.weight,
+        value: recipe.output.value,
+        description: recipe.output.description,
+        foundAt: 'Workbench',
+        foundTime: Date.now(),
+      });
+      store.addNotification(`Assembled ${craftBatches} ${recipe.name}${craftBatches > 1 ? 's' : ''} at ${activeProperty.name}.`, 'success');
+    },
     addNotification: (message, type) => {
       const id = Math.random().toString(36).slice(2);
       set((s) => ({ notifications: [...s.notifications, { id, message, type }] }));
@@ -4692,6 +6236,7 @@ export const useGameStore = create<GameState>((set, get) => {
           player: {
             ...s.player,
             heat: Math.max(0, s.player.heat - heatDecay),
+            lastScavengeTime: now,
           },
         }));
       }
@@ -5287,6 +6832,17 @@ export const useGameStore = create<GameState>((set, get) => {
     },
     recycleItem: (itemId, quantity) => {
       const store = get();
+      const activeProperty = getActiveProperty(store.property);
+      if (!hasJunkyardAccess(store.property)) {
+        if (activeProperty?.canDisassemble || activeProperty?.canRecycle) {
+          store.disassembleItem(itemId, quantity);
+          return;
+        }
+
+        store.addNotification(getJunkyardLockedMessage(store.property), 'warning');
+        return;
+      }
+
       const item = store.inventory.find((i) => i.id === itemId);
       if (!item || quantity <= 0) return;
 
@@ -5370,6 +6926,11 @@ export const useGameStore = create<GameState>((set, get) => {
     },
     upgradeJunkyardStorage: (category) => {
       const store = get();
+      if (!hasJunkyardAccess(store.property)) {
+        store.addNotification(getJunkyardLockedMessage(store.property), 'warning');
+        return;
+      }
+
       const storageBin = store.junkyardStorage.find((entry) => entry.category === category);
       if (!storageBin) {
         store.addNotification('Storage category not found.', 'warning');
@@ -5423,6 +6984,11 @@ export const useGameStore = create<GameState>((set, get) => {
     },
     tickJunkyard: () => {
       const store = get();
+      if (!hasJunkyardAccess(store.property)) {
+        set({ lastJunkyardTickAt: Date.now() });
+        return;
+      }
+
       const now = Date.now();
       const elapsed = Math.max(0, now - store.lastJunkyardTickAt);
 
@@ -5564,6 +7130,11 @@ export const useGameStore = create<GameState>((set, get) => {
     },
     hireJunkyardWorker: (applicantId) => {
       const store = get();
+      if (!hasJunkyardAccess(store.property)) {
+        store.addNotification(getJunkyardLockedMessage(store.property), 'warning');
+        return;
+      }
+
       const applicant = store.junkyardApplicants.find((entry) => entry.id === applicantId);
       if (!applicant) {
         store.addNotification('Worker applicant not found.', 'warning');
@@ -5601,6 +7172,11 @@ export const useGameStore = create<GameState>((set, get) => {
     },
     fireJunkyardWorker: (workerId) => {
       const store = get();
+      if (!hasJunkyardAccess(store.property)) {
+        store.addNotification(getJunkyardLockedMessage(store.property), 'warning');
+        return;
+      }
+
       const worker = store.junkyardWorkers.find((entry) => entry.id === workerId);
       if (!worker) {
         store.addNotification('Worker not found.', 'warning');
@@ -5630,6 +7206,11 @@ export const useGameStore = create<GameState>((set, get) => {
     },
     assignWorkerToJunkyardJob: (workerId, jobId) => {
       const store = get();
+      if (!hasJunkyardAccess(store.property)) {
+        store.addNotification(getJunkyardLockedMessage(store.property), 'warning');
+        return;
+      }
+
       const worker = store.junkyardWorkers.find((entry) => entry.id === workerId);
       if (!worker) {
         store.addNotification('Worker not found.', 'warning');
@@ -5670,6 +7251,11 @@ export const useGameStore = create<GameState>((set, get) => {
     },
     startJunkyardFacilityUpgrade: (facilityId) => {
       const store = get();
+      if (!hasJunkyardAccess(store.property)) {
+        store.addNotification(getJunkyardLockedMessage(store.property), 'warning');
+        return;
+      }
+
       const facility = store.junkyardFacilities.find((entry) => entry.id === facilityId);
 
       if (!facility) {
@@ -5731,6 +7317,11 @@ export const useGameStore = create<GameState>((set, get) => {
     },
     upgradeJunkyardOperations: (kind) => {
       const store = get();
+      if (!hasJunkyardAccess(store.property)) {
+        store.addNotification(getJunkyardLockedMessage(store.property), 'warning');
+        return;
+      }
+
       const currentLevel = kind === 'parallel' ? store.maxParallelJobs : store.maxWorkerSlots;
       if (currentLevel >= 5) {
         store.addNotification(`Maximum ${kind === 'parallel' ? 'parallel jobs' : 'worker slots'} reached.`, 'warning');
@@ -5855,27 +7446,45 @@ export const useGameStore = create<GameState>((set, get) => {
     },
     disassembleItem: (itemId, quantity) => {
       const store = get();
-      const item = store.inventory.find((i) => i.id === itemId);
-      if (!item || quantity <= 0) return;
-
-      if (!['rare', 'epic', 'legendary', 'illegal'].includes(item.rarity)) {
-        get().addNotification('Only rare+ items can be disassembled.', 'warning');
+      if (!hasDisassemblyAccess(store.property)) {
+        store.addNotification(getDisassemblyLockedMessage(store.property), 'warning');
         return;
       }
 
-      const rarityYield: Record<Rarity, number> = {
-        common: 0,
-        uncommon: 0,
-        rare: 2,
-        epic: 4,
-        legendary: 7,
-        illegal: 5,
-      };
+      const activeProperty = getActiveProperty(store.property);
+      if (!activeProperty || quantity <= 0) return;
 
-      const componentsGained = rarityYield[item.rarity] * quantity;
+      const inventoryItem = store.inventory.find((entry) => entry.id === itemId);
+      const storedItem = activeProperty.storedItems.find((entry) => entry.id === itemId);
+      const item = inventoryItem ?? storedItem;
+      if (!item) return;
+
+      const canRecycleUncommon = Boolean(activeProperty?.canRecycle);
+
+      if (!canBreakDownRarity(item.rarity, canRecycleUncommon)) {
+        get().addNotification(canRecycleUncommon ? 'Only uncommon+ items can be recycled on this bench.' : 'Only rare+ items can be disassembled.', 'warning');
+        return;
+      }
+
+      const componentsGained = getBreakdownComponentYield(item.rarity, canRecycleUncommon) * quantity;
       if (componentsGained <= 0) return;
 
-      get().removeFromInventory(itemId, quantity);
+      if (inventoryItem) {
+        get().removeFromInventory(itemId, quantity);
+      } else {
+        const removedItems = removeCombinedItemQuantity([], activeProperty.storedItems, itemId, quantity);
+        set((state) => ({
+          property: {
+            ...state.property,
+            properties: state.property.properties.map((entry) => (
+              entry.id === state.property.activePropertyId
+                ? { ...entry, storedItems: removedItems.storedItems }
+                : entry
+            )),
+          },
+        }));
+      }
+
       get().addToInventory({
         id: 'mat_components',
         name: 'Salvaged Components',
@@ -5888,7 +7497,7 @@ export const useGameStore = create<GameState>((set, get) => {
         foundAt: 'Workbench',
         foundTime: Date.now(),
       });
-      get().addNotification(`🧩 Disassembled ${quantity}x ${item.name} into ${componentsGained} components`, 'success');
+      get().addNotification(`🧩 Disassembled ${quantity}x ${item.name} into ${componentsGained} components at ${getActiveProperty(get().property)?.name ?? 'the workbench'}.`, 'success');
     },
     removeFromInventory: (itemId, quantity) =>
       set((s) => {
@@ -5989,18 +7598,30 @@ export const useGameStore = create<GameState>((set, get) => {
     },
     hydratePersistedState: (snapshot) => {
       const usedCapacity = snapshot.inventory.reduce((total, item) => total + item.weight * item.quantity, 0);
-      const refreshed = refreshMissionSet(
-        snapshot.missions,
-        snapshot.missionStats,
-        snapshot.inventory,
-        snapshot.factionStandings,
-        snapshot.lastMissionRefreshAt,
-        Date.now(),
-      );
+      const travelArrivalAt = snapshot.travel.arrivalAt;
+      const hasCompletedTravel = snapshot.travel.status === 'travelling'
+        && Boolean(snapshot.travel.destination)
+        && typeof travelArrivalAt === 'number'
+        && travelArrivalAt <= Date.now();
+      const travelDestination = hasCompletedTravel && snapshot.travel.destination
+        ? snapshot.travel.destination
+        : snapshot.currentDistrict;
+      const districtState = buildDistrictTransitionResult({
+        currentDistrict: snapshot.currentDistrict,
+        nextDistrict: travelDestination,
+        missionStats: snapshot.missionStats,
+        missions: snapshot.missions,
+        inventory: snapshot.inventory,
+        factionStandings: snapshot.factionStandings,
+        lastMissionRefreshAt: snapshot.lastMissionRefreshAt,
+        now: Date.now(),
+      });
 
       set({
         currentPage: snapshot.currentPage,
-        currentDistrict: snapshot.currentDistrict,
+        currentDistrict: districtState.currentDistrict,
+        travel: hasCompletedTravel ? createInitialTravelState(travelDestination) : snapshot.travel,
+        property: normalizePropertyState(snapshot.property, snapshot.player.username),
         inventory: snapshot.inventory,
         marketListings: snapshot.marketListings,
         marketCycle: snapshot.marketCycle,
@@ -6017,12 +7638,12 @@ export const useGameStore = create<GameState>((set, get) => {
         maxParallelJobs: snapshot.maxParallelJobs,
         maxWorkerSlots: snapshot.maxWorkerSlots,
         tradeHistory: snapshot.tradeHistory,
-        missions: refreshed.missions,
-        missionStats: snapshot.missionStats,
-        factionStandings: applyFactionStandingDelta(snapshot.factionStandings, refreshed.factionStandingDelta ?? null),
+        missions: districtState.missions,
+        missionStats: districtState.missionStats,
+        factionStandings: districtState.factionStandings,
         factionRewardHistory: snapshot.factionRewardHistory,
         guild: refreshGuildCadence(snapshot.guild, Date.now()),
-        lastMissionRefreshAt: refreshed.lastMissionRefreshAt,
+        lastMissionRefreshAt: districtState.lastMissionRefreshAt,
         lastJunkyardTickAt: Date.now(),
         junkyardSessionRevenue: 0,
         junkyardSessionJobsCompleted: 0,

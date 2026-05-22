@@ -445,11 +445,281 @@ Auth QA matrix:
 
 ---
 
-## sprint xx: travel between areas: to travel need to buy bussfair(litle capacity for trash) build a scooter, car, truck, lorrie, hellicopter, plane, cargoplane, train. 
+## Sprint 8.5: Public Player Profiles & Discovery
+
+### Objectives
+- Expose a public-facing player dossier for every account
+- Make profiles directly shareable by username
+- Lay groundwork for guild recruiting, rival lookups, and social discovery
+
+### Tasks
+
+#### 8.5.1 Public Profile Route
+- [x] Add public route pattern at `/player/:playername`
+- [x] Resolve player records by username and return a 404 for missing players
+- [x] Render public profile page from the App Router dynamic segment
+- [ ] Add a custom not-found experience for missing player profiles
+
+#### 8.5.2 Public Profile Data
+- [x] Create a sanitized public profile shape that excludes private account fields
+- [x] Show avatar, display name, username, rank, joined date, and last seen time
+- [x] Show public progression stats: total scavenged, items found, districts unlocked, current district
+- [ ] Decide which future stats should be public vs account-only
+
+#### 8.5.3 Discovery Hooks
+- [ ] Add links to a player profile from guild rosters, direct trade offers, and leaderboard surfaces
+- [ ] Add a copy/share action for the public player URL
+- [ ] Add mutual-faction or rivalry badges once faction systems become social-facing
+
+#### 8.5.4 QA
+- [x] Add automated route coverage for successful public profile fetches
+- [x] Add automated route coverage for unknown usernames returning 404
+- [ ] Validate the public profile page against authenticated and signed-out shells
 
 ---
 
-## sprint ??: get grabage contracts: set employees to collect garbage for district upon being granted a garbage collection contract. Requires employees of your guild dump to have skillsets. 
+## Feature Track: Base Progression & Property Ownership
+
+### Core Rules
+- The player does **not** start with a junkyard
+- The first base is a **Dumpster** in the **Slums**
+- Base progression is: **Dumpster -> Shack -> Workshop -> Junkyard -> larger industrial tiers later**
+- Early bases support only limited storage and simple assembly / disassembly
+- Employees unlock only once the player reaches **Junkyard tier or higher**
+- The player can own multiple properties, but only **one active base** at a time
+- Inactive properties can be sold, rented out to friends, or listed on a public letting market
+- Every district should eventually support properties at every tier so location choice matters
+
+### Design Implications
+- Inventory is the starting loop; property management is earned, not assumed
+- Storage upgrades and property upgrades are separate investments
+- Property choice is strategic: district, risk, traffic, faction pressure, and travel costs should matter
+- Crafting and disassembly depth is gated by property tier
+- Junkyard systems already built in the game should be refactored to sit behind this tier ladder rather than being the default starting state
+
+### Roadmap Tasks
+
+#### Base Tier Ladder
+- [x] Add property tiers: Dumpster, Shack, Workshop, Junkyard, Industrial Yard
+- [ ] Define what each tier unlocks: storage, assembly, disassembly, recycling, staff, contracts
+- [x] Make the starter base a Dumpster in Slums for new accounts
+- [x] Prevent Junkyard-tier systems from being available before the correct property unlock
+
+#### Early Property Gameplay
+- [x] Dumpster tier: minimal stash, no employees, no advanced processing
+- [x] Shack tier: rentable / purchasable small storage plus simple assembly / disassembly only
+- [ ] Workshop tier: expanded crafting, repair, and better storage
+- [ ] Junkyard tier: full recycling operations, staff, and production queues
+
+#### Ownership & Activation Rules
+- [x] Allow players to own more than one property
+- [x] Add one-active-base rule with switching costs / cooldown if needed
+- [x] Add inactive property state: store, rent, lend, or sell
+- [x] Add base summary UI: district, tier, capacity, status, and revenue
+
+#### Letting Market
+- [x] Add friend letting flow for private rentals
+- [x] Add public letting market for unused properties
+- [x] Define rent terms: duration, deposit, permitted actions, access tier
+- [ ] Add owner / renter protections and eviction / expiry rules
+
+#### District Presence
+- [ ] Ensure every district can eventually host all property tiers
+- [ ] Give districts different property economics: price, danger, traffic, prestige, faction pressure
+- [ ] Make base location affect contracts, travel, loot routes, and operating costs
+
+### Implement First: Dumpster & Shack Foundations
+
+#### Property Refactor
+- [x] Add persisted active-base state and starter dumpster ownership
+- [x] Gate Junkyard page and junkyard actions behind junkyard-tier ownership
+- [ ] Replace starter junkyard assumptions in remaining progression, mission, and reward flows
+- [x] Surface active base summary outside the Junkyard page
+
+#### Dumpster Tier
+- [x] Add dumpster stash capacity rules separate from inventory capacity
+- [x] Add dumpster UI panel for stored items in Slums
+- [x] Allow only the simplest item assembly from dumpster tier
+- [ ] Disable advanced disassembly, recycling, and staff systems at dumpster tier
+- [x] Add first-upgrade path from Dumpster to Shack
+
+#### Shack Tier
+- [x] Add shack purchase / rent flow in each district
+- [x] Add shack storage expansion upgrades
+- [x] Allow simple assembly and simple disassembly at shack tier
+- [x] Add shack district choice: price, safety, and access tradeoffs
+- [ ] Add shack management UI and tests
+
+#### Ownership & Letting Scaffold
+- [x] Add support for multiple owned properties in the persisted state
+- [x] Add single active-base switching rules
+- [x] Add inactive property status with placeholder letting data model
+- [x] Add friend letting and public letting market scaffolding
+
+---
+
+## Sprint 9.5: Dumpster & Shack Foundations (Pre-Travel Refactor)
+
+### Objectives
+- Make Dumpster the real starting base instead of a hidden junkyard
+- Deliver the first usable property ladder: Dumpster -> Shack
+- Keep junkyard systems intact but properly locked until later progression
+- Create the ownership model needed for multi-property and letting features
+
+### Tasks
+
+#### 9.5.1 Starter Dumpster
+- [x] Persist active-base state with a starter Dumpster in Slums
+- [x] Lock junkyard page/actions until the player owns a Junkyard-tier base
+- [x] Add dumpster stash UI and item storage interactions
+- [x] Add simple crafting-only actions available at dumpster tier
+- [x] Add upgrade requirements to move from Dumpster to Shack
+
+#### 9.5.2 Shack Gameplay
+- [x] Add Shack as the first real buyable / rentable property tier
+- [x] Shack tier: rentable / purchasable small storage plus simple assembly / disassembly only
+- [x] Add small storage upgrades tied to Shack ownership
+- [x] Add simple assembly / disassembly recipes at Shack tier
+- [x] Add Shack comparison UI: district, cost, risk, capacity
+
+#### 9.5.3 Property Ownership Rules
+- [x] Add support for multiple owned properties
+- [x] Enforce one active property at a time
+- [x] Add inactive property states: idle, rented to friend, listed publicly
+- [x] Add property summary cards with tier, district, and status
+- [x] Add tests for starter base, active-base switching, and junkyard lock gating
+
+#### 9.5.4 Letting Foundations
+- [x] Add friend letting scaffold for inactive properties
+- [x] Add public letting market scaffold
+- [x] Define rent duration, access rights, and expiry behavior
+- [ ] Add ownership protection rules for lenders and renters
+- [ ] Thread property listings into future district economy systems
+
+---
+
+## Sprint 10: Travel & Logistics (Weeks 19-20)
+
+### Objectives
+- Add player-controlled travel between districts with explicit time and cost
+- Make transport choice part of progression, not just navigation
+- Tie movement limits into inventory, hauling, and later contract gameplay
+- Prepare route systems for future vehicle, faction, and logistics expansion
+
+### Tasks
+
+#### 10.1 Travel Basics
+- [x] Add district-to-district travel actions from the city screen
+- [x] Add bus-travel timing and fare rules
+- [x] Persist travel state and auto-resolve arrival over time
+- [x] Block travel while already in transit
+- [x] Add travel notifications for departure and arrival
+
+#### 10.2 Public Transit
+- [x] Bus fare travel: cheap entry-level movement with very low trash capacity
+- [x] Train ticket travel: mid-game bulk passenger transport between major districts
+- [ ] Airport travel: unlock plane routes for long-distance / premium movement
+- [x] Display fare costs before confirming travel
+- [x] Prevent travel if player cannot afford the fare
+
+#### 10.3 Vehicle Progression
+- [x] Add buildable / unlockable transport tiers: Scooter, Car, Truck, Lorry
+- [ ] Add advanced transport tiers: Helicopter, Plane, Cargo Plane, Train Freight Access
+- [x] Each vehicle defines: speed, cargo capacity, fuel / upkeep, unlock requirement
+- [ ] Gate higher-tier transport behind rank, cash, and resource requirements
+- [x] Show owned vs locked vehicles in a dedicated transport panel
+
+#### 10.4 Cargo & Capacity Rules
+- [ ] Travel method changes how much trash / loot can be carried during transit
+- [ ] Small transport = fast / cheap but limited inventory carry-over
+- [ ] Heavy transport = slower / expensive but large cargo movement
+- [ ] Add overweight restrictions when attempting to leave a district
+- [ ] Support moving junkyard materials, auction goods, vault items, and property stock where relevant
+
+#### 10.5 Vehicle Building & Maintenance
+- [ ] Add vehicle construction recipes using recycled materials and cash
+- [ ] Add vehicle durability or maintenance cost for owned transport
+- [ ] Add repair / refuel / upkeep loop for mid- and late-game vehicles
+- [ ] Vehicle upgrades improve storage, speed, stealth, or travel efficiency
+- [ ] Travel failures / breakdown events can occur when maintenance is neglected
+
+#### 10.6 Route Gameplay
+- [ ] Districts have route modifiers: safe, risky, congested, premium
+- [ ] Heat and faction control can affect route safety or fare costs
+- [ ] Add chance-based travel events: inspections, breakdowns, shortcuts, ambushes
+- [ ] Guild territory and faction reputation can unlock safer or discounted routes
+- [ ] Cargo-heavy routes create better profit opportunities but more exposure to risk
+
+#### 10.7 Travel UX
+- [x] Add travel confirmation modal with cost, ETA, cargo limits, and risks
+- [x] Add transport selection UI on City / map surfaces
+- [ ] Show current vehicle bonus in player / logistics sidebar
+- [ ] Add notifications for departure, arrival, delays, and interruptions
+- [x] Add tests covering fare travel, vehicle unlocks, and capacity restrictions
+
+---
+
+## Sprint 11: District Waste Contracts (Weeks 21-22)
+
+### Objectives
+- Let the player win district garbage collection contracts as a management layer
+- Assign employees to real collection work once the player reaches Junkyard tier
+- Introduce worker skill requirements for contract success and efficiency
+- Turn higher-tier bases into operational hubs that process district waste for profit and reputation
+- Create a long-term business loop around territory, staffing, logistics, and service quality
+
+### Tasks
+
+#### 11.1 Contract Acquisition
+- [ ] Add district waste contracts as time-limited opportunities
+- [ ] Contracts define district, duration, payout, waste volume, and difficulty
+- [ ] Contracts can be earned through bidding, faction favor, or district reputation
+- [ ] Show contract requirements before accepting: staff count, vehicle tier, facility minimums
+- [ ] Prevent accepting contracts the business cannot realistically fulfill
+
+#### 11.2 Employee Skill System
+- [ ] Add employee skill tags: Collection, Sorting, Driving, Repair, Hazard Handling, Admin
+- [ ] Workers have skill levels and role suitability scores
+- [ ] Higher-skill workers improve contract throughput, safety, and payout quality
+- [ ] Add training paths so employees can improve in specific contract roles
+- [ ] Add hiring filters / UI to recruit toward missing skill gaps
+
+#### 11.3 Contract Operations
+- [ ] Assign employees to district collection crews
+- [ ] Collection crews consume time and are unavailable for other jobs while deployed
+- [ ] Contracts generate incoming waste / scrap on a schedule instead of one-time payouts
+- [ ] Waste output feeds into storage, recycling, resale, or disposal systems
+- [ ] Failed coverage windows reduce contract score and future renewal chance
+
+#### 11.4 Dump & Facility Requirements
+- [ ] Contracts require an active base at Junkyard tier or higher with enough processing capacity
+- [ ] Facility tiers affect how much district waste can be accepted per day
+- [ ] Add overflow penalties if collected waste exceeds processing or storage limits
+- [ ] Specialized facilities improve handling of hazardous, electronic, or bulk waste contracts
+- [ ] Maintenance, worker fatigue, and equipment readiness affect sustained operations
+
+#### 11.5 Fleet & Route Integration
+- [ ] Collection crews require appropriate transport for district contract size
+- [ ] Contract travel uses Sprint 10 logistics rules for movement and hauling
+- [ ] Route quality affects on-time pickups and operating costs
+- [ ] Larger districts need trucks / lorries while premium contracts may need advanced transport
+- [ ] Breakdowns or route disruption can cause missed pickups and service penalties
+
+#### 11.6 Contract Performance & Rewards
+- [ ] Track service metrics: pickups completed, waste processed, missed collections, incidents
+- [ ] High performance grants cash, district reputation, faction goodwill, and renewals
+- [ ] Poor performance creates fines, contract loss, and reputation damage
+- [ ] Add bonus objectives: recycling quota, cleanliness score, complaint reduction
+- [ ] Seasonal or city-wide leaderboards can rank top waste contractors
+
+#### 11.7 Management UI
+- [ ] Add Contracts page section for active, available, and expired waste contracts
+- [ ] Add crew assignment board with employee roles, skills, and availability
+- [ ] Add district operations dashboard: waste inflow, service score, profit, incident log
+- [ ] Add alerts for missed pickups, low staffing, storage overflow, and renewals
+- [ ] Add tests for contract acceptance, crew assignment, skill gating, and payout outcomes
+
+---
 
 ## Sprint 9: Polish, Performance & Testing (Weeks 17-18)
 
@@ -463,28 +733,28 @@ Auth QA matrix:
 ### Tasks
 
 #### 9.1 Mobile Responsiveness
-- [ ] Test on mobile devices (iPhone 12, Pixel 5)
+- [x] Add dumpster stash UI and item storage interactions
 - [ ] Responsive breakpoints: xs, sm, md, lg, xl
-- [ ] Touch-friendly buttons (min 48px tap target)
+- [x] Add upgrade requirements to move from Dumpster to Shack
 - [ ] Collapse sidebar on mobile (hamburger menu)
 - [ ] Optimize grid layouts for small screens
-- [ ] Test landscape & portrait orientations
+- [x] Add Shack as the first real buyable / rentable property tier
 
-#### 9.2 Performance Optimization
-- [ ] Code splitting: lazy load pages with React.lazy()
+- [x] Add small storage upgrades tied to Shack ownership
+- [x] Add simple assembly / disassembly recipes at Shack tier
 - [ ] Image optimization: compress assets, use next/image
 - [ ] Bundle analysis: identify large deps, consider alternatives
 - [ ] Zustand store optimization: selector functions to prevent unnecessary re-renders
 - [ ] Reduce motion for users with prefers-reduced-motion
 - [ ] Target: Lighthouse score > 80 (Performance)
-
+- [x] Add inactive property states: idle, rented to friend, listed publicly
 #### 9.3 Bug Fixes & QA
 - [ ] Playtest all game loops end-to-end (scavenge → loot → sell → upgrade)
 - [ ] Edge cases: inventory full, out of energy, caught by police
 - [ ] Cross-browser testing: Chrome, Firefox, Safari, Edge
-- [ ] Keyboard navigation & accessibility (WCAG 2.1 AA)
-- [ ] Sound/music (optional): mute button in settings
-- [ ] Regression test: previous sprints still work
+- [x] Add friend letting scaffold for inactive properties
+- [x] Add public letting market scaffold
+- [x] Define rent duration, access rights, and expiry behavior
 
 #### 9.4 UX Polish
 - [ ] Tooltips: clarify non-obvious actions

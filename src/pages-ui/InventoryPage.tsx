@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useGameStore, InventoryItem, Rarity } from '@/store/gameStore';
+import { getActiveProperty, getBreakdownComponentYield, getMarketCategoryForItem, hasJunkyardAccess, useGameStore, InventoryItem, Rarity, type MarketCategory } from '@/store/gameStore';
 
 const RARITY_ORDER: Rarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'illegal'];
 const RARITY_COLORS: Record<Rarity, string> = {
@@ -68,6 +68,15 @@ const resolveEquipmentSlot = (itemId: string): 'cart' | 'backpack' | 'flashlight
 };
 
 const CONSUMABLE_IDS = new Set(['cons_soda', 'cons_energy_drink', 'cons_medkit']);
+type InventoryCategoryTab = 'All' | 'Equipment' | 'Consumables' | MarketCategory;
+
+const INVENTORY_CATEGORY_TABS: InventoryCategoryTab[] = ['All', 'Equipment', 'Consumables', 'Electronics', 'Metals', 'Software', 'Vehicles', 'Illegal'];
+
+const getInventoryCategory = (item: InventoryItem): Exclude<InventoryCategoryTab, 'All'> => {
+  if (resolveEquipmentSlot(item.id)) return 'Equipment';
+  if (CONSUMABLE_IDS.has(item.id)) return 'Consumables';
+  return getMarketCategoryForItem(item);
+};
 
 const getMarketMultipliers = (item: InventoryItem) => {
   const seed = item.id.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
@@ -81,10 +90,13 @@ const getMarketMultipliers = (item: InventoryItem) => {
 export default function InventoryPage() {
   const {
     inventory,
+    property,
     player,
+    addNotification,
     sellItem,
     recycleItem,
     disassembleItem,
+    moveItemToPropertyStorage,
     equipItem,
     unequipItem,
     getEquippedItem,
@@ -95,26 +107,18 @@ export default function InventoryPage() {
   const [selected, setSelected] = useState<InventoryItem | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<Rarity | 'all'>('all');
-  const [equipmentOnly, setEquipmentOnly] = useState(false);
+  const [categoryTab, setCategoryTab] = useState<InventoryCategoryTab>('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [sort, setSort] = useState<'slot' | 'rarity' | 'value' | 'weight' | 'newest'>('slot');
+  const [sort, setSort] = useState<'name' | 'rarity' | 'value' | 'weight' | 'newest'>('name');
   const [quantityToSell, setQuantityToSell] = useState(1);
-  const [confirmAction, setConfirmAction] = useState<{ type: 'sell' | 'recycle' | 'disassemble'; quantity: number } | null>(null);
-  const [slotOrder, setSlotOrder] = useState<string[]>([]);
-  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ type: 'sell' | 'recycle'; quantity: number } | null>(null);
+  const activeProperty = useMemo(() => getActiveProperty(property), [property]);
+  const hasQueueRecycleAccess = hasJunkyardAccess(property);
+  const hasBenchBreakdownAccess = Boolean(activeProperty?.canRecycle);
 
   const effectiveCapacity = player.inventoryCapacity * (1 + getEquipmentStats().capacityBonus / 100);
   const capacityPercent = (player.usedCapacity / effectiveCapacity) * 100;
   const capacityColor = capacityPercent > 90 ? '#ef4444' : capacityPercent > 70 ? '#f59e0b' : '#22c55e';
-
-  useEffect(() => {
-    setSlotOrder((prev) => {
-      const invIds = inventory.map((item) => item.id);
-      const retained = prev.filter((id) => invIds.includes(id));
-      const missing = invIds.filter((id) => !retained.includes(id));
-      return [...retained, ...missing];
-    });
-  }, [inventory]);
 
   useEffect(() => {
     if (!selected) return;
@@ -123,31 +127,33 @@ export default function InventoryPage() {
     }
   }, [inventory, selected]);
 
-  const orderedInventory = useMemo(() => {
-    if (slotOrder.length === 0) return inventory;
-    const byId = new Map(inventory.map((item) => [item.id, item]));
-    return slotOrder.map((id) => byId.get(id)).filter((v): v is InventoryItem => Boolean(v));
-  }, [inventory, slotOrder]);
-
   const selectedSlot = selected ? resolveEquipmentSlot(selected.id) : null;
   const selectedStats = selected ? EQUIPMENT_STATS[selected.id] : null;
   const currentlyEquipped = selectedSlot ? getEquippedItem(selectedSlot) : null;
   const currentlyEquippedStats = currentlyEquipped ? EQUIPMENT_STATS[currentlyEquipped.id] : null;
   const isSelectedEquipped = !!(selectedSlot && player.equipment[selectedSlot] === selected?.id);
   const isConsumable = !!(selected && CONSUMABLE_IDS.has(selected.id));
-  const canDisassemble = !!(selected && ['rare', 'epic', 'legendary', 'illegal'].includes(selected.rarity));
+  const hasDisassemblyAccess = Boolean(activeProperty?.canDisassemble);
+  const hasAnyBreakdownAccess = hasQueueRecycleAccess || hasBenchBreakdownAccess || hasDisassemblyAccess;
+  const selectedBreakdownYield = selected ? getBreakdownComponentYield(selected.rarity, hasBenchBreakdownAccess) : 0;
+  const selectedCanBreakDown = Boolean(selected && hasDisassemblyAccess && selectedBreakdownYield > 0);
+  const recycleActionLabel = hasQueueRecycleAccess ? 'Recycle' : hasAnyBreakdownAccess ? 'Break Down' : 'Recycle Locked';
+  const canRecycleSelected = Boolean(selected && (hasQueueRecycleAccess || selectedCanBreakDown));
 
-  const filtered = orderedInventory
+  const filtered = inventory
+    .filter((i) => categoryTab === 'All' || getInventoryCategory(i) === categoryTab)
     .filter((i) => filter === 'all' || i.rarity === filter)
-    .filter((i) => !equipmentOnly || !!resolveEquipmentSlot(i.id))
     .filter((i) => i.name.toLowerCase().includes(searchQuery.toLowerCase().trim()))
     .sort((a, b) => {
-      if (sort === 'slot') return 0;
+      if (sort === 'name') return a.name.localeCompare(b.name);
       if (sort === 'value') return b.value - a.value;
       if (sort === 'weight') return b.weight - a.weight;
       if (sort === 'newest') return (b.foundTime ?? 0) - (a.foundTime ?? 0);
       return RARITY_ORDER.indexOf(b.rarity) - RARITY_ORDER.indexOf(a.rarity);
     });
+
+  const visibleSelectedCount = filtered.filter((item) => selectedIds.has(item.id)).length;
+  const allVisibleSelected = filtered.length > 0 && visibleSelectedCount === filtered.length;
 
   const toggleMultiSelect = (itemId: string) => {
     setSelectedIds((prev) => {
@@ -164,7 +170,23 @@ export default function InventoryPage() {
   };
 
   const handleBulkRecycle = () => {
-    inventory.filter((item) => selectedIds.has(item.id)).forEach((item) => recycleItem(item.id, item.quantity));
+    const selectedItems = inventory.filter((item) => selectedIds.has(item.id));
+
+    if (!hasQueueRecycleAccess && !hasAnyBreakdownAccess) {
+      addNotification('Build a Crate-Lid Tinker Bench or upgrade to a Junkyard before recycling.', 'warning');
+      return;
+    }
+
+    const eligibleItems = hasQueueRecycleAccess
+      ? selectedItems
+      : selectedItems.filter((item) => getBreakdownComponentYield(item.rarity, hasBenchBreakdownAccess) > 0);
+
+    if (eligibleItems.length === 0) {
+      addNotification(hasBenchBreakdownAccess ? 'Only uncommon+ items can be broken down on this bench.' : 'Only rare+ items can be stripped for parts with the tear-down rack.', 'warning');
+      return;
+    }
+
+    eligibleItems.forEach((item) => recycleItem(item.id, item.quantity));
     setSelectedIds(new Set());
   };
 
@@ -178,15 +200,18 @@ export default function InventoryPage() {
 
   const handleRecycle = (quantity: number) => {
     if (!selected) return;
-    recycleItem(selected.id, quantity);
-    setSelected(null);
-    setConfirmAction(null);
-    setQuantityToSell(1);
-  };
 
-  const handleDisassemble = (quantity: number) => {
-    if (!selected) return;
-    disassembleItem(selected.id, quantity);
+    if (!hasQueueRecycleAccess && !hasAnyBreakdownAccess) {
+      addNotification('Build a Crate-Lid Tinker Bench or upgrade to a Junkyard before recycling.', 'warning');
+      return;
+    }
+
+    if (!hasQueueRecycleAccess && !selectedCanBreakDown) {
+      addNotification(hasBenchBreakdownAccess ? 'Only uncommon+ items can be broken down on this bench.' : 'Only rare+ items can be stripped for parts with the tear-down rack.', 'warning');
+      return;
+    }
+
+    recycleItem(selected.id, quantity);
     setSelected(null);
     setConfirmAction(null);
     setQuantityToSell(1);
@@ -197,18 +222,16 @@ export default function InventoryPage() {
     equipItem(selected.id, slot);
   };
 
-  const onDropOnItem = (targetId: string) => {
-    if (!draggedId || draggedId === targetId) return;
-    setSlotOrder((prev) => {
-      const next = [...prev];
-      const from = next.indexOf(draggedId);
-      const to = next.indexOf(targetId);
-      if (from === -1 || to === -1) return prev;
-      next.splice(from, 1);
-      next.splice(to, 0, draggedId);
+  const toggleSelectAllVisible = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allVisibleSelected) {
+        filtered.forEach((item) => next.delete(item.id));
+      } else {
+        filtered.forEach((item) => next.add(item.id));
+      }
       return next;
     });
-    setDraggedId(null);
   };
 
   return (
@@ -247,7 +270,7 @@ export default function InventoryPage() {
 
       <div className="flex flex-wrap gap-2">
         {[
-          { key: 'slot', label: 'Sort: Slot' },
+          { key: 'name', label: 'Sort: Name' },
           { key: 'rarity', label: 'Sort: Rarity' },
           { key: 'value', label: 'Sort: Value' },
           { key: 'weight', label: 'Sort: Weight' },
@@ -269,16 +292,6 @@ export default function InventoryPage() {
 
       <div className="flex flex-wrap gap-2">
         <button
-          onClick={() => setEquipmentOnly((v) => !v)}
-          className="px-3 py-1 rounded text-xs tracking-wider uppercase transition-all"
-          style={{
-            background: equipmentOnly ? '#a855f715' : 'transparent',
-            border: `1px solid ${equipmentOnly ? '#a855f760' : '#2a2a2a'}`,
-            color: equipmentOnly ? '#d8b4fe' : '#6b7280',
-          }}>
-          Equipment Only
-        </button>
-        <button
           onClick={handleBulkSell}
           disabled={selectedIds.size === 0}
           className="px-3 py-1 rounded text-xs tracking-wider uppercase"
@@ -290,7 +303,7 @@ export default function InventoryPage() {
           disabled={selectedIds.size === 0}
           className="px-3 py-1 rounded text-xs tracking-wider uppercase"
           style={{ background: '#3b82f615', border: '1px solid #3b82f640', color: '#60a5fa', opacity: selectedIds.size ? 1 : 0.5 }}>
-          Bulk Recycle
+          {hasQueueRecycleAccess ? 'Bulk Recycle' : 'Bulk Break Down'}
         </button>
         <button
           onClick={() => setSelectedIds(new Set())}
@@ -298,6 +311,31 @@ export default function InventoryPage() {
           style={{ background: '#2a2a2a55', border: '1px solid #3a3a3a', color: '#9ca3af' }}>
           Clear Multi-Select
         </button>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {INVENTORY_CATEGORY_TABS.map((tab) => {
+          const count = tab === 'All'
+            ? inventory.length
+            : inventory.filter((item) => getInventoryCategory(item) === tab).length;
+          if (count === 0 && tab !== 'All') return null;
+          return (
+            <button
+              key={tab}
+              onClick={() => setCategoryTab(tab)}
+              className="px-3 py-1 rounded text-xs tracking-wider uppercase transition-all"
+              style={{
+                background: categoryTab === tab ? '#39ff1415' : 'transparent',
+                border: `1px solid ${categoryTab === tab ? '#39ff1460' : '#2a2a2a'}`,
+                color: categoryTab === tab ? '#39ff14' : '#6b7280',
+              }}>
+              {tab} ({count})
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
         <button
           onClick={() => setFilter('all')}
           className="px-3 py-1 rounded text-xs tracking-wider uppercase transition-all"
@@ -329,57 +367,92 @@ export default function InventoryPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
-          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
-            {filtered.map((item) => (
-              <motion.div
-                key={item.id}
-                draggable={sort === 'slot'}
-                onDragStart={() => setDraggedId(item.id)}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={() => onDropOnItem(item.id)}
-                whileHover={{ scale: 1.08 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setSelected(selected?.id === item.id ? null : item)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    setSelected(selected?.id === item.id ? null : item);
-                  }
-                }}
-                role="button"
-                tabIndex={0}
-                className="relative aspect-square rounded flex flex-col items-center justify-center gap-0.5 transition-all"
-                style={{
-                  background: selected?.id === item.id ? RARITY_BG[item.rarity] : '#1a1a1a',
-                  border: `1px solid ${selected?.id === item.id ? RARITY_COLORS[item.rarity] : RARITY_COLORS[item.rarity] + '33'}`,
-                  boxShadow: selected?.id === item.id ? `0 0 12px ${RARITY_COLORS[item.rarity]}33` : 'none',
-                  cursor: sort === 'slot' ? 'grab' : 'pointer',
-                }}>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleMultiSelect(item.id);
-                  }}
-                  className="absolute top-1 right-1 w-4 h-4 rounded text-[10px]"
-                  style={{
-                    border: '1px solid #6b7280',
-                    background: selectedIds.has(item.id) ? '#39ff14' : '#111',
-                    color: selectedIds.has(item.id) ? '#000' : '#9ca3af',
-                  }}>
-                  {selectedIds.has(item.id) ? '✓' : ''}
-                </button>
-                <span className="text-2xl">{item.icon}</span>
-                {item.quantity > 1 && (
-                  <span className="absolute bottom-0.5 right-1 text-xs font-bold" style={{ color: RARITY_COLORS[item.rarity], fontSize: '10px' }}>
-                    ×{item.quantity}
-                  </span>
-                )}
-                <div className="absolute top-0.5 left-0.5 w-1.5 h-1.5 rounded-full" style={{ background: RARITY_COLORS[item.rarity] }} />
-              </motion.div>
-            ))}
-            {Array.from({ length: Math.max(0, 8 - filtered.length) }).map((_, i) => (
-              <div key={`empty-${i}`} className="aspect-square rounded" style={{ background: '#111', border: '1px dashed #2a2a2a' }} />
-            ))}
+          <div className="rounded-lg overflow-hidden" style={{ background: '#0f0f0f', border: '1px solid #2a2a2a' }}>
+            <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: '#1f2937' }}>
+              <div>
+                <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Item Ledger</p>
+                <p className="text-[11px] mt-1" style={{ color: '#6b7280' }}>{filtered.length} visible rows · {selectedIds.size} marked for mass action</p>
+              </div>
+              <button
+                onClick={toggleSelectAllVisible}
+                disabled={filtered.length === 0}
+                className="px-3 py-1 rounded text-xs tracking-wider uppercase"
+                style={{ background: '#11182788', border: '1px solid #374151', color: '#d1d5db', opacity: filtered.length > 0 ? 1 : 0.45 }}>
+                {allVisibleSelected ? 'Clear Visible' : 'Mark Visible'}
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm" aria-label="inventory-table">
+                <thead style={{ background: '#11182788' }}>
+                  <tr>
+                    <th className="px-4 py-3 text-left text-[11px] uppercase tracking-widest" style={{ color: '#9ca3af' }}>
+                      <input
+                        type="checkbox"
+                        checked={allVisibleSelected}
+                        aria-label="Select visible inventory items"
+                        onChange={toggleSelectAllVisible}
+                      />
+                    </th>
+                    <th className="px-4 py-3 text-left text-[11px] uppercase tracking-widest" style={{ color: '#9ca3af' }}>Name</th>
+                    <th className="px-4 py-3 text-left text-[11px] uppercase tracking-widest" style={{ color: '#9ca3af' }}>Quality</th>
+                    <th className="px-4 py-3 text-left text-[11px] uppercase tracking-widest" style={{ color: '#9ca3af' }}>Expected Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.length > 0 ? filtered.map((item) => {
+                    const market = getMarketMultipliers(item);
+                    const expectedValue = Math.floor(item.value * market.sell * item.quantity);
+                    const itemCategory = getInventoryCategory(item);
+                    return (
+                      <tr
+                        key={item.id}
+                        onClick={() => setSelected(selected?.id === item.id ? null : item)}
+                        className="cursor-pointer border-t"
+                        style={{
+                          borderColor: '#1f2937',
+                          background: selected?.id === item.id ? RARITY_BG[item.rarity] : 'transparent',
+                        }}>
+                        <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(item.id)}
+                            aria-label={`Select ${item.name}`}
+                            onChange={() => toggleMultiSelect(item.id)}
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <span className="text-xl">{item.icon}</span>
+                            <div>
+                              <p className="text-sm font-semibold" style={{ color: '#f8fafc' }}>{item.name}</p>
+                              <p className="text-[11px]" style={{ color: '#6b7280' }}>
+                                {itemCategory} · Qty {item.quantity} · {item.weight.toFixed(1)} kg each
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex rounded px-2 py-1 text-[11px] uppercase tracking-widest" style={{ background: RARITY_BG[item.rarity], border: `1px solid ${RARITY_COLORS[item.rarity]}44`, color: RARITY_COLORS[item.rarity] }}>
+                            {item.rarity}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="text-sm font-semibold" style={{ color: '#d1d5db' }}>${expectedValue}</p>
+                          <p className="text-[11px]" style={{ color: '#6b7280' }}>${Math.floor(item.value * market.sell)} each at current rates</p>
+                        </td>
+                      </tr>
+                    );
+                  }) : (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-10 text-center text-sm" style={{ color: '#6b7280' }}>
+                        No items match this tab and filter combination.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -490,9 +563,16 @@ export default function InventoryPage() {
 
                 <div className="grid grid-cols-2 gap-2">
                   <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setConfirmAction({ type: 'sell', quantity: quantityToSell })} className="px-3 py-2 rounded text-xs tracking-wider uppercase" style={{ background: '#22c55e15', border: '1px solid #22c55e40', color: '#22c55e' }}>Sell</motion.button>
-                  <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setConfirmAction({ type: 'recycle', quantity: quantityToSell })} className="px-3 py-2 rounded text-xs tracking-wider uppercase" style={{ background: '#3b82f615', border: '1px solid #3b82f640', color: '#60a5fa' }}>Recycle</motion.button>
-                  {canDisassemble && (
-                    <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setConfirmAction({ type: 'disassemble', quantity: quantityToSell })} className="px-3 py-2 rounded text-xs tracking-wider uppercase" style={{ background: '#f59e0b18', border: '1px solid #f59e0b60', color: '#f59e0b' }}>Disassemble</motion.button>
+                  <motion.button whileHover={{ scale: canRecycleSelected ? 1.02 : 1 }} whileTap={{ scale: canRecycleSelected ? 0.98 : 1 }} onClick={() => canRecycleSelected && setConfirmAction({ type: 'recycle', quantity: quantityToSell })} disabled={!canRecycleSelected} className="px-3 py-2 rounded text-xs tracking-wider uppercase" style={{ background: '#3b82f615', border: '1px solid #3b82f640', color: '#60a5fa', opacity: canRecycleSelected ? 1 : 0.45 }}>{recycleActionLabel}</motion.button>
+                  {selected && activeProperty && (
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => moveItemToPropertyStorage(selected.id, quantityToSell)}
+                      className="px-2 py-2 rounded text-xs tracking-wider uppercase"
+                      style={{ background: '#39ff1415', border: '1px solid #39ff1440', color: '#86efac' }}>
+                      Move To Stash
+                    </motion.button>
                   )}
                   {selectedSlot ? (
                     <motion.button
@@ -517,45 +597,20 @@ export default function InventoryPage() {
                   )}
                 </div>
 
+                {selectedBreakdownYield > 0 && (
+                  <p className="text-[11px]" style={{ color: '#60a5fa' }}>
+                    {hasQueueRecycleAccess
+                      ? 'Queue recycle yield depends on junkyard processing.'
+                      : `Break down yield: ${selectedBreakdownYield * quantityToSell} components${hasBenchBreakdownAccess ? ' at this bench' : ' with the tear-down rack'}.`}
+                  </p>
+                )}
+
                 {isConsumable && (
                   <motion.button whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }} onClick={() => selected && useConsumable(selected.id)} className="w-full px-3 py-2 rounded text-xs tracking-wider uppercase" style={{ background: '#fbbf2418', border: '1px solid #fbbf2460', color: '#fbbf24' }}>
                     Use Consumable
                   </motion.button>
                 )}
 
-                {confirmAction && (
-                  <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="fixed inset-0 flex items-center justify-center z-50" style={{ background: '#00000088' }} onClick={() => setConfirmAction(null)}>
-                    <motion.div onClick={(e) => e.stopPropagation()} className="rounded-lg p-4 space-y-3" style={{ background: '#1a1a1a', border: '1px solid #39ff1440', minWidth: '280px' }}>
-                      <p className="text-sm font-bold" style={{ color: '#39ff14' }}>Confirm {confirmAction.type.charAt(0).toUpperCase() + confirmAction.type.slice(1)}</p>
-                      <p className="text-xs" style={{ color: '#9ca3af' }}>
-                        {confirmAction.type === 'sell'
-                          ? `Sell ${confirmAction.quantity}x ${selected.name}?`
-                          : confirmAction.type === 'recycle'
-                            ? `Recycle ${confirmAction.quantity}x ${selected.name}?`
-                            : `Disassemble ${confirmAction.quantity}x ${selected.name} into crafting parts?`}
-                      </p>
-                      <div className="grid grid-cols-2 gap-2">
-                        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setConfirmAction(null)} className="px-3 py-1.5 rounded text-xs tracking-wider uppercase" style={{ background: '#2a2a2a', border: '1px solid #3a3a3a', color: '#9ca3af' }}>Cancel</motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={() => {
-                            if (confirmAction.type === 'sell') handleSell(confirmAction.quantity);
-                            else if (confirmAction.type === 'recycle') handleRecycle(confirmAction.quantity);
-                            else handleDisassemble(confirmAction.quantity);
-                          }}
-                          className="px-3 py-1.5 rounded text-xs tracking-wider uppercase"
-                          style={{
-                            background: confirmAction.type === 'sell' ? '#22c55e15' : confirmAction.type === 'recycle' ? '#3b82f615' : '#f59e0b15',
-                            border: confirmAction.type === 'sell' ? '1px solid #22c55e40' : confirmAction.type === 'recycle' ? '1px solid #3b82f640' : '1px solid #f59e0b60',
-                            color: confirmAction.type === 'sell' ? '#22c55e' : confirmAction.type === 'recycle' ? '#60a5fa' : '#f59e0b',
-                          }}>
-                          Confirm
-                        </motion.button>
-                      </div>
-                    </motion.div>
-                  </motion.div>
-                )}
               </motion.div>
             ) : (
               <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-lg p-4 flex flex-col items-center justify-center text-center" style={{ background: '#111', border: '1px solid #2a2a2a', minHeight: '400px' }}>
@@ -564,6 +619,41 @@ export default function InventoryPage() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {confirmAction && (
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="fixed inset-0 flex items-center justify-center z-50" style={{ background: '#00000088' }} onClick={() => setConfirmAction(null)}>
+              <motion.div onClick={(e) => e.stopPropagation()} className="rounded-lg p-4 space-y-3" style={{ background: '#1a1a1a', border: '1px solid #39ff1440', minWidth: '280px' }}>
+                <p className="text-sm font-bold" style={{ color: '#39ff14' }}>Confirm {confirmAction.type === 'sell' ? 'Sell' : hasQueueRecycleAccess ? 'Recycle' : 'Break Down'}</p>
+                <p className="text-xs" style={{ color: '#9ca3af' }}>
+                  {confirmAction.type === 'sell'
+                    ? `Sell ${confirmAction.quantity}x ${selected?.name ?? 'item'}?`
+                    : confirmAction.type === 'recycle'
+                      ? hasQueueRecycleAccess
+                        ? `Recycle ${confirmAction.quantity}x ${selected?.name ?? 'item'}?`
+                        : `Break down ${confirmAction.quantity}x ${selected?.name ?? 'item'} into ${(selected ? getBreakdownComponentYield(selected.rarity, hasBenchBreakdownAccess) : 0) * confirmAction.quantity} components?`
+                      : null}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setConfirmAction(null)} className="px-3 py-1.5 rounded text-xs tracking-wider uppercase" style={{ background: '#2a2a2a', border: '1px solid #3a3a3a', color: '#9ca3af' }}>Cancel</motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => {
+                      if (confirmAction.type === 'sell') handleSell(confirmAction.quantity);
+                      else if (confirmAction.type === 'recycle') handleRecycle(confirmAction.quantity);
+                    }}
+                    className="px-3 py-1.5 rounded text-xs tracking-wider uppercase"
+                    style={{
+                      background: confirmAction.type === 'sell' ? '#22c55e15' : '#3b82f615',
+                      border: confirmAction.type === 'sell' ? '1px solid #22c55e40' : '1px solid #3b82f640',
+                      color: confirmAction.type === 'sell' ? '#22c55e' : '#60a5fa',
+                    }}>
+                    Confirm
+                  </motion.button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
         </div>
       </div>
     </div>

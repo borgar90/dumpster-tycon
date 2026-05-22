@@ -11,7 +11,7 @@ const NAV_ITEMS: { id: NavPage; label: string; icon: string }[] = [
   { id: 'city', label: 'City', icon: '🏙️' },
   { id: 'inventory', label: 'Inventory', icon: '🎒' },
   { id: 'market', label: 'Market', icon: '📈' },
-  { id: 'junkyard', label: 'Junkyard', icon: '🏭' },
+  { id: 'junkyard', label: 'Base', icon: '🏚️' },
   { id: 'upgrades', label: 'Upgrades', icon: '⚡' },
   { id: 'missions', label: 'Missions', icon: '📋' },
   { id: 'guild', label: 'Guild Ops', icon: '👥' },

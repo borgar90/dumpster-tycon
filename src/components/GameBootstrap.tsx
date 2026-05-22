@@ -5,11 +5,19 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { FACTION_DEFINITIONS, getActiveOnboardingPrompt, getEffectiveProgressionHours, useGameStore } from '@/store/gameStore';
 import type { PersistedGameState } from '@/store/gameStore';
 
+const ENERGY_REGEN_INTERVAL_MS = 5 * 60 * 1000;
+const ENERGY_REGEN_AMOUNT = 4;
+
+export function getNextEnergyGrantDelayMs(now: number) {
+  const remainder = now % ENERGY_REGEN_INTERVAL_MS;
+  return remainder === 0 ? ENERGY_REGEN_INTERVAL_MS : ENERGY_REGEN_INTERVAL_MS - remainder;
+}
+
 const PAGE_LABELS = {
   city: 'City',
   inventory: 'Inventory',
   market: 'Market',
-  junkyard: 'Junkyard',
+  junkyard: 'Base',
   upgrades: 'Upgrades',
   missions: 'Missions',
   guild: 'Faction HQ',
@@ -21,6 +29,12 @@ export default function GameBootstrap({ children }: { children: React.ReactNode 
   const currentPage = useGameStore((state) => state.currentPage);
   const setPage = useGameStore((state) => state.setPage);
   const currentDistrict = useGameStore((state) => state.currentDistrict);
+  const travel = useGameStore((state) => state.travel);
+  const property = useGameStore((state) => state.property);
+  const refreshTravelState = useGameStore((state) => state.refreshTravelState);
+  const refreshPropertyState = useGameStore((state) => state.refreshPropertyState);
+  const recoverEnergy = useGameStore((state) => state.recoverEnergy);
+  const decayHeat = useGameStore((state) => state.decayHeat);
   const player = useGameStore((state) => state.player);
   const inventory = useGameStore((state) => state.inventory);
   const marketListings = useGameStore((state) => state.marketListings);
@@ -84,9 +98,58 @@ export default function GameBootstrap({ children }: { children: React.ReactNode 
     };
   }, [addNotification, hydratePersistedState]);
 
+  useEffect(() => {
+    refreshTravelState();
+    refreshPropertyState();
+
+    const intervalId = window.setInterval(() => {
+      refreshTravelState();
+      refreshPropertyState();
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [refreshPropertyState, refreshTravelState, travel.status]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      recoverEnergy(ENERGY_REGEN_AMOUNT);
+
+      const intervalId = window.setInterval(() => {
+        recoverEnergy(ENERGY_REGEN_AMOUNT);
+      }, ENERGY_REGEN_INTERVAL_MS);
+
+      cleanupRef.current = () => {
+        window.clearInterval(intervalId);
+      };
+    }, getNextEnergyGrantDelayMs(Date.now()));
+
+    const cleanupRef = { current: () => {} };
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      cleanupRef.current();
+    };
+  }, [recoverEnergy]);
+
+  useEffect(() => {
+    decayHeat();
+
+    const intervalId = window.setInterval(() => {
+      decayHeat();
+    }, 5000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [decayHeat]);
+
   const snapshot = useMemo<PersistedGameState>(() => ({
     currentPage,
     currentDistrict,
+    travel,
+    property,
     player,
     inventory,
     marketListings,
@@ -110,7 +173,7 @@ export default function GameBootstrap({ children }: { children: React.ReactNode 
     factionRewardHistory,
     guild,
     lastMissionRefreshAt,
-  }), [auctionListings, currentDistrict, currentPage, directTradeOffers, factionRewardHistory, factionStandings, guild, inventory, junkyardApplicants, junkyardFacilities, junkyardJobs, junkyardStats, junkyardStorage, junkyardWorkers, lastMissionRefreshAt, marketCycle, marketListings, maxParallelJobs, maxWorkerSlots, missionStats, missions, player, progressionHoursPlayed, progressionSessionStartedAt, tradeHistory, upgradeTreeProgress]);
+  }), [auctionListings, currentDistrict, currentPage, directTradeOffers, factionRewardHistory, factionStandings, guild, inventory, junkyardApplicants, junkyardFacilities, junkyardJobs, junkyardStats, junkyardStorage, junkyardWorkers, lastMissionRefreshAt, marketCycle, marketListings, maxParallelJobs, maxWorkerSlots, missionStats, missions, player, progressionHoursPlayed, progressionSessionStartedAt, property, tradeHistory, travel, upgradeTreeProgress]);
 
   const serializedSnapshot = useMemo(() => JSON.stringify(snapshot), [snapshot]);
   const onboardingPrompt = useMemo(() => getActiveOnboardingPrompt(missions), [missions]);

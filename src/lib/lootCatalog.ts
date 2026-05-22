@@ -1,4 +1,5 @@
 export type LootRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'illegal';
+export type LootDistrict = 'slums' | 'tech' | 'financial' | 'harbor' | 'university' | 'rich_hills';
 
 export interface LootTemplate {
   id: string;
@@ -24,6 +25,17 @@ const createLootItems = (rarity: LootRarity, items: LootSeed[]): LootTemplate[] 
     value,
     description,
   }));
+
+const DISTRICT_LOOT_DUPLICATES: Partial<Record<LootDistrict, Partial<Record<LootRarity, Partial<Record<string, number>>>>>> = {
+  slums: {
+    common: {
+      c1: 10,
+      c2: 10,
+      c28: 10,
+      c34: 10,
+    },
+  },
+};
 
 export const LOOT_TEMPLATES: Record<LootRarity, LootTemplate[]> = {
   common: [
@@ -299,3 +311,24 @@ export const LOOT_TEMPLATES: Record<LootRarity, LootTemplate[]> = {
 };
 
 export const MARKET_SOURCE_ITEMS = Object.values(LOOT_TEMPLATES).flat();
+
+let generatedLootSequence = 0;
+
+export function getNextGeneratedLootSequence() {
+  generatedLootSequence += 1;
+  return generatedLootSequence;
+}
+
+export function getLootTemplatesForDistrict(district: LootDistrict, rarity: LootRarity): LootTemplate[] {
+  const baseTemplates = LOOT_TEMPLATES[rarity];
+  const duplicates = DISTRICT_LOOT_DUPLICATES[district]?.[rarity];
+
+  if (!duplicates) {
+    return baseTemplates;
+  }
+
+  return baseTemplates.flatMap((template) => [
+    template,
+    ...Array.from({ length: duplicates[template.id] ?? 0 }, () => template),
+  ]);
+}

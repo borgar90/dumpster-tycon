@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useGameStore, DISTRICTS } from '@/store/gameStore';
+import { useGameStore, DISTRICTS, SHACK_PROPERTY_LISTINGS, TRAIN_MIN_RANK, VEHICLE_TRAVEL_SPECS, getActiveProperty, getBusTravelQuote, getPlayerScavengeBonuses, getPropertyListing, getPropertyStorageUpgradeCost, getPropertyStoredWeight, getPropertyTierLabel, getShackUnlockStatus, getTransportUpgradeTier, getTravelModeIcon, getTravelModeLabel, getTravelQuote, getUnlockedVehicleModes, isTrainRouteAvailable, type District, type TravelMode } from '@/store/gameStore';
 
 const RARITY_COLORS: Record<string, string> = {
   common: '#9ca3af',
@@ -60,6 +60,32 @@ const DISTRICT_BACKGROUND_IMAGES: Partial<Record<string, string>> = {
   financial: '/image/district/financial_district.png',
 };
 
+const RARITY_HEAT_GAIN: Record<string, number> = {
+  common: 5,
+  uncommon: 10,
+  rare: 15,
+  epic: 25,
+  legendary: 40,
+  illegal: 50,
+};
+
+const RARITY_ORDER: Record<string, number> = {
+  common: 0,
+  uncommon: 1,
+  rare: 2,
+  epic: 3,
+  legendary: 4,
+  illegal: 5,
+};
+
+const VEHICLE_MODE_ORDER = ['scooter', 'car', 'truck', 'lorry'] as const;
+
+function getTravelRiskSummary(danger: number) {
+  if (danger >= 70) return 'High patrol pressure and rough unloading routes.';
+  if (danger >= 45) return 'Moderate route risk with occasional checkpoints.';
+  return 'Low route pressure and easier district entry.';
+}
+
 export default function CityPage() {
   const {
     isScavenging,
@@ -69,7 +95,16 @@ export default function CityPage() {
     addNotification,
     addToInventory,
     currentDistrict,
-    setDistrict,
+    travel,
+    property,
+    inventory,
+    setActiveProperty,
+    unlockShackTier,
+    purchaseShack,
+    listPropertyForRent,
+    endPropertyRental,
+    upgradePropertyStorage,
+    startTravel,
     player,
     generateLoot,
     trackMissionScavenge,
@@ -82,6 +117,7 @@ export default function CityPage() {
     policeChase,
     escapePolice,
     getEquipmentStats,
+    upgradeTreeProgress,
   } = useGameStore();
 
   const [hoveredDistrict, setHoveredDistrict] = useState<string | null>(null);
@@ -90,6 +126,42 @@ export default function CityPage() {
   const [districtEvent, setDistrictEvent] = useState<DistrictEvent | null>(null);
   const [isResting, setIsResting] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [selectedDestination, setSelectedDestination] = useState<District>(currentDistrict);
+  const [selectedTravelMode, setSelectedTravelMode] = useState<TravelMode>('bus');
+  const [confirmTravelQuote, setConfirmTravelQuote] = useState<ReturnType<typeof getTravelQuote> | null>(null);
+  const [travelNow, setTravelNow] = useState(Date.now());
+
+  const activeProperty = useMemo(() => getActiveProperty(property), [property]);
+  const currentDistrictShack = useMemo(() => getPropertyListing(currentDistrict), [currentDistrict]);
+  const shackUnlockStatus = useMemo(() => getShackUnlockStatus(property, player, inventory), [inventory, player, property]);
+  const currentDistrictOwnedProperty = useMemo(
+    () => property.properties.find((entry) => entry.district === currentDistrict && entry.tier === 'shack'),
+    [currentDistrict, property.properties],
+  );
+
+  useEffect(() => {
+    setSelectedDestination(currentDistrict);
+    setSelectedTravelMode('bus');
+    setConfirmTravelQuote(null);
+  }, [currentDistrict]);
+
+  const transportTier = useMemo(() => getTransportUpgradeTier(upgradeTreeProgress), [upgradeTreeProgress]);
+  const unlockedVehicleModes = useMemo(() => getUnlockedVehicleModes(upgradeTreeProgress), [upgradeTreeProgress]);
+
+  useEffect(() => {
+    if (travel.status !== 'travelling') {
+      setTravelNow(Date.now());
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setTravelNow(Date.now());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [travel.status]);
 
   useEffect(() => {
     const key = 'dt_tutorial_scavenge_seen';
@@ -97,15 +169,6 @@ export default function CityPage() {
       setShowTutorial(true);
     }
   }, []);
-
-  // Passive energy/heat update loop.
-  useEffect(() => {
-    const interval = setInterval(() => {
-      recoverEnergy(1);
-      decayHeat();
-    }, 60000);
-    return () => clearInterval(interval);
-  }, [recoverEnergy, decayHeat]);
 
   // Roll district event whenever district changes.
   useEffect(() => {
@@ -141,11 +204,12 @@ export default function CityPage() {
   const eventSuccessBonus = districtEvent?.effects.successBonus ?? 0;
   const eventHeatModifier = districtEvent?.effects.heatModifier ?? 0;
   const eventRarityBonus = districtEvent?.effects.rarityBonus ?? 0;
+  const statBonuses = getPlayerScavengeBonuses(player.rank);
 
-  const effectiveCapacity = player.inventoryCapacity * (1 + equipmentStats.capacityBonus / 100);
+  const effectiveCapacity = player.inventoryCapacity * (1 + (equipmentStats.capacityBonus + statBonuses.carryBonusPercent) / 100);
   const scavengeDuration = Math.max(
     700,
-    (1500 + districtInfo.danger * 20) * (1 - equipmentStats.searchSpeedBonus / 100)
+    (1500 + districtInfo.danger * 20) * (1 - (equipmentStats.searchSpeedBonus + statBonuses.searchSpeedBonusPercent) / 100)
   );
   const baseEnergyCost = 10 + districtInfo.danger * (10 / 75); // 10-20 baseline by district danger
   const energyCost = baseEnergyCost * eventEnergyMultiplier;
@@ -154,11 +218,62 @@ export default function CityPage() {
     18,
     Math.min(
       96,
-      72 + player.rank * 0.35 - player.heat * 0.45 - districtInfo.danger * 0.3 + eventSuccessBonus
+      72 + player.rank * 0.35 + statBonuses.successBonusPercent - player.heat * 0.45 - districtInfo.danger * 0.3 + eventSuccessBonus
     )
   );
 
+  const trainRouteAvailable = useMemo(() => (
+    selectedDestination !== currentDistrict && isTrainRouteAvailable(currentDistrict, selectedDestination)
+  ), [currentDistrict, selectedDestination]);
+  const trainRouteUnlocked = player.rank >= TRAIN_MIN_RANK;
+  const selectedTravelModeUnlocked = selectedTravelMode === 'bus'
+    || (selectedTravelMode === 'train' && trainRouteAvailable && trainRouteUnlocked)
+    || unlockedVehicleModes.includes(selectedTravelMode as (typeof unlockedVehicleModes)[number]);
+
+  useEffect(() => {
+    if (!selectedTravelModeUnlocked) {
+      setSelectedTravelMode('bus');
+    }
+  }, [selectedTravelModeUnlocked]);
+
+  const selectedTravelQuote = useMemo(() => {
+    if (selectedDestination === currentDistrict) {
+      return null;
+    }
+
+    const requestedMode = selectedTravelMode === 'train'
+      ? (trainRouteAvailable && trainRouteUnlocked ? 'train' : 'bus')
+      : selectedTravelMode !== 'bus' && unlockedVehicleModes.includes(selectedTravelMode as (typeof unlockedVehicleModes)[number])
+        ? selectedTravelMode
+        : 'bus';
+    return getTravelQuote(currentDistrict, selectedDestination, requestedMode);
+  }, [currentDistrict, selectedDestination, selectedTravelMode, trainRouteAvailable, trainRouteUnlocked, unlockedVehicleModes]);
+
+  const availableTravelModes = useMemo(() => {
+    const modes: TravelMode[] = ['bus'];
+    if (trainRouteAvailable && trainRouteUnlocked) {
+      modes.push('train');
+    }
+
+    for (const mode of VEHICLE_MODE_ORDER) {
+      if (unlockedVehicleModes.includes(mode)) {
+        modes.push(mode);
+      }
+    }
+
+    return modes;
+  }, [trainRouteAvailable, trainRouteUnlocked, unlockedVehicleModes]);
+  const travelRemainingMs = travel.status === 'travelling' && travel.arrivalAt
+    ? Math.max(0, travel.arrivalAt - travelNow)
+    : 0;
+  const travelRemainingLabel = `${Math.ceil(travelRemainingMs / 1000)}s`;
+
   const handleScavenge = () => {
+    if (travel.status === 'travelling') {
+      addNotification('You cannot scavenge while in transit.', 'warning');
+      return;
+    }
+
     if (districtInfo.minRank > player.rank) {
       addNotification(`Requires Rank ${districtInfo.minRank}. You are Rank ${player.rank}.`, 'warning');
       return;
@@ -204,36 +319,71 @@ export default function CityPage() {
         return;
       }
 
-      const loot = generateLoot(
-        currentDistrict as keyof typeof DISTRICTS,
-        equipmentStats.rarityBonus + eventRarityBonus
-      );
+      const plannedFinds = Math.min(3, 1 + (districtInfo.danger <= 35 ? 1 : 0) + (player.rank >= 10 ? 1 : 0));
+      const foundLoot = [] as NonNullable<ReturnType<typeof generateLoot>>[];
+      let remainingCapacity = effectiveCapacity - player.usedCapacity;
 
-      if (loot) {
-        addToInventory(loot);
-        trackMissionScavenge(loot, currentDistrict as keyof typeof DISTRICTS);
-        setLastLoot(loot);
+      for (let attempt = 0; attempt < plannedFinds && remainingCapacity > 0; attempt += 1) {
+        const loot = generateLoot(
+          currentDistrict as keyof typeof DISTRICTS,
+          equipmentStats.rarityBonus + eventRarityBonus,
+        );
 
-        // Calculate heat gain based on rarity
-        const heatGainMap = { common: 5, uncommon: 10, rare: 15, epic: 25, legendary: 40, illegal: 50 };
+        if (!loot) {
+          continue;
+        }
+
+        const lootWeight = loot.weight * loot.quantity;
+        if (lootWeight > remainingCapacity) {
+          continue;
+        }
+
+        foundLoot.push(loot);
+        remainingCapacity -= lootWeight;
+      }
+
+      if (foundLoot.length > 0) {
+        foundLoot.forEach((entry) => {
+          addToInventory(entry);
+          trackMissionScavenge(entry, currentDistrict as keyof typeof DISTRICTS);
+        });
+
+        const featuredLoot = foundLoot.reduce((best, entry) => {
+          const entryOrder = RARITY_ORDER[entry.rarity];
+          const bestOrder = RARITY_ORDER[best.rarity];
+
+          if (entryOrder > bestOrder) {
+            return entry;
+          }
+
+          if (entryOrder === bestOrder && entry.value > best.value) {
+            return entry;
+          }
+
+          return best;
+        });
+        setLastLoot(featuredLoot);
+
+        const highestHeatGain = foundLoot.reduce((maxHeat, entry) => Math.max(maxHeat, RARITY_HEAT_GAIN[entry.rarity]), 0);
         const heatGain = Math.max(
           1,
-          heatGainMap[loot.rarity] * (1 - equipmentStats.heatReduction / 100) + eventHeatModifier
+          (highestHeatGain + (foundLoot.length - 1) * 2) * (1 - (equipmentStats.heatReduction + statBonuses.heatReductionPercent) / 100) + eventHeatModifier,
         );
         updateHeat(heatGain);
 
-        // Check for police
         setTimeout(() => {
           startPoliceChase();
         }, 500);
 
         addNotification(
-          `Found: ${loot.icon} ${loot.name} (${loot.rarity})`,
-          loot.rarity === 'illegal'
+          foundLoot.length === 1
+            ? `Found: ${foundLoot[0].icon} ${foundLoot[0].name} (${foundLoot[0].rarity})`
+            : `Found haul: ${foundLoot.map((entry) => `${entry.icon} ${entry.name}`).join(', ')}`,
+          foundLoot.some((entry) => entry.rarity === 'illegal')
             ? 'error'
-            : loot.rarity === 'legendary' || loot.rarity === 'epic'
+            : foundLoot.some((entry) => entry.rarity === 'legendary' || entry.rarity === 'epic')
               ? 'success'
-              : 'info'
+              : 'info',
         );
       }
 
@@ -256,7 +406,7 @@ export default function CityPage() {
 
   // Convert DISTRICTS object to array for UI
   const districtsList = Object.entries(DISTRICTS).map(([key, info]) => ({
-    id: key,
+    id: key as District,
     name: info.name,
     description: info.description,
     danger: info.danger,
@@ -278,6 +428,24 @@ export default function CityPage() {
     return '#ef4444';
   };
 
+  const shackDistrictComparisons = useMemo(() => (
+    Object.values(SHACK_PROPERTY_LISTINGS)
+      .map((listing) => {
+        const districtDanger = DISTRICTS[listing.district].danger;
+        const accessCost = listing.district === currentDistrict ? null : getBusTravelQuote(currentDistrict, listing.district).fareCost;
+
+        return {
+          ...listing,
+          districtName: DISTRICTS[listing.district].name,
+          districtDanger,
+          dangerLabel: getRiskLabel(districtDanger),
+          dangerColor: getRiskColor(districtDanger),
+          accessLabel: accessCost === null ? 'Local base' : `Bus $${accessCost}`,
+        };
+      })
+      .sort((left, right) => left.purchasePrice - right.purchasePrice)
+  ), [currentDistrict]);
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -287,11 +455,11 @@ export default function CityPage() {
             City Map
           </h1>
           <p className="text-xs mt-0.5" style={{ color: '#6b7280' }}>
-            Select a district to scavenge
+            Plan district travel, then scavenge after arrival
           </p>
-          {(equipmentStats.searchSpeedBonus > 0 || equipmentStats.heatReduction > 0 || equipmentStats.rarityBonus > 0) && (
+          {(equipmentStats.searchSpeedBonus > 0 || equipmentStats.heatReduction > 0 || equipmentStats.rarityBonus > 0 || statBonuses.searchSpeedBonusPercent > 0 || statBonuses.carryBonusPercent > 0 || statBonuses.successBonusPercent > 0) && (
             <p className="text-[11px] mt-1" style={{ color: '#60a5fa' }}>
-              Gear: -{equipmentStats.searchSpeedBonus.toFixed(0)}% search time, -{equipmentStats.heatReduction.toFixed(0)}% heat, +{equipmentStats.rarityBonus.toFixed(0)}% rarity
+              Gear + stats: +{statBonuses.carryBonusPercent.toFixed(0)}% carry, +{statBonuses.successBonusPercent.toFixed(0)}% success, -{(equipmentStats.searchSpeedBonus + statBonuses.searchSpeedBonusPercent).toFixed(0)}% search time, -{(equipmentStats.heatReduction + statBonuses.heatReductionPercent).toFixed(0)}% heat, +{equipmentStats.rarityBonus.toFixed(0)}% rarity
             </p>
           )}
           <p className="text-[11px] mt-1" style={{ color: '#9ca3af' }}>
@@ -302,16 +470,16 @@ export default function CityPage() {
           whileHover={{ scale: 1.04 }}
           whileTap={{ scale: 0.97 }}
           onClick={handleScavenge}
-          disabled={isScavenging || isResting || player.energy < energyCost}
+          disabled={isScavenging || isResting || player.energy < energyCost || travel.status === 'travelling'}
           className="px-6 py-2.5 rounded text-sm font-bold tracking-widest uppercase transition-all"
           style={{
             background: isScavenging ? '#1a1a1a' : '#39ff1415',
             border: '1px solid #39ff1460',
             color: isScavenging ? '#6b7280' : '#39ff14',
-            cursor: isScavenging || isResting || player.energy < energyCost ? 'not-allowed' : 'pointer',
-            opacity: player.energy < energyCost ? 0.6 : 1,
+            cursor: isScavenging || isResting || player.energy < energyCost || travel.status === 'travelling' ? 'not-allowed' : 'pointer',
+            opacity: player.energy < energyCost || travel.status === 'travelling' ? 0.6 : 1,
           }}>
-          {isScavenging ? '🔍 Searching...' : '🗑️ Search Dumpsters'}
+          {travel.status === 'travelling' ? '🚌 In Transit' : isScavenging ? '🔍 Searching...' : '🗑️ Search Dumpsters'}
         </motion.button>
       </div>
 
@@ -324,13 +492,15 @@ export default function CityPage() {
               whileHover={{ scale: !d.locked ? 1.02 : 1, y: !d.locked ? -2 : 0 }}
               onHoverStart={() => setHoveredDistrict(d.id)}
               onHoverEnd={() => setHoveredDistrict(null)}
-              onClick={() => !d.locked && setDistrict(d.id as any)}
+              onClick={() => !d.locked && travel.status !== 'travelling' && setSelectedDestination(d.id)}
               className={`relative rounded-lg overflow-hidden cursor-pointer transition-all duration-200 bg-gradient-to-br`}
               style={{
                 background: `linear-gradient(135deg, #1a1a1a, #0f0f0f)`,
                 border:
                   currentDistrict === d.id
                     ? `1px solid ${RARITY_COLORS.uncommon}`
+                    : selectedDestination === d.id
+                      ? `1px solid #60a5fa99`
                     : hoveredDistrict === d.id && !d.locked
                       ? `1px solid ${RARITY_COLORS.uncommon}66`
                       : '1px solid #2a2a2a',
@@ -378,6 +548,7 @@ export default function CityPage() {
                 </p>
                 <div className="flex items-center justify-between text-xs">
                   <span style={{ color: '#fbbf24' }}>⚡ {(energyCost).toFixed(0)}</span>
+                  {!d.locked && currentDistrict !== d.id && <span style={{ color: '#93c5fd' }}>🚌 ${getBusTravelQuote(currentDistrict, d.id).fareCost}</span>}
                   {d.locked && <span style={{ color: '#ef4444' }}>{d.lockedReason}</span>}
                 </div>
               </div>
@@ -393,6 +564,407 @@ export default function CityPage() {
 
         {/* Right Panel */}
         <div className="space-y-4">
+          <motion.div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
+            <h3 className="text-xs uppercase tracking-widest mb-2" style={{ color: '#39ff1480' }}>Base Operations</h3>
+            {activeProperty ? (
+              <div className="space-y-3">
+                <div className="rounded-lg p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+                  <p className="text-[11px] uppercase tracking-widest" style={{ color: '#6b7280' }}>Active Base</p>
+                  <p className="mt-1 text-sm font-bold" style={{ color: '#f8fafc' }}>{activeProperty.name}</p>
+                  <p className="mt-1 text-xs" style={{ color: '#9ca3af' }}>
+                    {getPropertyTierLabel(activeProperty.tier)} in {DISTRICTS[activeProperty.district].name}
+                  </p>
+                  <p className="mt-2 text-[11px]" style={{ color: '#60a5fa' }}>
+                    Storage {getPropertyStoredWeight(activeProperty).toFixed(1)}/{activeProperty.storageCapacity} · Assembly {activeProperty.assemblyTier} · Employees {activeProperty.employeeCapacity}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  {property.properties.map((ownedProperty) => {
+                    const isActive = ownedProperty.id === property.activePropertyId;
+                    const localShackListing = ownedProperty.tier === 'shack' ? getPropertyListing(ownedProperty.district) : null;
+                    return (
+                      <div key={ownedProperty.id} className="rounded-lg p-3" style={{ background: '#0a0a0a', border: `1px solid ${isActive ? '#39ff1440' : '#1f2937'}` }}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-semibold" style={{ color: '#f8fafc' }}>{ownedProperty.name}</p>
+                            <p className="mt-1 text-[11px]" style={{ color: '#6b7280' }}>{DISTRICTS[ownedProperty.district].name} · {getPropertyTierLabel(ownedProperty.tier)}</p>
+                            <p className="mt-1 text-[11px]" style={{ color: ownedProperty.occupancyStatus === 'rented_out' ? '#fbbf24' : '#60a5fa' }}>
+                              {ownedProperty.occupancyStatus === 'active' ? 'Active base' : ownedProperty.occupancyStatus === 'rented_out' ? `${ownedProperty.letting?.mode === 'public' ? 'Public letting' : 'Friend rental'} · $${ownedProperty.letting?.dailyRate ?? 0}/day · ${ownedProperty.letting?.durationDays ?? 0}d` : 'Inactive property'}
+                            </p>
+                            <p className="mt-1 text-[11px]" style={{ color: '#4b5563' }}>Stored load {getPropertyStoredWeight(ownedProperty).toFixed(1)}/{ownedProperty.storageCapacity}</p>
+                            {ownedProperty.letting && (
+                              <p className="mt-1 text-[11px]" style={{ color: '#94a3b8' }}>Deposit ${ownedProperty.letting.depositAmount} · Expires {new Date(ownedProperty.letting.expiresAt).toLocaleDateString()}</p>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => setActiveProperty(ownedProperty.id)}
+                            disabled={isActive || ownedProperty.occupancyStatus === 'rented_out'}
+                            className="px-2 py-1 rounded text-[11px] uppercase tracking-widest"
+                            style={{
+                              background: isActive ? '#1f2937' : '#39ff1412',
+                              border: `1px solid ${isActive ? '#374151' : '#39ff1455'}`,
+                              color: isActive ? '#6b7280' : '#86efac',
+                              opacity: isActive || ownedProperty.occupancyStatus === 'rented_out' ? 0.8 : 1,
+                            }}>
+                            {isActive ? 'Active' : 'Set Active'}
+                          </button>
+                        </div>
+                        {ownedProperty.tier === 'shack' && (
+                          <div className="mt-3 grid grid-cols-3 gap-2">
+                            {ownedProperty.occupancyStatus !== 'rented_out' && (
+                              <button
+                                onClick={() => upgradePropertyStorage(ownedProperty.id)}
+                                className="px-2 py-1.5 rounded text-[11px] uppercase tracking-widest"
+                                style={{ background: '#14b8a618', border: '1px solid #14b8a655', color: '#5eead4' }}>
+                                +15 Stash ${getPropertyStorageUpgradeCost(ownedProperty).cashCost}
+                              </button>
+                            )}
+                            {ownedProperty.occupancyStatus === 'rented_out' ? (
+                              <button
+                                onClick={() => endPropertyRental(ownedProperty.id)}
+                                className="col-span-2 px-2 py-1.5 rounded text-[11px] uppercase tracking-widest"
+                                style={{ background: '#f59e0b18', border: '1px solid #f59e0b55', color: '#fbbf24' }}>
+                                End Rental
+                              </button>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => listPropertyForRent(ownedProperty.id, 'friends')}
+                                  className="px-2 py-1.5 rounded text-[11px] uppercase tracking-widest"
+                                  style={{ background: '#60a5fa18', border: '1px solid #60a5fa55', color: '#93c5fd' }}>
+                                  Friend ${localShackListing?.friendDailyRate ?? 0}
+                                </button>
+                                <button
+                                  onClick={() => listPropertyForRent(ownedProperty.id, 'public')}
+                                  className="px-2 py-1.5 rounded text-[11px] uppercase tracking-widest"
+                                  style={{ background: '#f59e0b18', border: '1px solid #f59e0b55', color: '#fbbf24' }}>
+                                  Public ${localShackListing?.publicDailyRate ?? 0}
+                                </button>
+                                <div className="px-2 py-1.5 rounded text-[11px] text-center"
+                                  style={{ background: '#11182766', border: '1px solid #1f2937', color: '#94a3b8' }}>
+                                  Letting Ready
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs" style={{ color: '#9ca3af' }}>No owned base found.</p>
+            )}
+          </motion.div>
+
+          <motion.div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
+            <h3 className="text-xs uppercase tracking-widest mb-2" style={{ color: '#39ff1480' }}>Shack Market</h3>
+            {currentDistrictOwnedProperty ? (
+              <div className="space-y-3">
+                <p className="text-sm font-bold" style={{ color: '#f8fafc' }}>You already own a Shack in {DISTRICTS[currentDistrict].name}</p>
+                <p className="text-xs" style={{ color: '#9ca3af' }}>Use it as your active base when you want better storage and simple disassembly without full junkyard automation.</p>
+                <button
+                  onClick={() => setActiveProperty(currentDistrictOwnedProperty.id)}
+                  disabled={currentDistrictOwnedProperty.id === property.activePropertyId}
+                  className="w-full px-3 py-2 rounded text-xs font-bold uppercase tracking-widest"
+                  style={{
+                    background: '#39ff1412',
+                    border: '1px solid #39ff1455',
+                    color: '#86efac',
+                    opacity: currentDistrictOwnedProperty.id === property.activePropertyId ? 0.55 : 1,
+                  }}>
+                  {currentDistrictOwnedProperty.id === property.activePropertyId ? 'Already Active' : 'Activate Local Shack'}
+                </button>
+              </div>
+            ) : currentDistrictShack ? (
+              <div className="space-y-3">
+                <p className="text-sm font-bold" style={{ color: '#f8fafc' }}>{currentDistrictShack.label}</p>
+                <p className="text-xs" style={{ color: '#9ca3af' }}>{currentDistrictShack.riskNote}</p>
+                {!property.shackAccess.unlocked && (
+                  <div className="rounded p-3 text-xs space-y-2" style={{ background: '#11182766', border: '1px solid #1f2937' }}>
+                    <p style={{ color: '#f8fafc' }}>Dumpster-to-Shack Upgrade Path</p>
+                    <p style={{ color: shackUnlockStatus.hasCorrectBase ? '#86efac' : '#fca5a5' }}>Active base is Dumpster: {shackUnlockStatus.hasCorrectBase ? 'ready' : 'switch back to Dumpster'}</p>
+                    <p style={{ color: shackUnlockStatus.rankReady ? '#86efac' : '#fca5a5' }}>Rank {player.rank}/{8}</p>
+                    <p style={{ color: shackUnlockStatus.stashReady ? '#86efac' : '#fca5a5' }}>Dumpster stash {shackUnlockStatus.activeProperty ? getPropertyStoredWeight(shackUnlockStatus.activeProperty).toFixed(1) : '0.0'}/{10} kg</p>
+                    <p style={{ color: shackUnlockStatus.componentReady ? '#86efac' : '#fca5a5' }}>Components {(inventory.find((entry) => entry.id === 'mat_components')?.quantity ?? 0)}/{6}</p>
+                    <p style={{ color: shackUnlockStatus.cashReady ? '#86efac' : '#fca5a5' }}>Permit cash ${player.cash.toLocaleString()}/${900}</p>
+                    <button
+                      onClick={unlockShackTier}
+                      disabled={!shackUnlockStatus.hasCorrectBase || !shackUnlockStatus.rankReady || !shackUnlockStatus.stashReady || !shackUnlockStatus.componentReady || !shackUnlockStatus.cashReady}
+                      className="w-full px-3 py-2 rounded text-xs font-bold uppercase tracking-widest"
+                      style={{ background: '#39ff1412', border: '1px solid #39ff1455', color: '#86efac', opacity: (!shackUnlockStatus.hasCorrectBase || !shackUnlockStatus.rankReady || !shackUnlockStatus.stashReady || !shackUnlockStatus.componentReady || !shackUnlockStatus.cashReady) ? 0.45 : 1 }}>
+                      Unlock Shack Tier
+                    </button>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  <div className="rounded p-2" style={{ background: '#0a0a0a', border: '1px solid #1f2937', color: '#9ca3af' }}>
+                    Buy-in <span style={{ color: '#86efac' }}>${currentDistrictShack.purchasePrice}</span>
+                  </div>
+                  <div className="rounded p-2" style={{ background: '#0a0a0a', border: '1px solid #1f2937', color: '#9ca3af' }}>
+                    Rent/day <span style={{ color: '#93c5fd' }}>${currentDistrictShack.rentPerDay}</span>
+                  </div>
+                  <div className="rounded p-2" style={{ background: '#0a0a0a', border: '1px solid #1f2937', color: '#9ca3af' }}>
+                    Storage <span style={{ color: '#f8fafc' }}>{currentDistrictShack.storageCapacity}</span>
+                  </div>
+                  <div className="rounded p-2" style={{ background: '#0a0a0a', border: '1px solid #1f2937', color: '#9ca3af' }}>
+                    Assembly <span style={{ color: '#f8fafc' }}>Tier {currentDistrictShack.assemblyTier}</span>
+                  </div>
+                </div>
+                <div aria-label="shack-district-comparison" className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[11px] uppercase tracking-widest" style={{ color: '#39ff1480' }}>District Tradeoffs</p>
+                    <p className="text-[11px]" style={{ color: '#6b7280' }}>Compare price, safety, access, and stash size before you commit.</p>
+                  </div>
+                  <div className="space-y-2">
+                    {shackDistrictComparisons.map((listing) => {
+                      const isCurrentDistrict = listing.district === currentDistrict;
+
+                      return (
+                        <div
+                          key={listing.district}
+                          aria-label={`shack-option-${listing.district}`}
+                          className="rounded p-3"
+                          style={{
+                            background: isCurrentDistrict ? '#39ff140d' : '#0a0a0a',
+                            border: `1px solid ${isCurrentDistrict ? '#39ff1455' : '#1f2937'}`,
+                          }}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-xs font-semibold" style={{ color: '#f8fafc' }}>{listing.districtName}</p>
+                              <p className="mt-1 text-[11px]" style={{ color: '#6b7280' }}>{listing.label}</p>
+                            </div>
+                            <span
+                              className="rounded px-2 py-1 text-[10px] uppercase tracking-widest"
+                              style={{
+                                background: isCurrentDistrict ? '#39ff1418' : '#11182766',
+                                border: `1px solid ${isCurrentDistrict ? '#39ff1455' : '#1f2937'}`,
+                                color: isCurrentDistrict ? '#86efac' : '#94a3b8',
+                              }}>
+                              {isCurrentDistrict ? 'Current district' : 'Remote option'}
+                            </span>
+                          </div>
+                          <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]" style={{ color: '#9ca3af' }}>
+                            <div className="rounded p-2" style={{ background: '#11182744', border: '1px solid #1f2937' }}>
+                              Buy-in <span style={{ color: '#86efac' }}>${listing.purchasePrice}</span>
+                            </div>
+                            <div className="rounded p-2" style={{ background: '#11182744', border: '1px solid #1f2937' }}>
+                              Storage <span style={{ color: '#f8fafc' }}>{listing.storageCapacity}</span>
+                            </div>
+                            <div className="rounded p-2" style={{ background: '#11182744', border: '1px solid #1f2937' }}>
+                              Safety <span style={{ color: listing.dangerColor }}>{listing.dangerLabel}</span>
+                            </div>
+                            <div className="rounded p-2" style={{ background: '#11182744', border: '1px solid #1f2937' }}>
+                              Access <span style={{ color: '#93c5fd' }}>{listing.accessLabel}</span>
+                            </div>
+                          </div>
+                          <p className="mt-2 text-[11px]" style={{ color: '#9ca3af' }}>{listing.riskNote}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <button
+                  onClick={() => purchaseShack(currentDistrict)}
+                  disabled={!property.shackAccess.unlocked || player.cash < currentDistrictShack.purchasePrice || travel.status === 'travelling'}
+                  className="w-full px-3 py-2 rounded text-xs font-bold uppercase tracking-widest"
+                  style={{
+                    background: '#f59e0b18',
+                    border: '1px solid #f59e0b66',
+                    color: '#fcd34d',
+                    opacity: !property.shackAccess.unlocked || player.cash < currentDistrictShack.purchasePrice || travel.status === 'travelling' ? 0.55 : 1,
+                  }}>
+                  {property.shackAccess.unlocked ? `Buy Shack in ${DISTRICTS[currentDistrict].name}` : 'Unlock Shack Tier First'}
+                </button>
+              </div>
+            ) : (
+              <p className="text-xs" style={{ color: '#9ca3af' }}>No shack listing is available in this district yet.</p>
+            )}
+          </motion.div>
+
+          <motion.div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
+            <h3 className="text-xs uppercase tracking-widest mb-2" style={{ color: '#39ff1480' }}>Travel</h3>
+            <div aria-label="vehicle-progression-panel" className="mb-3 rounded-lg p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: '#22c55e' }}>Transport Progression</p>
+                  <p className="text-[11px]" style={{ color: '#6b7280' }}>Transport tier {transportTier} controls private district vehicles.</p>
+                </div>
+                <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: '#86efac' }}>Owned {unlockedVehicleModes.length}</p>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {VEHICLE_MODE_ORDER.map((mode) => {
+                  const spec = VEHICLE_TRAVEL_SPECS[mode];
+                  const unlocked = unlockedVehicleModes.includes(mode);
+                  return (
+                    <div
+                      key={mode}
+                      className="rounded p-2"
+                      style={{
+                        background: unlocked ? '#052e16' : '#111827',
+                        border: `1px solid ${unlocked ? '#166534' : '#1f2937'}`,
+                        opacity: unlocked ? 1 : 0.72,
+                      }}>
+                      <p className="text-xs font-bold" style={{ color: unlocked ? '#86efac' : '#9ca3af' }}>{spec.icon} {spec.label}</p>
+                      <p className="text-[11px] mt-1" style={{ color: '#6b7280' }}>{unlocked ? `Unlocked at tier ${spec.unlockTier}` : `Needs transport tier ${spec.unlockTier}`}</p>
+                      <p className="text-[11px] mt-1" style={{ color: '#6b7280' }}>Carry {spec.cargoCapacity} · {spec.summary}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            {travel.status === 'travelling' && travel.destination ? (
+              <div className="space-y-3">
+                <p className="text-sm font-bold" style={{ color: '#93c5fd' }}>En route to {DISTRICTS[travel.destination].name}</p>
+                <p className="text-xs" style={{ color: '#9ca3af' }}>From {DISTRICTS[travel.origin].name} by {travel.mode}. Arrival in {travelRemainingLabel}.</p>
+                <div className="w-full bg-black rounded overflow-hidden h-1.5">
+                  <motion.div
+                    animate={{ width: `${travel.durationMs > 0 && travel.departureAt ? Math.min(100, ((travelNow - travel.departureAt) / travel.durationMs) * 100) : 0}%` }}
+                    className="h-full"
+                    style={{ background: '#60a5fa' }}
+                  />
+                </div>
+                <p className="text-[11px]" style={{ color: '#60a5fa' }}>Travel blocks scavenging until arrival.</p>
+              </div>
+            ) : selectedTravelQuote ? (
+              <div className="space-y-3">
+                <div aria-label="travel-mode-selector" className="grid grid-cols-2 gap-2">
+                  {availableTravelModes.map((mode) => {
+                    const isSelected = selectedTravelQuote.mode === mode;
+                    const accent = mode === 'train'
+                      ? '#f59e0b'
+                      : mode === 'bus'
+                        ? '#60a5fa'
+                        : '#22c55e';
+
+                    return (
+                      <button
+                        key={mode}
+                        onClick={() => setSelectedTravelMode(mode)}
+                        aria-label={getTravelModeLabel(mode)}
+                        className="px-3 py-2 rounded text-[11px] font-bold uppercase tracking-widest"
+                        style={{
+                          background: isSelected ? `${accent}18` : '#0a0a0a',
+                          border: `1px solid ${isSelected ? `${accent}55` : '#1f2937'}`,
+                          color: isSelected ? accent : '#6b7280',
+                        }}>
+                        {getTravelModeIcon(mode)} {getTravelModeLabel(mode)}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-sm font-bold" style={{ color: '#f8fafc' }}>{getTravelModeLabel(selectedTravelQuote.mode)} to {DISTRICTS[selectedTravelQuote.destination].name}</p>
+                <p className="text-xs" style={{ color: '#9ca3af' }}>
+                  Fare ${selectedTravelQuote.fareCost} · ETA {Math.ceil(selectedTravelQuote.durationMs / 1000)}s · Carry limit {selectedTravelQuote.cargoCapacity}
+                </p>
+                {!trainRouteUnlocked && (
+                  <p className="text-[11px]" style={{ color: '#f59e0b' }}>Train routes unlock at Rank {TRAIN_MIN_RANK}.</p>
+                )}
+                {trainRouteUnlocked && !trainRouteAvailable && (
+                  <p className="text-[11px]" style={{ color: '#6b7280' }}>Train service only runs between the major districts.</p>
+                )}
+                {selectedTravelQuote.mode === 'train' && (
+                  <p className="text-[11px]" style={{ color: '#fbbf24' }}>Bulk passenger line: higher fare, faster arrival, higher carry allowance.</p>
+                )}
+                {selectedTravelQuote.mode !== 'bus' && selectedTravelQuote.mode !== 'train' && (
+                  <p className="text-[11px]" style={{ color: '#86efac' }}>{VEHICLE_TRAVEL_SPECS[selectedTravelQuote.mode].summary}</p>
+                )}
+                <p className="text-[11px]" style={{ color: '#fca5a5' }}>
+                  Route risk: {getTravelRiskSummary(DISTRICTS[selectedTravelQuote.destination].danger)}
+                </p>
+                <p className="text-[11px]" style={{ color: player.usedCapacity > selectedTravelQuote.cargoCapacity ? '#fca5a5' : '#86efac' }}>
+                  Current load {player.usedCapacity.toFixed(1)} / {selectedTravelQuote.cargoCapacity}
+                </p>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setConfirmTravelQuote(selectedTravelQuote)}
+                  aria-label={selectedTravelQuote.mode === 'train' ? 'Ride Train' : selectedTravelQuote.mode === 'bus' ? 'Ride Bus' : `Ride ${getTravelModeLabel(selectedTravelQuote.mode)}`}
+                  disabled={player.cash < selectedTravelQuote.fareCost || player.usedCapacity > selectedTravelQuote.cargoCapacity || isScavenging}
+                  className="w-full px-3 py-2 rounded text-xs font-bold uppercase tracking-widest"
+                  style={{
+                    background: selectedTravelQuote.mode === 'train' ? '#f59e0b18' : selectedTravelQuote.mode === 'bus' ? '#60a5fa22' : '#22c55e18',
+                    border: selectedTravelQuote.mode === 'train' ? '1px solid #f59e0b55' : selectedTravelQuote.mode === 'bus' ? '1px solid #60a5fa55' : '1px solid #22c55e55',
+                    color: selectedTravelQuote.mode === 'train' ? '#fbbf24' : selectedTravelQuote.mode === 'bus' ? '#93c5fd' : '#86efac',
+                    opacity: player.cash < selectedTravelQuote.fareCost || player.usedCapacity > selectedTravelQuote.cargoCapacity || isScavenging ? 0.55 : 1,
+                  }}>
+                  Confirm {getTravelModeLabel(selectedTravelQuote.mode)} Route
+                </motion.button>
+              </div>
+            ) : (
+              <p className="text-xs" style={{ color: '#9ca3af' }}>Select another unlocked district to preview the bus fare, ETA, and carry limit.</p>
+            )}
+          </motion.div>
+
+          <AnimatePresence>
+            {confirmTravelQuote && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-50 flex items-center justify-center px-4"
+                style={{ background: '#020617cc' }}>
+                <motion.div
+                  initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 16, scale: 0.98 }}
+                  className="w-full max-w-md rounded-xl p-5"
+                  style={{ background: '#0f172a', border: '1px solid #1e293b', boxShadow: '0 20px 60px rgba(15, 23, 42, 0.45)' }}>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.3em]" style={{ color: '#60a5fa' }}>Travel Confirmation</p>
+                  <h3 className="mt-2 text-lg font-bold" style={{ color: '#f8fafc' }}>{getTravelModeIcon(confirmTravelQuote.mode)} {getTravelModeLabel(confirmTravelQuote.mode)} to {DISTRICTS[confirmTravelQuote.destination].name}</h3>
+                  <p className="mt-2 text-sm" style={{ color: '#94a3b8' }}>{DISTRICTS[confirmTravelQuote.destination].description}</p>
+                  <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
+                    <div className="rounded-lg p-3" style={{ background: '#020617', border: '1px solid #1e293b' }}>
+                      <p style={{ color: '#64748b' }}>Fare</p>
+                      <p className="mt-1 font-bold" style={{ color: '#f8fafc' }}>${confirmTravelQuote.fareCost}</p>
+                    </div>
+                    <div className="rounded-lg p-3" style={{ background: '#020617', border: '1px solid #1e293b' }}>
+                      <p style={{ color: '#64748b' }}>ETA</p>
+                      <p className="mt-1 font-bold" style={{ color: '#f8fafc' }}>{Math.ceil(confirmTravelQuote.durationMs / 1000)}s</p>
+                    </div>
+                    <div className="rounded-lg p-3" style={{ background: '#020617', border: '1px solid #1e293b' }}>
+                      <p style={{ color: '#64748b' }}>Cargo Limit</p>
+                      <p className="mt-1 font-bold" style={{ color: '#f8fafc' }}>{confirmTravelQuote.cargoCapacity}</p>
+                    </div>
+                    <div className="rounded-lg p-3" style={{ background: '#020617', border: '1px solid #1e293b' }}>
+                      <p style={{ color: '#64748b' }}>Current Load</p>
+                      <p className="mt-1 font-bold" style={{ color: player.usedCapacity > confirmTravelQuote.cargoCapacity ? '#fca5a5' : '#86efac' }}>{player.usedCapacity.toFixed(1)}</p>
+                    </div>
+                  </div>
+                  <div className="mt-4 rounded-lg p-3" style={{ background: '#111827', border: '1px solid #1f2937' }}>
+                    <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: '#fca5a5' }}>Route Risk</p>
+                    <p className="mt-1 text-sm" style={{ color: '#cbd5e1' }}>{getTravelRiskSummary(DISTRICTS[confirmTravelQuote.destination].danger)}</p>
+                  </div>
+                  <div className="mt-5 grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setConfirmTravelQuote(null)}
+                      className="px-3 py-2 rounded text-xs font-bold uppercase tracking-widest"
+                      style={{ background: '#111827', border: '1px solid #1f2937', color: '#cbd5e1' }}>
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => {
+                        startTravel(confirmTravelQuote.destination, confirmTravelQuote.mode);
+                        setConfirmTravelQuote(null);
+                      }}
+                      disabled={player.cash < confirmTravelQuote.fareCost || player.usedCapacity > confirmTravelQuote.cargoCapacity || isScavenging}
+                      className="px-3 py-2 rounded text-xs font-bold uppercase tracking-widest"
+                      style={{
+                        background: '#60a5fa22',
+                        border: '1px solid #60a5fa55',
+                        color: '#93c5fd',
+                        opacity: player.cash < confirmTravelQuote.fareCost || player.usedCapacity > confirmTravelQuote.cargoCapacity || isScavenging ? 0.55 : 1,
+                      }}>
+                      Depart Now
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {districtEvent && (
             <motion.div
               initial={{ opacity: 0, y: -8 }}
@@ -406,7 +978,7 @@ export default function CityPage() {
 
           <motion.div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
             <h3 className="text-xs uppercase tracking-widest mb-2" style={{ color: '#39ff1480' }}>Recovery</h3>
-            <p className="text-xs mb-3" style={{ color: '#9ca3af' }}>Passive: +1 energy every minute. Use consumables from Inventory for quick boosts.</p>
+            <p className="text-xs mb-3" style={{ color: '#9ca3af' }}>Passive: +4 energy on each 5-minute mark, up to full energy. Use consumables from Inventory for quick boosts.</p>
             <div className="grid grid-cols-2 gap-2">
               <motion.button
                 whileHover={{ scale: 1.02 }}

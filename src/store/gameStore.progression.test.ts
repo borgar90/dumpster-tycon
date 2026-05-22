@@ -1,10 +1,14 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getRankFromTotalScavenged, useGameStore } from '@/store/gameStore';
 
 describe('progression upgrades', () => {
   beforeEach(() => {
     useGameStore.setState(useGameStore.getInitialState(), true);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('recomputes rank from scavenged loot value', () => {
@@ -86,5 +90,26 @@ describe('progression upgrades', () => {
     expect(after.inventory).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: 'eq_cart_i1', quantity: 1 }),
     ]));
+  });
+
+  it('decays heat naturally in incremental steps over time', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 4, 22, 12, 0, 0));
+
+    useGameStore.setState((state) => ({
+      ...state,
+      player: {
+        ...state.player,
+        heat: 20,
+        lastScavengeTime: Date.now() - 60_000,
+      },
+    }));
+
+    useGameStore.getState().decayHeat();
+    expect(useGameStore.getState().player.heat).toBe(18);
+
+    vi.advanceTimersByTime(30_000);
+    useGameStore.getState().decayHeat();
+    expect(useGameStore.getState().player.heat).toBe(17);
   });
 });

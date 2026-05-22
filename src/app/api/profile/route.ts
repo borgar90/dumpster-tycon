@@ -170,6 +170,8 @@ export async function PUT(request: Request) {
         missionStats: body.snapshot.missionStats,
         factionStandings: body.snapshot.factionStandings,
         factionRewardHistory: body.snapshot.factionRewardHistory,
+        travel: body.snapshot.travel,
+        property: body.snapshot.property,
         guild: body.snapshot.guild,
         lastMissionRefreshAt: body.snapshot.lastMissionRefreshAt,
       }),

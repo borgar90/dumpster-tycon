@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { LOOT_TEMPLATES, MARKET_SOURCE_ITEMS } from './lootCatalog';
+import { getLootTemplatesForDistrict, LOOT_TEMPLATES, MARKET_SOURCE_ITEMS } from './lootCatalog';
 import { getMarketCategoryForItem } from '../store/gameStore';
 
 describe('lootCatalog', () => {
@@ -17,5 +17,19 @@ describe('lootCatalog', () => {
     const categories = [...new Set(MARKET_SOURCE_ITEMS.map((item) => getMarketCategoryForItem(item)))].sort();
 
     expect(categories).toEqual(['Electronics', 'Illegal', 'Metals', 'Software', 'Vehicles']);
+  });
+
+  it('weights teardown-rack scrap heavily in slums common loot', () => {
+    const slumsCommon = getLootTemplatesForDistrict('slums', 'common');
+    const countById = slumsCommon.reduce<Record<string, number>>((acc, item) => {
+      acc[item.id] = (acc[item.id] ?? 0) + 1;
+      return acc;
+    }, {});
+
+    expect(slumsCommon).toHaveLength(96);
+    expect(countById.c1).toBe(11);
+    expect(countById.c2).toBe(11);
+    expect(countById.c28).toBe(11);
+    expect(countById.c34).toBe(11);
   });
 });

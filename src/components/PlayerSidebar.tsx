@@ -1,14 +1,48 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useGameStore } from '@/store/gameStore';
-import { getCompletedUpgradeCount, getRankProgress, getRankTierLabel } from '@/store/gameStore';
+import { getActiveProperty, getCompletedUpgradeCount, getPlayerCoreStats, getPropertyStoredWeight, getPropertyTierLabel, getRankProgress, getRankTierLabel } from '@/store/gameStore';
 import { motion } from 'framer-motion';
 
-function StatBar({ value, max, color }: { value: number; max: number; color: string }) {
+const ENERGY_REGEN_INTERVAL_MS = 5 * 60 * 1000;
+const ENERGY_REGEN_AMOUNT = 4;
+
+function getNextEnergyGrantDelayMs(now: number) {
+  const remainder = now % ENERGY_REGEN_INTERVAL_MS;
+  return remainder === 0 ? ENERGY_REGEN_INTERVAL_MS : ENERGY_REGEN_INTERVAL_MS - remainder;
+}
+
+function formatCountdown(msRemaining: number) {
+  const totalSeconds = Math.max(0, Math.ceil(msRemaining / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+function formatEnergyAmount(value: number) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function StatBar({
+  value,
+  max,
+  color,
+  overlayStartPct,
+  overlayWidthPct,
+  overlayColor,
+}: {
+  value: number;
+  max: number;
+  color: string;
+  overlayStartPct?: number;
+  overlayWidthPct?: number;
+  overlayColor?: string;
+}) {
   const pct = Math.min((value / max) * 100, 100);
   return (
-    <div className="h-1.5 rounded-full w-full" style={{ background: '#2a2a2a' }}>
+    <div className="relative h-1.5 rounded-full w-full overflow-hidden" style={{ background: '#2a2a2a' }}>
       <motion.div
         className="h-full rounded-full"
         style={{ background: color, width: `${pct}%` }}
@@ -16,6 +50,21 @@ function StatBar({ value, max, color }: { value: number; max: number; color: str
         animate={{ width: `${pct}%` }}
         transition={{ duration: 0.8, ease: 'easeOut' }}
       />
+      {overlayWidthPct && overlayWidthPct > 0 && overlayStartPct !== undefined && overlayColor ? (
+        <motion.div
+          className="absolute top-0 h-full rounded-full"
+          style={{
+            left: `${overlayStartPct}%`,
+            width: `${overlayWidthPct}%`,
+            background: `repeating-linear-gradient(135deg, rgba(255,255,255,0.12) 0 6px, ${overlayColor} 6px 12px, rgba(255,255,255,0.12) 12px 18px)`,
+            backgroundSize: '28px 100%',
+            boxShadow: `0 0 12px ${overlayColor}`,
+            borderRight: `1px solid ${overlayColor}`,
+          }}
+          animate={{ opacity: [0.35, 0.72, 0.35], backgroundPositionX: ['0px', '28px'] }}
+          transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -40,12 +89,42 @@ const EQUIPMENT_SLOTS: Array<{ slot: 'cart' | 'backpack' | 'flashlight' | 'glove
 ];
 
 export default function PlayerSidebar() {
-  const { player, getEquippedItem, getEquipmentStats, upgradeTreeProgress } = useGameStore();
+  const { player, property, getEquippedItem, getEquipmentStats, upgradeTreeProgress } = useGameStore();
   const { data: session } = useSession();
+  const [energyNow, setEnergyNow] = useState(Date.now());
   const effectiveCapacity = player.inventoryCapacity * (1 + getEquipmentStats().capacityBonus / 100);
   const displayName = session?.user?.username || player.username;
   const rankProgress = getRankProgress(player.totalScavenged);
   const completedUpgrades = getCompletedUpgradeCount(upgradeTreeProgress);
+  const activeProperty = getActiveProperty(property);
+  const coreStats = getPlayerCoreStats(player.rank);
+  const energyFull = player.energy >= player.maxEnergy;
+
+  useEffect(() => {
+    if (energyFull) {
+      setEnergyNow(Date.now());
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setEnergyNow(Date.now());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [energyFull]);
+
+  const msUntilNextEnergyGrant = energyFull ? 0 : getNextEnergyGrantDelayMs(energyNow);
+  const nextEnergyGain = energyFull ? 0 : Math.max(0, Math.min(ENERGY_REGEN_AMOUNT, player.maxEnergy - player.energy));
+  const cycleProgress = energyFull ? 0 : (ENERGY_REGEN_INTERVAL_MS - msUntilNextEnergyGrant) / ENERGY_REGEN_INTERVAL_MS;
+  const energyFillPct = player.maxEnergy > 0 ? Math.min((player.energy / player.maxEnergy) * 100, 100) : 0;
+  const energyOverlayStartPct = 0;
+  const energyOverlayWidthPct = energyFillPct * cycleProgress;
+  const energyStatusText = `${Math.round(player.energy)}/${player.maxEnergy}`;
+  const energyTooltipText = energyFull
+    ? 'Energy full'
+    : `${formatEnergyAmount(nextEnergyGain)} more energy in ${formatCountdown(msUntilNextEnergyGrant)} min`;
 
   return (
     <aside className="fixed left-0 top-14 bottom-0 w-52 flex flex-col overflow-y-auto z-40"
@@ -74,6 +153,25 @@ export default function PlayerSidebar() {
       {/* Stats */}
       <div className="p-3 space-y-3 border-b" style={{ borderColor: '#2a2a2a' }}>
         <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Stats</p>
+
+        <div>
+          <div className="flex justify-between text-xs mb-1">
+            <span style={{ color: '#9ca3af' }}>HP</span>
+            <span style={{ color: '#fb7185' }}>{coreStats.maxHp}/{coreStats.maxHp}</span>
+          </div>
+          <StatBar value={coreStats.maxHp} max={coreStats.maxHp} color="#fb7185" />
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="rounded px-2 py-2" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+            <p style={{ color: '#6b7280' }}>Strength</p>
+            <p className="mt-1 font-semibold" style={{ color: '#f8fafc' }}>{coreStats.strength}</p>
+          </div>
+          <div className="rounded px-2 py-2" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+            <p style={{ color: '#6b7280' }}>Agility</p>
+            <p className="mt-1 font-semibold" style={{ color: '#f8fafc' }}>{coreStats.agility}</p>
+          </div>
+        </div>
 
         <div>
           <div className="flex justify-between text-xs mb-1">
@@ -107,9 +205,18 @@ export default function PlayerSidebar() {
         <div>
           <div className="flex justify-between text-xs mb-1">
             <span style={{ color: '#9ca3af' }}>Energy</span>
-            <span style={{ color: '#fbbf24' }}>{Math.round(player.energy)}/{player.maxEnergy}</span>
+            <span aria-label="energy-regen-status" style={{ color: '#fbbf24' }}>{energyStatusText}</span>
           </div>
-          <StatBar value={player.energy} max={player.maxEnergy} color="#fbbf24" />
+          <div aria-label="energy-bar-tooltip" title={energyTooltipText}>
+            <StatBar
+              value={player.energy}
+              max={player.maxEnergy}
+              color="#fbbf24"
+              overlayStartPct={energyFull ? undefined : energyOverlayStartPct}
+              overlayWidthPct={energyFull ? undefined : energyOverlayWidthPct}
+              overlayColor={energyFull ? undefined : 'rgba(255, 248, 184, 0.65)'}
+            />
+          </div>
         </div>
 
         <div>
@@ -119,6 +226,19 @@ export default function PlayerSidebar() {
           </div>
           <StatBar value={player.usedCapacity} max={effectiveCapacity} color="#60a5fa" />
         </div>
+      </div>
+
+      <div className="p-3 space-y-2 border-b" style={{ borderColor: '#2a2a2a' }}>
+        <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Active Base</p>
+        {activeProperty ? (
+          <div className="rounded-lg p-2" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+            <p className="text-xs font-semibold" style={{ color: '#f8fafc' }}>{activeProperty.name}</p>
+            <p className="mt-1 text-[11px]" style={{ color: '#6b7280' }}>{getPropertyTierLabel(activeProperty.tier)} in {activeProperty.district.replace('_', ' ')}</p>
+            <p className="mt-2 text-[11px]" style={{ color: '#60a5fa' }}>Stash {getPropertyStoredWeight(activeProperty).toFixed(1)}/{activeProperty.storageCapacity} · Assembly {activeProperty.assemblyTier}</p>
+          </div>
+        ) : (
+          <p className="text-xs" style={{ color: '#374151' }}>No active base assigned.</p>
+        )}
       </div>
 
       {/* Equipment */}

@@ -84,6 +84,14 @@ describe('profileState', () => {
         neutrals: 0,
       },
       factionRewardHistory: [],
+      travel: {
+        status: 'idle',
+        origin: 'slums',
+        destination: null,
+      },
+      property: {
+        activePropertyId: 'starter-dumpster',
+      },
       guild: {
         membershipStatus: 'none',
         id: null,
@@ -360,6 +368,8 @@ describe('profileState', () => {
     expect(snapshot.missions[0]).toMatchObject({ sponsorFaction: 'gangs', rivalFaction: 'police' });
     expect(snapshot.factionStandings).toMatchObject({ gangs: 10, police: -3 });
     expect(snapshot.factionRewardHistory).toEqual([]);
+    expect(snapshot.travel.status).toBe('idle');
+    expect(snapshot.property.activePropertyId).toBe('starter-dumpster');
     expect(snapshot.guild.membershipStatus).toBe('none');
 
     expect(serializePersistedGameState(snapshot)).toMatchObject({

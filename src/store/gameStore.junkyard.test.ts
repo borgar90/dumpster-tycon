@@ -8,15 +8,58 @@ describe('junkyard storage actions', () => {
       ? { ...facility, status: 'active' as const }
       : facility
   ));
+  const withActiveJunkyardProperty = () => ({
+    activePropertyId: 'yard-1',
+    properties: [
+      {
+        id: 'yard-1',
+        name: 'Starter Yard',
+        district: 'slums' as const,
+        tier: 'junkyard' as const,
+        occupancyStatus: 'active' as const,
+        storageCapacity: 500,
+        assemblyTier: 3,
+        canDisassemble: true,
+        canRecycle: true,
+        employeeCapacity: 3,
+      },
+    ],
+  });
 
   beforeEach(() => {
     vi.useFakeTimers();
     useGameStore.setState(useGameStore.getInitialState(), true);
   });
 
+  it('blocks recycling while the active base is still a dumpster', () => {
+    useGameStore.setState((state) => ({
+      ...state,
+      inventory: [
+        {
+          id: 'wire-1',
+          name: 'Copper Wire',
+          icon: '🔌',
+          rarity: 'common',
+          quantity: 2,
+          weight: 0.5,
+          value: 15,
+          description: 'wire',
+        },
+      ],
+      notifications: [],
+    }));
+
+    useGameStore.getState().recycleItem('wire-1', 1);
+
+    const after = useGameStore.getState();
+    expect(after.junkyardJobs).toHaveLength(0);
+    expect(after.notifications.some((entry) => entry.message.includes('Junkyard operations are locked'))).toBe(true);
+  });
+
   it('queues recycling jobs instead of settling storage immediately', () => {
     useGameStore.setState((state) => ({
       ...state,
+      property: withActiveJunkyardProperty(),
       inventory: [
         {
           id: 'wire-1',
@@ -51,6 +94,7 @@ describe('junkyard storage actions', () => {
   it('unlocks storage bays with cash and stored materials', () => {
     useGameStore.setState((state) => ({
       ...state,
+      property: withActiveJunkyardProperty(),
       player: { ...state.player, cash: 5000 },
       junkyardStorage: createInitialJunkyardStorage().map((bin) => (
         bin.category === 'Metals'
@@ -77,6 +121,7 @@ describe('junkyard storage actions', () => {
 
     useGameStore.setState((state) => ({
       ...state,
+      property: withActiveJunkyardProperty(),
       player: { ...state.player, cash: 5000 },
       inventory: [
         {
@@ -122,6 +167,7 @@ describe('junkyard storage actions', () => {
   it('completes conveyor upgrades and opens an extra active job slot', () => {
     useGameStore.setState((state) => ({
       ...state,
+      property: withActiveJunkyardProperty(),
       player: { ...state.player, cash: 10000 },
       junkyardStorage: createInitialJunkyardStorage().map((bin) => ({ ...bin, storedValue: 600 })),
       junkyardFacilities: createInitialJunkyardFacilities(),
