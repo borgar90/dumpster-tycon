@@ -618,43 +618,44 @@ Auth QA matrix:
 #### 10.2 Public Transit
 - [x] Bus fare travel: cheap entry-level movement with very low trash capacity
 - [x] Train ticket travel: mid-game bulk passenger transport between major districts
-- [ ] Airport travel: unlock plane routes for long-distance / premium movement
+- [x] Airport travel: unlock plane routes for long-distance / premium movement
 - [x] Display fare costs before confirming travel
 - [x] Prevent travel if player cannot afford the fare
 
 #### 10.3 Vehicle Progression
 - [x] Add buildable / unlockable transport tiers: Scooter, Car, Truck, Lorry
-- [ ] Add advanced transport tiers: Helicopter, Plane, Cargo Plane, Train Freight Access
+- [x] Add advanced transport tiers: Helicopter, Plane, Cargo Plane, Train Freight Access
 - [x] Each vehicle defines: speed, cargo capacity, fuel / upkeep, unlock requirement
-- [ ] Gate higher-tier transport behind rank, cash, and resource requirements
+- [x] Gate higher-tier transport behind rank, cash, and resource requirements
 - [x] Show owned vs locked vehicles in a dedicated transport panel
 
 #### 10.4 Cargo & Capacity Rules
-- [ ] Travel method changes how much trash / loot can be carried during transit
-- [ ] Small transport = fast / cheap but limited inventory carry-over
-- [ ] Heavy transport = slower / expensive but large cargo movement
-- [ ] Add overweight restrictions when attempting to leave a district
-- [ ] Support moving junkyard materials, auction goods, vault items, and property stock where relevant
+- [x] Travel method changes how much trash / loot can be carried during transit
+- [x] Small transport = fast / cheap but limited inventory carry-over
+- [x] Heavy transport = slower / expensive but large cargo movement
+- [x] Add overweight restrictions when attempting to leave a district
+- [x] Support moving property stock between owned district bases during travel
+- [x] Support moving junkyard materials, auction goods, and vault items where relevant
 
 #### 10.5 Vehicle Building & Maintenance
-- [ ] Add vehicle construction recipes using recycled materials and cash
-- [ ] Add vehicle durability or maintenance cost for owned transport
-- [ ] Add repair / refuel / upkeep loop for mid- and late-game vehicles
-- [ ] Vehicle upgrades improve storage, speed, stealth, or travel efficiency
-- [ ] Travel failures / breakdown events can occur when maintenance is neglected
+- [x] Add vehicle construction recipes using recycled materials and cash
+- [x] Add vehicle durability or maintenance cost for owned transport
+- [x] Add repair / refuel / upkeep loop for mid- and late-game vehicles
+- [x] Vehicle upgrades improve storage, speed, stealth, or travel efficiency
+- [x] Travel failures / breakdown events can occur when maintenance is neglected
 
 #### 10.6 Route Gameplay
-- [ ] Districts have route modifiers: safe, risky, congested, premium
-- [ ] Heat and faction control can affect route safety or fare costs
-- [ ] Add chance-based travel events: inspections, breakdowns, shortcuts, ambushes
-- [ ] Guild territory and faction reputation can unlock safer or discounted routes
-- [ ] Cargo-heavy routes create better profit opportunities but more exposure to risk
+- [x] Districts have route modifiers: safe, risky, congested, premium
+- [x] Heat and faction control can affect route safety or fare costs
+- [x] Add chance-based travel events: inspections, breakdowns, shortcuts, ambushes
+- [x] Guild territory and faction reputation can unlock safer or discounted routes
+- [x] Cargo-heavy routes create better profit opportunities but more exposure to risk
 
 #### 10.7 Travel UX
 - [x] Add travel confirmation modal with cost, ETA, cargo limits, and risks
 - [x] Add transport selection UI on City / map surfaces
-- [ ] Show current vehicle bonus in player / logistics sidebar
-- [ ] Add notifications for departure, arrival, delays, and interruptions
+- [x] Show current vehicle bonus in player / logistics sidebar
+- [x] Add notifications for departure, arrival, delays, and interruptions
 - [x] Add tests covering fare travel, vehicle unlocks, and capacity restrictions
 
 ---

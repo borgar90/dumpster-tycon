@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useGameStore } from '@/store/gameStore';
-import { getActiveProperty, getCompletedUpgradeCount, getPlayerCoreStats, getPropertyStoredWeight, getPropertyTierLabel, getRankProgress, getRankTierLabel } from '@/store/gameStore';
+import { BUS_TRAVEL_CAPACITY, VEHICLE_TRAVEL_SPECS, getActiveProperty, getBuiltVehicleModes, getCompletedUpgradeCount, getPlayerCoreStats, getPropertyStoredWeight, getPropertyTierLabel, getRankProgress, getRankTierLabel, getVehicleUpgradeEffects } from '@/store/gameStore';
 import { motion } from 'framer-motion';
 
 const ENERGY_REGEN_INTERVAL_MS = 5 * 60 * 1000;
@@ -42,7 +42,7 @@ function StatBar({
 }) {
   const pct = Math.min((value / max) * 100, 100);
   return (
-    <div className="relative h-1.5 rounded-full w-full overflow-hidden" style={{ background: '#2a2a2a' }}>
+    <div className="relative h-1.5 rounded-full w-full overflow-hidden" style={{ background: '#d1d5db' }}>
       <motion.div
         className="h-full rounded-full"
         style={{ background: color, width: `${pct}%` }}
@@ -88,6 +88,8 @@ const EQUIPMENT_SLOTS: Array<{ slot: 'cart' | 'backpack' | 'flashlight' | 'glove
   { slot: 'gloves', label: 'Gloves', icon: '🧤' },
 ];
 
+const VEHICLE_MODE_ORDER: Array<keyof typeof VEHICLE_TRAVEL_SPECS> = ['scooter', 'car', 'truck', 'lorry'];
+
 export default function PlayerSidebar() {
   const { player, property, getEquippedItem, getEquipmentStats, upgradeTreeProgress } = useGameStore();
   const { data: session } = useSession();
@@ -98,6 +100,17 @@ export default function PlayerSidebar() {
   const completedUpgrades = getCompletedUpgradeCount(upgradeTreeProgress);
   const activeProperty = getActiveProperty(property);
   const coreStats = getPlayerCoreStats(player.rank);
+  const builtVehicleModes = getBuiltVehicleModes(player.ownedVehicles);
+  const currentVehicleMode = VEHICLE_MODE_ORDER
+    .slice()
+    .reverse()
+    .find((mode) => builtVehicleModes.includes(mode)) ?? null;
+  const currentVehicleSpec = currentVehicleMode ? VEHICLE_TRAVEL_SPECS[currentVehicleMode] : null;
+  const currentVehicle = currentVehicleMode ? player.ownedVehicles[currentVehicleMode] ?? null : null;
+  const currentVehicleUpgradeEffects = getVehicleUpgradeEffects(currentVehicle);
+  const currentVehicleCargoBonus = currentVehicleSpec
+    ? Math.max(0, currentVehicleSpec.cargoCapacity + currentVehicleUpgradeEffects.cargoBonus - BUS_TRAVEL_CAPACITY)
+    : 0;
   const energyFull = player.energy >= player.maxEnergy;
 
   useEffect(() => {
@@ -128,17 +141,17 @@ export default function PlayerSidebar() {
 
   return (
     <aside className="fixed left-0 top-14 bottom-0 w-52 flex flex-col overflow-y-auto z-40"
-      style={{ background: '#111', borderRight: '1px solid #39ff1420' }}>
+      style={{ background: '#ffffff', borderRight: '1px solid #0f766e20' }}>
 
       {/* Avatar & Name */}
-      <div className="p-4 border-b" style={{ borderColor: '#2a2a2a' }}>
+      <div className="p-4 border-b" style={{ borderColor: '#d1d5db' }}>
         <div className="flex flex-col items-center gap-2">
           <div className="w-16 h-16 rounded-full flex items-center justify-center text-3xl border-2"
-            style={{ borderColor: '#39ff1440', background: '#1a1a1a' }}>
+            style={{ borderColor: '#0f766e40', background: '#eef2f7' }}>
             {player.avatar}
           </div>
           <div className="text-center">
-            <p className="text-sm font-bold tracking-wide" style={{ color: '#39ff14' }}>
+            <p className="text-sm font-bold tracking-wide" style={{ color: '#0f766e' }}>
               {displayName}
             </p>
             <p className="text-xs" style={{ color: '#6b7280' }}>{getRankTierLabel(player.rank)} Tier (Lv. {player.rank})</p>
@@ -151,8 +164,8 @@ export default function PlayerSidebar() {
       </div>
 
       {/* Stats */}
-      <div className="p-3 space-y-3 border-b" style={{ borderColor: '#2a2a2a' }}>
-        <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Stats</p>
+      <div className="p-3 space-y-3 border-b" style={{ borderColor: '#d1d5db' }}>
+        <p className="text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>Stats</p>
 
         <div>
           <div className="flex justify-between text-xs mb-1">
@@ -163,13 +176,13 @@ export default function PlayerSidebar() {
         </div>
 
         <div className="grid grid-cols-2 gap-2 text-xs">
-          <div className="rounded px-2 py-2" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+          <div className="rounded px-2 py-2" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
             <p style={{ color: '#6b7280' }}>Strength</p>
-            <p className="mt-1 font-semibold" style={{ color: '#f8fafc' }}>{coreStats.strength}</p>
+            <p className="mt-1 font-semibold" style={{ color: '#0f172a' }}>{coreStats.strength}</p>
           </div>
-          <div className="rounded px-2 py-2" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+          <div className="rounded px-2 py-2" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
             <p style={{ color: '#6b7280' }}>Agility</p>
-            <p className="mt-1 font-semibold" style={{ color: '#f8fafc' }}>{coreStats.agility}</p>
+            <p className="mt-1 font-semibold" style={{ color: '#0f172a' }}>{coreStats.agility}</p>
           </div>
         </div>
 
@@ -228,38 +241,62 @@ export default function PlayerSidebar() {
         </div>
       </div>
 
-      <div className="p-3 space-y-2 border-b" style={{ borderColor: '#2a2a2a' }}>
-        <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Active Base</p>
+      <div className="p-3 space-y-2 border-b" style={{ borderColor: '#d1d5db' }}>
+        <p className="text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>Active Base</p>
         {activeProperty ? (
-          <div className="rounded-lg p-2" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
-            <p className="text-xs font-semibold" style={{ color: '#f8fafc' }}>{activeProperty.name}</p>
+          <div className="rounded-lg p-2" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
+            <p className="text-xs font-semibold" style={{ color: '#0f172a' }}>{activeProperty.name}</p>
             <p className="mt-1 text-[11px]" style={{ color: '#6b7280' }}>{getPropertyTierLabel(activeProperty.tier)} in {activeProperty.district.replace('_', ' ')}</p>
             <p className="mt-2 text-[11px]" style={{ color: '#60a5fa' }}>Stash {getPropertyStoredWeight(activeProperty).toFixed(1)}/{activeProperty.storageCapacity} · Assembly {activeProperty.assemblyTier}</p>
           </div>
         ) : (
-          <p className="text-xs" style={{ color: '#374151' }}>No active base assigned.</p>
+          <p className="text-xs" style={{ color: '#94a3b8' }}>No active base assigned.</p>
+        )}
+      </div>
+
+      <div className="p-3 space-y-2 border-b" style={{ borderColor: '#d1d5db' }}>
+        <p className="text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>Logistics</p>
+        {currentVehicleSpec ? (
+          <div className="rounded-lg p-2" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
+            <p className="text-xs font-semibold" style={{ color: '#0f172a' }}>
+              {currentVehicleSpec.icon} {currentVehicleSpec.label}
+            </p>
+            <p className="mt-1 text-[11px]" style={{ color: '#6b7280' }}>
+              Current vehicle bonus
+            </p>
+            <p className="mt-1 text-[11px]" style={{ color: '#60a5fa' }}>
+              +{currentVehicleCargoBonus} carry vs bus · Max haul {currentVehicleSpec.cargoCapacity + currentVehicleUpgradeEffects.cargoBonus}
+            </p>
+            {currentVehicle && (
+              <p className="mt-1 text-[11px]" style={{ color: '#6b7280' }}>
+                Fuel {Math.round(currentVehicle.fuel)}/{currentVehicle.maxFuel} · Durability {Math.round(currentVehicle.durability)}% · Maintenance {Math.round(currentVehicle.maintenance)}%
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="text-xs" style={{ color: '#94a3b8' }}>Build a fleet vehicle to activate transport bonuses.</p>
         )}
       </div>
 
       {/* Equipment */}
-      <div className="p-3 space-y-2 border-b" style={{ borderColor: '#2a2a2a' }}>
-        <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Equipment</p>
+      <div className="p-3 space-y-2 border-b" style={{ borderColor: '#d1d5db' }}>
+        <p className="text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>Equipment</p>
         {EQUIPMENT_SLOTS.map((slot) => {
           const equippedItem = getEquippedItem(slot.slot);
-          const rarityColor = equippedItem ? RARITY_COLORS[equippedItem.rarity] : '#2a2a2a';
+          const rarityColor = equippedItem ? RARITY_COLORS[equippedItem.rarity] : '#d1d5db';
 
           return (
             <motion.div key={slot.slot}
               className="flex items-center gap-2 px-2 py-1.5 rounded text-xs transition-all"
               style={{
-                border: `1px solid ${equippedItem ? rarityColor + '40' : '#2a2a2a'}`,
-                background: equippedItem ? rarityColor + '11' : '#0a0a0a',
+                border: `1px solid ${equippedItem ? rarityColor + '40' : '#d1d5db'}`,
+                background: equippedItem ? rarityColor + '11' : '#f8fafc',
               }}
               whileHover={{ scale: 1.02 }}>
               <span className="text-lg">{slot.icon}</span>
               <div className="overflow-hidden flex-1">
                 <p style={{ color: '#6b7280', fontSize: '10px' }}>{slot.label}</p>
-                <p className="truncate text-xs" style={{ color: equippedItem ? rarityColor : '#374151' }}>
+                <p className="truncate text-xs" style={{ color: equippedItem ? rarityColor : '#94a3b8' }}>
                   {equippedItem ? `${equippedItem.icon} ${equippedItem.name}` : 'Empty'}
                 </p>
               </div>
@@ -273,8 +310,8 @@ export default function PlayerSidebar() {
 
       {/* Bottom Info */}
       <div className="p-3 mt-auto text-center">
-        <p className="text-xs" style={{ color: '#374151' }}>v0.1.0 ALPHA</p>
-        <p className="text-xs animate-flicker" style={{ color: '#39ff1440' }}>
+        <p className="text-xs" style={{ color: '#94a3b8' }}>v0.1.0 ALPHA</p>
+        <p className="text-xs animate-flicker" style={{ color: '#0f766e40' }}>
           ▮ SYSTEM ONLINE
         </p>
       </div>

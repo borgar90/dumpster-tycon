@@ -514,6 +514,17 @@ describe('/api/profile route', () => {
             usedCapacity: 3,
             avatar: '🗑️',
             equipment: { cart: null, backpack: null, flashlight: null, gloves: null },
+            ownedVehicles: {
+              car: {
+                mode: 'car',
+                builtAt: 123456,
+                fuel: 110,
+                maxFuel: 130,
+                durability: 88,
+                maintenance: 74,
+                upgrades: ['cargo_rack'],
+              },
+            },
             lastScavengeTime: Date.now(),
             totalScavenged: 10,
           },
@@ -560,6 +571,11 @@ describe('/api/profile route', () => {
     expect(mocks.playerProfileUpdate).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
         settingsJson: expect.stringContaining('"factionStandings"'),
+      }),
+    }));
+    expect(mocks.playerProfileUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        settingsJson: expect.stringContaining('"ownedVehicles":{"car"'),
       }),
     }));
   });

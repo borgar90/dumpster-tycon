@@ -187,8 +187,8 @@ export default function SettingsPage() {
   if (isLoading) {
     return (
       <div className="p-6 max-w-4xl">
-        <div className="rounded-lg p-6" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-          <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Account Sync</p>
+        <div className="rounded-lg p-6" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+          <p className="text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>Account Sync</p>
           <p className="text-sm mt-2" style={{ color: '#9ca3af' }}>Loading account settings...</p>
         </div>
       </div>
@@ -198,7 +198,7 @@ export default function SettingsPage() {
   return (
     <div className="p-6 space-y-6 max-w-4xl">
       <div>
-        <h1 className="text-xl font-bold tracking-widest uppercase" style={{ color: '#39ff14' }}>Settings</h1>
+        <h1 className="text-xl font-bold tracking-widest uppercase" style={{ color: '#0f766e' }}>Settings</h1>
         <p className="text-xs mt-0.5" style={{ color: '#6b7280' }}>Manage your account, linked providers, and profile security.</p>
       </div>
 
@@ -215,19 +215,19 @@ export default function SettingsPage() {
       )}
 
       {previewUrl && (
-        <div className="rounded-lg p-3 text-sm" style={{ background: '#0f172a55', border: '1px solid #60a5fa40', color: '#bfdbfe' }}>
+        <div className="rounded-lg p-3 text-sm" style={{ background: '#f1f5f955', border: '1px solid #60a5fa40', color: '#bfdbfe' }}>
           Local preview link: <a href={previewUrl} className="underline underline-offset-4">{previewUrl}</a>
         </div>
       )}
 
       <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg p-5 space-y-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-          <h2 className="flex items-center gap-2 text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg p-5 space-y-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+          <h2 className="flex items-center gap-2 text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>
             <span>👤</span> Profile
           </h2>
 
           <div className="grid md:grid-cols-[96px_1fr] gap-4 items-start">
-            <div className="w-24 h-24 rounded-2xl flex items-center justify-center text-5xl" style={{ background: '#0a0a0a', border: '1px solid #2a2a2a' }}>
+            <div className="w-24 h-24 rounded-2xl flex items-center justify-center text-5xl" style={{ background: '#f8fafc', border: '1px solid #d1d5db' }}>
               {avatar || '🗑️'}
             </div>
 
@@ -235,50 +235,50 @@ export default function SettingsPage() {
               <div className="grid sm:grid-cols-2 gap-3">
                 <label className="text-xs uppercase tracking-wider" style={{ color: '#9ca3af' }}>
                   Display Name
-                  <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} className="mt-2 w-full rounded px-3 py-2 text-sm outline-none" style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#d1d5db' }} />
+                  <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} className="mt-2 w-full rounded px-3 py-2 text-sm outline-none" style={{ background: '#eef2f7', border: '1px solid #d1d5db', color: '#475569' }} />
                 </label>
                 <label className="text-xs uppercase tracking-wider" style={{ color: '#9ca3af' }}>
                   Avatar
-                  <input value={avatar} onChange={(event) => setAvatar(event.target.value)} maxLength={4} className="mt-2 w-full rounded px-3 py-2 text-sm outline-none" style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#d1d5db' }} />
+                  <input value={avatar} onChange={(event) => setAvatar(event.target.value)} maxLength={4} className="mt-2 w-full rounded px-3 py-2 text-sm outline-none" style={{ background: '#eef2f7', border: '1px solid #d1d5db', color: '#475569' }} />
                 </label>
               </div>
 
               <label className="text-xs uppercase tracking-wider block" style={{ color: '#9ca3af' }}>
                 Bio / Status
-                <textarea value={bio} onChange={(event) => setBio(event.target.value)} rows={4} maxLength={160} className="mt-2 w-full rounded px-3 py-2 text-sm outline-none resize-none" style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#d1d5db' }} />
+                <textarea value={bio} onChange={(event) => setBio(event.target.value)} rows={4} maxLength={160} className="mt-2 w-full rounded px-3 py-2 text-sm outline-none resize-none" style={{ background: '#eef2f7', border: '1px solid #d1d5db', color: '#475569' }} />
               </label>
             </div>
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-            <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+            <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
               <p style={{ color: '#6b7280' }}>Email</p>
-              <p className="mt-1" style={{ color: '#d1d5db' }}>{profile?.email || 'No email'}</p>
+              <p className="mt-1" style={{ color: '#475569' }}>{profile?.email || 'No email'}</p>
               <p className="mt-1 text-[11px] uppercase tracking-widest" style={{ color: profile?.emailVerified ? '#22c55e' : '#fbbf24' }}>
                 {profile?.emailVerified ? 'Verified' : 'Unverified'}
               </p>
             </div>
-            <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+            <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
               <p style={{ color: '#6b7280' }}>Username</p>
-              <p className="mt-1" style={{ color: '#39ff14' }}>{profile?.username}</p>
+              <p className="mt-1" style={{ color: '#0f766e' }}>{profile?.username}</p>
             </div>
-            <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+            <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
               <p style={{ color: '#6b7280' }}>Rank</p>
               <p className="mt-1" style={{ color: '#fbbf24' }}>Lv. {profile?.rank ?? 1}</p>
             </div>
-            <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+            <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
               <p style={{ color: '#6b7280' }}>Scavenged</p>
               <p className="mt-1" style={{ color: '#60a5fa' }}>${(profile?.totalScavenged ?? 0).toLocaleString()}</p>
             </div>
-            <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+            <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
               <p style={{ color: '#6b7280' }}>Items Found</p>
-              <p className="mt-1" style={{ color: '#d1d5db' }}>{(profile?.itemsFound ?? 0).toLocaleString()}</p>
+              <p className="mt-1" style={{ color: '#475569' }}>{(profile?.itemsFound ?? 0).toLocaleString()}</p>
             </div>
-            <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+            <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
               <p style={{ color: '#6b7280' }}>Districts Unlocked</p>
               <p className="mt-1" style={{ color: '#a78bfa' }}>{profile?.districtsUnlocked ?? 1}/6</p>
             </div>
-            <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+            <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
               <p style={{ color: '#6b7280' }}>Session Streak</p>
               <p className="mt-1" style={{ color: '#fb7185' }}>{profile?.sessionStreak ?? 1} day{(profile?.sessionStreak ?? 1) === 1 ? '' : 's'}</p>
             </div>
@@ -291,15 +291,15 @@ export default function SettingsPage() {
           </div>
 
           <div className="flex gap-3">
-            <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={saveProfile} disabled={isPending} className="px-6 py-2 rounded text-xs uppercase tracking-widest" style={{ background: '#39ff1415', border: '1px solid #39ff1440', color: '#39ff14', opacity: isPending ? 0.7 : 1 }}>
+            <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={saveProfile} disabled={isPending} className="px-6 py-2 rounded text-xs uppercase tracking-widest" style={{ background: '#0f766e15', border: '1px solid #0f766e40', color: '#0f766e', opacity: isPending ? 0.7 : 1 }}>
               Save Profile
             </motion.button>
           </div>
         </motion.div>
 
         <div className="space-y-6">
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg p-5 space-y-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-            <h2 className="flex items-center gap-2 text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg p-5 space-y-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+            <h2 className="flex items-center gap-2 text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>
               <span>🔗</span> Connected Providers
             </h2>
 
@@ -309,7 +309,7 @@ export default function SettingsPage() {
                 const accent = PROVIDER_ACCENTS[provider];
                 const providerAvailable = provider === 'credentials' ? true : profile?.availableProviders?.[provider] ?? false;
                 return (
-                  <div key={provider} className="rounded p-3 flex items-center justify-between gap-3" style={{ background: '#0a0a0a', border: `1px solid ${linked ? accent + '55' : '#1f2937'}` }}>
+                  <div key={provider} className="rounded p-3 flex items-center justify-between gap-3" style={{ background: '#f8fafc', border: `1px solid ${linked ? accent + '55' : '#cbd5e1'}` }}>
                     <div>
                       <p className="text-sm font-semibold" style={{ color: linked ? accent : '#d1d5db' }}>{PROVIDER_LABELS[provider]}</p>
                       <p className="text-xs" style={{ color: '#6b7280' }}>
@@ -341,8 +341,8 @@ export default function SettingsPage() {
             </div>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg p-5 space-y-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-            <h2 className="flex items-center gap-2 text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg p-5 space-y-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+            <h2 className="flex items-center gap-2 text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>
               <span>🔐</span> Password Access
             </h2>
 
@@ -363,20 +363,20 @@ export default function SettingsPage() {
                 : 'Add a password so this same account can be accessed with email + password as well as linked OAuth providers.'}
             </p>
 
-            <div className="rounded p-3 text-xs" style={{ background: '#0a0a0a', border: '1px solid #1f2937', color: '#9ca3af' }}>
+            <div className="rounded p-3 text-xs" style={{ background: '#f8fafc', border: '1px solid #cbd5e1', color: '#9ca3af' }}>
               Recovery rule: keep at least one verified email plus either a password or a second linked provider so a revoked OAuth connection does not lock the account.
             </div>
 
             {profile?.hasPassword && (
               <label className="block text-xs uppercase tracking-wider" style={{ color: '#9ca3af' }}>
                 Current Password
-                <input type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} className="mt-2 w-full rounded px-3 py-2 text-sm outline-none" style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#d1d5db' }} />
+                <input type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} className="mt-2 w-full rounded px-3 py-2 text-sm outline-none" style={{ background: '#eef2f7', border: '1px solid #d1d5db', color: '#475569' }} />
               </label>
             )}
 
             <label className="block text-xs uppercase tracking-wider" style={{ color: '#9ca3af' }}>
               {profile?.hasPassword ? 'New Password' : 'Create Password'}
-              <input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} className="mt-2 w-full rounded px-3 py-2 text-sm outline-none" style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#d1d5db' }} />
+              <input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} className="mt-2 w-full rounded px-3 py-2 text-sm outline-none" style={{ background: '#eef2f7', border: '1px solid #d1d5db', color: '#475569' }} />
             </label>
 
             <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={savePassword} disabled={isPending} className="px-6 py-2 rounded text-xs uppercase tracking-widest" style={{ background: '#fbbf2415', border: '1px solid #fbbf2440', color: '#fbbf24', opacity: isPending ? 0.7 : 1 }}>
@@ -388,8 +388,8 @@ export default function SettingsPage() {
             </motion.button>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg p-5 space-y-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-            <h2 className="flex items-center gap-2 text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-lg p-5 space-y-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+            <h2 className="flex items-center gap-2 text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>
               <span>📒</span> Trading History
             </h2>
 
@@ -398,8 +398,8 @@ export default function SettingsPage() {
                 <p className="text-xs uppercase tracking-widest" style={{ color: '#6b7280' }}>Active Listings</p>
                 <div className="mt-2 space-y-2 text-xs">
                   {activeAuctionListings.map((listing) => (
-                    <div key={listing.id} className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
-                      <p style={{ color: '#d1d5db' }}>{listing.icon} {listing.name}</p>
+                    <div key={listing.id} className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
+                      <p style={{ color: '#475569' }}>{listing.icon} {listing.name}</p>
                       <p className="mt-1" style={{ color: '#6b7280' }}>{listing.quantity}x at ${listing.price.toLocaleString()} each</p>
                     </div>
                   ))}
@@ -412,8 +412,8 @@ export default function SettingsPage() {
                 <p className="text-xs uppercase tracking-widest" style={{ color: '#6b7280' }}>Direct Escrow Offers</p>
                 <div className="mt-2 space-y-2 text-xs">
                   {activeDirectOffers.map((offer) => (
-                    <div key={offer.id} className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
-                      <p style={{ color: '#d1d5db' }}>{offer.itemIcon} {offer.itemName}</p>
+                    <div key={offer.id} className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
+                      <p style={{ color: '#475569' }}>{offer.itemIcon} {offer.itemName}</p>
                       <p className="mt-1" style={{ color: '#6b7280' }}>{offer.quantity}x to {offer.recipient} · {offer.status.replaceAll('_', ' ')} · ${ (offer.askingPrice * offer.quantity).toLocaleString() }</p>
                     </div>
                   ))}
@@ -425,14 +425,14 @@ export default function SettingsPage() {
               <p className="text-xs uppercase tracking-widest" style={{ color: '#6b7280' }}>Recent Trades</p>
               <div className="mt-2 space-y-2 text-xs">
                 {recentTradeHistory.length === 0 && (
-                  <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937', color: '#6b7280' }}>
+                  <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1', color: '#6b7280' }}>
                     No trade activity recorded yet.
                   </div>
                 )}
                 {recentTradeHistory.map((entry) => (
-                  <div key={entry.id} className="rounded p-3 flex items-start justify-between gap-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+                  <div key={entry.id} className="rounded p-3 flex items-start justify-between gap-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
                     <div>
-                      <p style={{ color: '#d1d5db' }}>{entry.itemIcon} {entry.itemName}</p>
+                      <p style={{ color: '#475569' }}>{entry.itemIcon} {entry.itemName}</p>
                       <p className="mt-1" style={{ color: '#6b7280' }}>{entry.type.replaceAll('_', ' ')} · {entry.quantity}x · {entry.counterparty}</p>
                     </div>
                     <div className="text-right">

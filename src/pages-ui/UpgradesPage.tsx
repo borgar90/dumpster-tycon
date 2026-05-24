@@ -112,29 +112,29 @@ export default function UpgradesPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-xl font-bold tracking-widest uppercase" style={{ color: '#39ff14' }}>Upgrades</h1>
+        <h1 className="text-xl font-bold tracking-widest uppercase" style={{ color: '#0f766e' }}>Upgrades</h1>
         <p className="text-xs mt-0.5" style={{ color: '#6b7280' }}>Store-backed progression trees now drive gear evolution, rank gating, and junkyard-funded upgrades.</p>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-          <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Rank Progress</p>
+        <div className="rounded-lg p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+          <p className="text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>Rank Progress</p>
           <p className="mt-2 text-lg font-bold" style={{ color: '#fbbf24' }}>{getRankTierLabel(player.rank)} · Lv. {player.rank}</p>
           <p className="text-xs mt-1" style={{ color: '#6b7280' }}>{player.totalScavenged.toLocaleString()} total value scavenged</p>
-          <div className="mt-3 h-2 rounded-full" style={{ background: '#1f2937' }}>
+          <div className="mt-3 h-2 rounded-full" style={{ background: '#cbd5e1' }}>
             <motion.div className="h-full rounded-full" style={{ background: 'linear-gradient(90deg, #f59e0b, #facc15)' }} initial={{ width: 0 }} animate={{ width: `${rankProgress.progress * 100}%` }} />
           </div>
           <p className="text-xs mt-2" style={{ color: '#9ca3af' }}>{rankProgress.nextRankRequirement - player.totalScavenged} value to Rank {player.rank + 1}</p>
         </div>
 
-        <div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-          <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Resources</p>
+        <div className="rounded-lg p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+          <p className="text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>Resources</p>
           <p className="mt-2 text-sm" style={{ color: '#22c55e' }}>Cash: ${player.cash.toLocaleString()}</p>
           <p className="mt-1 text-sm" style={{ color: '#fbbf24' }}>Junk Reserve: {totalJunkMaterials.toLocaleString()}</p>
           <p className="mt-1 text-sm" style={{ color: '#93c5fd' }}>Hours Played: {effectiveHoursPlayed.toFixed(1)}h</p>
-          <div className="mt-3 grid grid-cols-2 gap-2 text-xs" style={{ color: '#d1d5db' }}>
+          <div className="mt-3 grid grid-cols-2 gap-2 text-xs" style={{ color: '#475569' }}>
             {Object.entries(materialsByCategory).map(([category, value]) => (
-              <div key={category} className="rounded px-2 py-2" style={{ background: '#0f172a', border: '1px solid #1f2937' }}>
+              <div key={category} className="rounded px-2 py-2" style={{ background: '#f1f5f9', border: '1px solid #cbd5e1' }}>
                 <p style={{ color: '#6b7280' }}>{category}</p>
                 <p className="mt-1 font-bold">{value}</p>
               </div>
@@ -142,11 +142,11 @@ export default function UpgradesPage() {
           </div>
         </div>
 
-        <div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-          <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Achievements</p>
+        <div className="rounded-lg p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+          <p className="text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>Achievements</p>
           <div className="mt-3 space-y-2">
             {achievements.map((achievement) => (
-              <div key={achievement.id} className="rounded px-3 py-2" style={{ background: achievement.unlocked ? '#14532d30' : '#111827', border: `1px solid ${achievement.unlocked ? '#22c55e40' : '#1f2937'}` }}>
+              <div key={achievement.id} className="rounded px-3 py-2" style={{ background: achievement.unlocked ? '#14532d30' : '#f1f5f9', border: `1px solid ${achievement.unlocked ? '#22c55e40' : '#cbd5e1'}` }}>
                 <p className="text-xs font-bold" style={{ color: achievement.unlocked ? '#86efac' : '#9ca3af' }}>{achievement.label}</p>
                 <p className="text-xs mt-1" style={{ color: '#6b7280' }}>{achievement.detail}</p>
               </div>
@@ -165,11 +165,11 @@ export default function UpgradesPage() {
 
           return (
           <div key={treeId} className="rounded-lg p-4"
-            style={{ background: '#111', border: '1px solid #2a2a2a' }}>
+            style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
             <div className="flex items-start justify-between gap-4 mb-4">
               <div>
                 <h2 className="flex items-center gap-2 text-sm font-bold tracking-wide uppercase"
-                  style={{ color: '#d1d5db' }}>
+                  style={{ color: '#475569' }}>
                   <span>{treeMeta.icon}</span> {treeMeta.label}
                 </h2>
                 <p className="text-xs mt-1" style={{ color: '#6b7280' }}>{treeMeta.label} {Math.max(0, currentIndex + 1)}/{tree.length}</p>
@@ -179,7 +179,7 @@ export default function UpgradesPage() {
               </span>
             </div>
             <div className="relative">
-              <div className="absolute left-4 top-4 bottom-4 w-px" style={{ background: '#2a2a2a' }} />
+              <div className="absolute left-4 top-4 bottom-4 w-px" style={{ background: '#d1d5db' }} />
               <div className="space-y-3">
                 {tree.map((node, i) => {
                   const isCompleted = i <= currentIndex;
@@ -201,15 +201,15 @@ export default function UpgradesPage() {
                     onMouseLeave={() => setHoveredNodeId((current) => current === node.id ? null : current)}>
                     <div className="absolute left-2.5 top-3 w-3 h-3 rounded-full border-2 z-10"
                       style={{
-                        borderColor: isCompleted || isUpgradeable ? treeMeta.accent : '#2a2a2a',
-                        background: isCompleted ? treeMeta.accent : '#111',
+                        borderColor: isCompleted || isUpgradeable ? treeMeta.accent : '#d1d5db',
+                        background: isCompleted ? treeMeta.accent : '#ffffff',
                         boxShadow: isUpgradeable ? `0 0 16px ${treeMeta.accent}60` : 'none',
                       }} />
                     <div className="flex-1 p-3 rounded transition-all"
                       onFocus={() => setHoveredNodeId(node.id)}
                       onBlur={() => setHoveredNodeId((current) => current === node.id ? null : current)}
                       style={{
-                        background: isCompleted ? treeMeta.accent + '10' : isAvailable ? '#171717' : '#141414',
+                        background: isCompleted ? treeMeta.accent + '10' : isAvailable ? '#171717' : '#eef2f7',
                         border: `1px solid ${isCompleted || isUpgradeable ? treeMeta.accent + '40' : '#1f1f1f'}`,
                         opacity: isCompleted || isAvailable ? 1 : 0.6,
                       }}>
@@ -218,7 +218,7 @@ export default function UpgradesPage() {
                           <p className="text-xs font-bold" style={{ color: isCompleted || isAvailable ? '#d1d5db' : '#6b7280' }}>
                             {node.icon} {node.name}
                           </p>
-                          <p className="text-xs mt-0.5" style={{ color: '#374151' }}>{node.bonusLabel}</p>
+                          <p className="text-xs mt-0.5" style={{ color: '#94a3b8' }}>{node.bonusLabel}</p>
                           <p className="text-xs mt-1" style={{ color: '#6b7280' }}>{node.description}</p>
                           <p className="text-xs mt-2" style={{ color: '#9ca3af' }}>Rank {node.rankRequired} · {node.hoursPlayedRequired}h played · from ${cheapestOption.cashCost.toLocaleString()}</p>
                           <p className="text-xs mt-1" style={{ color: '#6b7280' }}>{node.costOptions.length} route{node.costOptions.length > 1 ? 's' : ''} · {cheapestOption.junkCost} junk · {formatMaterialCosts(cheapestOption)}</p>
@@ -236,7 +236,7 @@ export default function UpgradesPage() {
                               setHoveredNodeId(null);
                             }}
                             className="text-xs px-3 py-1 rounded"
-                            style={{ background: isUpgradeable ? treeMeta.accent + '15' : '#111827', border: `1px solid ${isUpgradeable ? treeMeta.accent + '40' : '#374151'}`, color: isUpgradeable ? treeMeta.accent : '#9ca3af' }}>
+                            style={{ background: isUpgradeable ? treeMeta.accent + '15' : '#f1f5f9', border: `1px solid ${isUpgradeable ? treeMeta.accent + '40' : '#94a3b8'}`, color: isUpgradeable ? treeMeta.accent : '#9ca3af' }}>
                             {isAvailable ? 'Review' : 'Locked'}
                           </motion.button>
                         )}
@@ -246,7 +246,7 @@ export default function UpgradesPage() {
                           initial={{ opacity: 0, y: 4 }}
                           animate={{ opacity: 1, y: 0 }}
                           className="mt-3 rounded-lg px-3 py-3 text-xs"
-                          style={{ background: '#020617', border: `1px solid ${treeMeta.accent}35`, color: '#d1d5db' }}>
+                          style={{ background: '#020617', border: `1px solid ${treeMeta.accent}35`, color: '#475569' }}>
                           <p className="uppercase tracking-widest" style={{ color: treeMeta.accent }}>Upgrade Intel</p>
                           <p className="mt-2" style={{ color: '#9ca3af' }}>Cost breakdown: ${cheapestOption.cashCost.toLocaleString()} · {cheapestOption.junkCost} junk · {formatMaterialCosts(cheapestOption)}</p>
                           <p className="mt-1" style={{ color: '#9ca3af' }}>Stat delta: {node.bonusLabel}</p>
@@ -263,11 +263,11 @@ export default function UpgradesPage() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1.2fr,0.8fr] gap-6">
-        <div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-          <h2 className="text-xs uppercase tracking-widest mb-3" style={{ color: '#39ff1480' }}>Progression Leaderboard</h2>
+        <div className="rounded-lg p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+          <h2 className="text-xs uppercase tracking-widest mb-3" style={{ color: '#0f766e99' }}>Progression Leaderboard</h2>
           <div className="space-y-2">
             {leaderboard.map((entry) => (
-              <div key={entry.name} className="flex items-center justify-between rounded px-3 py-2" style={{ background: entry.isPlayer ? '#14532d30' : '#0f172a', border: `1px solid ${entry.isPlayer ? '#22c55e40' : '#1f2937'}` }}>
+              <div key={entry.name} className="flex items-center justify-between rounded px-3 py-2" style={{ background: entry.isPlayer ? '#14532d30' : '#f1f5f9', border: `1px solid ${entry.isPlayer ? '#22c55e40' : '#cbd5e1'}` }}>
                 <div>
                   <p className="text-sm font-bold" style={{ color: entry.isPlayer ? '#86efac' : '#d1d5db' }}>#{entry.placement} {entry.name}</p>
                   <p className="text-xs mt-1" style={{ color: '#6b7280' }}>Lv. {entry.rank} · {entry.scavenged.toLocaleString()} scavenged · {entry.upgrades} upgrades</p>
@@ -278,18 +278,18 @@ export default function UpgradesPage() {
           </div>
         </div>
 
-        <div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-          <h2 className="text-xs uppercase tracking-widest mb-3" style={{ color: '#39ff1480' }}>Progress Summary</h2>
-          <div className="space-y-3 text-sm" style={{ color: '#d1d5db' }}>
-            <div className="rounded px-3 py-3" style={{ background: '#0f172a', border: '1px solid #1f2937' }}>
+        <div className="rounded-lg p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+          <h2 className="text-xs uppercase tracking-widest mb-3" style={{ color: '#0f766e99' }}>Progress Summary</h2>
+          <div className="space-y-3 text-sm" style={{ color: '#475569' }}>
+            <div className="rounded px-3 py-3" style={{ background: '#f1f5f9', border: '1px solid #cbd5e1' }}>
               <p style={{ color: '#6b7280' }}>Completed upgrades</p>
               <p className="mt-1 font-bold" style={{ color: '#fbbf24' }}>{completedUpgrades}</p>
             </div>
-            <div className="rounded px-3 py-3" style={{ background: '#0f172a', border: '1px solid #1f2937' }}>
+            <div className="rounded px-3 py-3" style={{ background: '#f1f5f9', border: '1px solid #cbd5e1' }}>
               <p style={{ color: '#6b7280' }}>Junkyard jobs cleared</p>
               <p className="mt-1 font-bold">{junkyardStats.lifetimeJobsCompleted}</p>
             </div>
-            <div className="rounded px-3 py-3" style={{ background: '#0f172a', border: '1px solid #1f2937' }}>
+            <div className="rounded px-3 py-3" style={{ background: '#f1f5f9', border: '1px solid #cbd5e1' }}>
               <p style={{ color: '#6b7280' }}>Active facilities</p>
               <p className="mt-1 font-bold">{activeFacilityCount}</p>
             </div>
@@ -313,39 +313,39 @@ export default function UpgradesPage() {
         const canConfirm = isSequentiallyUnlocked && player.rank >= selectedNode.rankRequired && effectiveHoursPlayed >= selectedCostOption.hoursPlayedRequired && hasResources;
 
         return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: '#000000aa' }}>
-          <div className="w-full max-w-lg rounded-2xl p-5" style={{ background: '#111', border: '1px solid #39ff1430' }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: '#f1f5f91a' }}>
+          <div className="w-full max-w-lg rounded-2xl p-5" style={{ background: '#ffffff', border: '1px solid #0f766e33' }}>
             <p className="text-sm font-bold" style={{ color: '#fcd34d' }}>Confirm Upgrade</p>
-            <p className="mt-2 text-lg font-bold" style={{ color: '#d1d5db' }}>{selectedNode.icon} {selectedNode.name}</p>
+            <p className="mt-2 text-lg font-bold" style={{ color: '#475569' }}>{selectedNode.icon} {selectedNode.name}</p>
             <p className="text-sm mt-2" style={{ color: '#9ca3af' }}>{selectedNode.description}</p>
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-              <div className="rounded px-3 py-2" style={{ background: '#0f172a', border: '1px solid #1f2937' }}>
+              <div className="rounded px-3 py-2" style={{ background: '#f1f5f9', border: '1px solid #cbd5e1' }}>
                 <p style={{ color: '#6b7280' }}>Cash</p>
                 <p className="mt-1 font-bold" style={{ color: '#22c55e' }}>${selectedCostOption.cashCost.toLocaleString()}</p>
               </div>
-              <div className="rounded px-3 py-2" style={{ background: '#0f172a', border: '1px solid #1f2937' }}>
+              <div className="rounded px-3 py-2" style={{ background: '#f1f5f9', border: '1px solid #cbd5e1' }}>
                 <p style={{ color: '#6b7280' }}>Junk + Materials</p>
                 <p className="mt-1 font-bold">{selectedCostOption.junkCost} junk · {formatMaterialCosts(selectedCostOption)}</p>
               </div>
-              <div className="rounded px-3 py-2" style={{ background: '#0f172a', border: '1px solid #1f2937' }}>
+              <div className="rounded px-3 py-2" style={{ background: '#f1f5f9', border: '1px solid #cbd5e1' }}>
                 <p style={{ color: '#6b7280' }}>Gate</p>
                 <p className="mt-1 font-bold">Rank {selectedNode.rankRequired} · {selectedCostOption.hoursPlayedRequired}h played</p>
               </div>
             </div>
             <div className="mt-4 space-y-2">
-              <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Cost Routes</p>
+              <p className="text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>Cost Routes</p>
               {selectedNode.costOptions.map((option) => {
                 const active = option.id === selectedCostOption.id;
                 const optionReady = effectiveHoursPlayed >= option.hoursPlayedRequired && player.cash >= option.cashCost && totalJunkMaterials >= option.junkCost && canCoverMaterialCosts(materialsByCategory, option);
                 return (
-                  <button key={option.id} type="button" onClick={() => setSelectedCostOptionId(option.id)} className="w-full text-left rounded px-3 py-3" style={{ background: active ? '#14532d30' : '#0f172a', border: `1px solid ${active ? '#22c55e40' : '#1f2937'}`, color: '#d1d5db' }}>
+                  <button key={option.id} type="button" onClick={() => setSelectedCostOptionId(option.id)} className="w-full text-left rounded px-3 py-3" style={{ background: active ? '#14532d30' : '#f1f5f9', border: `1px solid ${active ? '#22c55e40' : '#cbd5e1'}`, color: '#475569' }}>
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-bold" style={{ color: active ? '#86efac' : '#d1d5db' }}>{option.label}</p>
                         <p className="text-xs mt-1" style={{ color: '#6b7280' }}>{option.note}</p>
                         <p className="text-xs mt-2" style={{ color: '#9ca3af' }}>${option.cashCost.toLocaleString()} · {option.junkCost} junk · {formatMaterialCosts(option)} · {option.hoursPlayedRequired}h</p>
                       </div>
-                      <span className="text-xs px-2 py-1 rounded" style={{ background: optionReady ? '#14532d40' : '#111827', border: `1px solid ${optionReady ? '#22c55e40' : '#374151'}`, color: optionReady ? '#86efac' : '#9ca3af' }}>
+                      <span className="text-xs px-2 py-1 rounded" style={{ background: optionReady ? '#14532d40' : '#f1f5f9', border: `1px solid ${optionReady ? '#22c55e40' : '#94a3b8'}`, color: optionReady ? '#86efac' : '#9ca3af' }}>
                         {optionReady ? 'Ready' : 'Locked'}
                       </span>
                     </div>
@@ -353,7 +353,7 @@ export default function UpgradesPage() {
                 );
               })}
             </div>
-            <div className="mt-4 rounded px-3 py-3 text-sm" style={{ background: '#0f172a', border: '1px solid #1f2937', color: '#d1d5db' }}>
+            <div className="mt-4 rounded px-3 py-3 text-sm" style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#475569' }}>
               <p style={{ color: '#6b7280' }}>Bonus</p>
               <p className="mt-1 font-bold">{selectedNode.bonusLabel}</p>
             </div>
@@ -363,14 +363,14 @@ export default function UpgradesPage() {
               </p>
             )}
             <div className="mt-5 flex justify-end gap-3">
-              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setSelectedNodeId(null)} className="px-4 py-2 rounded text-sm" style={{ background: '#111827', border: '1px solid #374151', color: '#d1d5db' }}>
+              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setSelectedNodeId(null)} className="px-4 py-2 rounded text-sm" style={{ background: '#f1f5f9', border: '1px solid #94a3b8', color: '#475569' }}>
                 Cancel
               </motion.button>
               <motion.button whileHover={{ scale: canConfirm ? 1.02 : 1 }} whileTap={{ scale: canConfirm ? 0.98 : 1 }} disabled={!canConfirm} onClick={() => {
                 setSelectedNodeId(null);
                 setSelectedCostOptionId(null);
                 setInstallingUpgrade({ nodeId: selectedNode.id, nodeName: selectedNode.name, optionId: selectedCostOption.id });
-              }} className="px-4 py-2 rounded text-sm" style={{ background: canConfirm ? '#14532d' : '#111827', border: `1px solid ${canConfirm ? '#22c55e40' : '#374151'}`, color: canConfirm ? '#86efac' : '#6b7280' }}>
+              }} className="px-4 py-2 rounded text-sm" style={{ background: canConfirm ? '#14532d' : '#f1f5f9', border: `1px solid ${canConfirm ? '#22c55e40' : '#94a3b8'}`, color: canConfirm ? '#86efac' : '#6b7280' }}>
                 Install Upgrade
               </motion.button>
             </div>
@@ -379,13 +379,13 @@ export default function UpgradesPage() {
       );})()}
 
       {installingUpgrade && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center px-4" style={{ background: '#000000cc' }}>
-          <div className="w-full max-w-md rounded-2xl p-6 text-center" style={{ background: '#111', border: '1px solid #39ff1430' }}>
-            <p className="text-xs uppercase tracking-[0.3em]" style={{ color: '#39ff1480' }}>Installing Upgrade</p>
-            <p className="mt-3 text-lg font-bold" style={{ color: '#d1d5db' }}>{installingUpgrade.nodeName}</p>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center px-4" style={{ background: '#f1f5f922' }}>
+          <div className="w-full max-w-md rounded-2xl p-6 text-center" style={{ background: '#ffffff', border: '1px solid #0f766e33' }}>
+            <p className="text-xs uppercase tracking-[0.3em]" style={{ color: '#0f766e99' }}>Installing Upgrade</p>
+            <p className="mt-3 text-lg font-bold" style={{ color: '#475569' }}>{installingUpgrade.nodeName}</p>
             <p className="mt-2 text-sm" style={{ color: '#9ca3af' }}>Calibrating scrap route, locking slot fit, and syncing the new rig.</p>
-            <div className="mt-5 h-2 rounded-full overflow-hidden" style={{ background: '#1f2937' }}>
-              <motion.div initial={{ width: '0%' }} animate={{ width: '100%' }} transition={{ duration: 1.1, ease: 'easeOut' }} className="h-full rounded-full" style={{ background: 'linear-gradient(90deg, #39ff14, #fbbf24)' }} />
+            <div className="mt-5 h-2 rounded-full overflow-hidden" style={{ background: '#cbd5e1' }}>
+              <motion.div initial={{ width: '0%' }} animate={{ width: '100%' }} transition={{ duration: 1.1, ease: 'easeOut' }} className="h-full rounded-full" style={{ background: 'linear-gradient(90deg, #0f766e, #fbbf24)' }} />
             </div>
           </div>
         </div>
@@ -398,7 +398,7 @@ export default function UpgradesPage() {
             const angle = (Math.PI * 2 * index) / 18;
             const x = Math.cos(angle) * 180;
             const y = Math.sin(angle) * 120;
-            const color = ['#39ff14', '#fbbf24', '#38bdf8', '#f97316'][index % 4];
+            const color = ['#0f766e', '#fbbf24', '#38bdf8', '#f97316'][index % 4];
             return (
               <motion.div
                 key={`confetti-${index}`}
@@ -410,9 +410,9 @@ export default function UpgradesPage() {
               />
             );
           })}
-          <motion.div initial={{ opacity: 0, scale: 0.92, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.3 }} className="relative rounded-2xl px-6 py-5 text-center" style={{ background: '#111', border: '1px solid #22c55e40' }}>
+          <motion.div initial={{ opacity: 0, scale: 0.92, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.3 }} className="relative rounded-2xl px-6 py-5 text-center" style={{ background: '#ffffff', border: '1px solid #22c55e40' }}>
             <p className="text-xs uppercase tracking-[0.3em]" style={{ color: '#22c55e99' }}>Upgrade Installed</p>
-            <p className="mt-3 text-lg font-bold" style={{ color: '#d1d5db' }}>{celebration.nodeName}</p>
+            <p className="mt-3 text-lg font-bold" style={{ color: '#475569' }}>{celebration.nodeName}</p>
             <p className="mt-2 text-sm" style={{ color: '#86efac' }}>Rig locked in. Slot bonuses are live.</p>
           </motion.div>
         </div>

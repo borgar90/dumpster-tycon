@@ -8,7 +8,7 @@ const TYPE_STYLES = {
   success: { border: '#22c55e', icon: '✓', color: '#22c55e' },
   warning: { border: '#f59e0b', icon: '⚠', color: '#f59e0b' },
   error:   { border: '#ef4444', icon: '✗', color: '#ef4444' },
-  info:    { border: '#39ff14', icon: 'ℹ', color: '#39ff14' },
+  info:    { border: '#0f766e', icon: 'ℹ', color: '#0f766e' },
 };
 
 export default function NotificationToasts() {
@@ -28,10 +28,10 @@ export default function NotificationToasts() {
               transition={{ type: 'spring', stiffness: 300, damping: 25 }}
               className="pointer-events-auto flex items-center gap-3 px-4 py-3 rounded text-sm max-w-xs"
               style={{
-                background: '#141414',
+                background: '#eef2f7',
                 border: `1px solid ${s.border}44`,
                 boxShadow: `0 0 12px ${s.border}22`,
-                color: '#d4d4d4',
+                color: '#1f2937',
                 fontFamily: 'monospace',
               }}>
               <span style={{ color: s.color, fontWeight: 'bold' }}>{s.icon}</span>

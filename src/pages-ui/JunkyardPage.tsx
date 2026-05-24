@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 
-import { DUMPSTER_ASSEMBLY_RECIPES, getActiveProperty, getAvailableAssemblyRecipes, getBreakdownComponentYield, getPropertyStorageUpgradeCost, getPropertyStoredWeight, getPropertyTierLabel, hasJunkyardAccess, useGameStore } from '@/store/gameStore';
+import { DUMPSTER_ASSEMBLY_RECIPES, SHACK_ASSEMBLY_RECIPES, getActiveProperty, getAvailableAssemblyRecipes, getBreakdownComponentYield, getPropertyStorageUpgradeCost, getPropertyStoredWeight, getPropertyTierLabel, hasJunkyardAccess, useGameStore } from '@/store/gameStore';
 
 const LEGACY_ITEM_TEMPLATE_IDS: Partial<Record<string, string[]>> = {
   c1: ['1'],
@@ -39,7 +39,7 @@ function canBreakDownStoredItem(item: ReturnType<typeof useGameStore.getState>['
 
 function ProgressBar({ value, max, color }: { value: number; max: number; color: string }) {
   return (
-    <div className="h-2 rounded-full w-full" style={{ background: '#2a2a2a' }}>
+    <div className="h-2 rounded-full w-full" style={{ background: '#d1d5db' }}>
       <motion.div className="h-full rounded-full"
         style={{ background: color }}
         initial={{ width: 0 }}
@@ -86,20 +86,20 @@ function BaseOperationsPanel({
 
   if (!activeProperty) {
     return (
-      <div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-        <p className="text-xs uppercase tracking-widest mb-2" style={{ color: '#39ff1480' }}>Base Operations</p>
-        <p className="text-xs" style={{ color: '#374151' }}>No active base available.</p>
+      <div className="rounded-lg p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+        <p className="text-xs uppercase tracking-widest mb-2" style={{ color: '#0f766e99' }}>Base Operations</p>
+        <p className="text-xs" style={{ color: '#94a3b8' }}>No active base available.</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
+      <div className="rounded-lg p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Base Stash</p>
-            <p className="mt-2 text-lg font-semibold" style={{ color: '#f8fafc' }}>{activeProperty.name}</p>
+            <p className="text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>Base Stash</p>
+            <p className="mt-2 text-lg font-semibold" style={{ color: '#0f172a' }}>{activeProperty.name}</p>
             <p className="mt-1 text-xs" style={{ color: '#6b7280' }}>{getPropertyTierLabel(activeProperty.tier)} · {stashWeight.toFixed(1)}/{activeProperty.storageCapacity} kg stored</p>
             <p className="mt-1 text-xs" style={{ color: '#60a5fa' }}>
               Assembly {activeProperty.assemblyTier} · {activeProperty.canRecycle
@@ -147,12 +147,12 @@ function BaseOperationsPanel({
               }}
               className="w-full rounded p-2 text-left"
               style={{
-                background: selectedStoredItem?.id === item.id ? '#111827' : '#0a0a0a',
-                border: `1px solid ${selectedStoredItem?.id === item.id ? '#60a5fa55' : '#1f2937'}`,
+                background: selectedStoredItem?.id === item.id ? '#f1f5f9' : '#f8fafc',
+                border: `1px solid ${selectedStoredItem?.id === item.id ? '#60a5fa55' : '#cbd5e1'}`,
               }}>
               <div className="flex items-center justify-between gap-2">
                 <div className="overflow-hidden">
-                  <p className="text-xs truncate" style={{ color: '#d1d5db' }}>{item.icon} {item.name}</p>
+                  <p className="text-xs truncate" style={{ color: '#475569' }}>{item.icon} {item.name}</p>
                   <p className="text-[11px]" style={{ color: '#6b7280' }}>x{item.quantity} · {(item.weight * item.quantity).toFixed(1)} kg</p>
                 </div>
                 <div className="flex gap-1">
@@ -188,22 +188,22 @@ function BaseOperationsPanel({
                         onRetrieve(item.id, item.quantity);
                       }}
                     className="px-2 py-1 rounded text-[10px] uppercase"
-                    style={{ background: '#39ff1415', border: '1px solid #39ff1440', color: '#86efac' }}>
+                    style={{ background: '#0f766e15', border: '1px solid #0f766e40', color: '#86efac' }}>
                     All
                   </button>
                 </div>
               </div>
               </div>
           )) : (
-            <p className="text-xs" style={{ color: '#374151' }}>No items stored at this base yet.</p>
+            <p className="text-xs" style={{ color: '#94a3b8' }}>No items stored at this base yet.</p>
           )}
         </div>
           {selectedStoredItem && (
-            <div className="mt-3 rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+            <div className="mt-3 rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[11px] uppercase tracking-widest" style={{ color: '#60a5fa' }}>Selected Stash Item</p>
-                  <p className="mt-1 text-sm font-semibold" style={{ color: '#f8fafc' }}>{selectedStoredItem.icon} {selectedStoredItem.name}</p>
+                  <p className="mt-1 text-sm font-semibold" style={{ color: '#0f172a' }}>{selectedStoredItem.icon} {selectedStoredItem.name}</p>
                   <p className="mt-1 text-[11px]" style={{ color: '#6b7280' }}>x{selectedStoredItem.quantity} · {selectedStoredItem.rarity} · {(selectedStoredItem.weight * selectedStoredItem.quantity).toFixed(1)} kg</p>
                   <p className="mt-2 text-[11px]" style={{ color: '#9ca3af' }}>{selectedStoredItem.description}</p>
                 </div>
@@ -225,7 +225,7 @@ function BaseOperationsPanel({
                   <button
                     onClick={() => onRetrieve(selectedStoredItem.id, selectedStoredItem.quantity)}
                     className="px-3 py-2 rounded text-[11px] uppercase tracking-widest"
-                    style={{ background: '#39ff1415', border: '1px solid #39ff1440', color: '#86efac' }}>
+                    style={{ background: '#0f766e15', border: '1px solid #0f766e40', color: '#86efac' }}>
                     Take All Back
                   </button>
                 </div>
@@ -234,8 +234,8 @@ function BaseOperationsPanel({
           )}
       </div>
 
-      <div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-        <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#39ff1480' }}>{activeProperty.tier === 'dumpster' ? 'Dumpster Builds' : activeProperty.assemblyTier >= 1 ? 'Base Workbench' : 'Workbench Locked'}</p>
+      <div className="rounded-lg p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+        <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#0f766e99' }}>{activeProperty.tier === 'dumpster' ? 'Dumpster Builds' : activeProperty.assemblyTier >= 1 ? 'Base Workbench' : 'Workbench Locked'}</p>
         <div className="space-y-2">
           {activeProperty.tier === 'dumpster' ? DUMPSTER_ASSEMBLY_RECIPES.map((recipe) => {
             const missingIngredients = recipe.ingredients.filter((ingredient) => getCombinedIngredientQuantity(inventory, activeProperty.storedItems, ingredient.itemId) < ingredient.quantity);
@@ -247,10 +247,10 @@ function BaseOperationsPanel({
             const canCraftRecipe = !isInstalled && missingIngredients.length === 0;
 
             return (
-              <div key={recipe.id} className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+              <div key={recipe.id} className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="text-xs font-semibold" style={{ color: '#f8fafc' }}>{recipe.icon} {recipe.name}</p>
+                    <p className="text-xs font-semibold" style={{ color: '#0f172a' }}>{recipe.icon} {recipe.name}</p>
                     <p className="mt-1 text-[11px]" style={{ color: '#6b7280' }}>{recipe.description}</p>
                     <div className="mt-2 flex flex-wrap gap-1">
                       {recipe.ingredients.map((ingredient) => {
@@ -262,8 +262,8 @@ function BaseOperationsPanel({
                             key={ingredient.itemId}
                             className="rounded px-2 py-1 text-[10px]"
                             style={{
-                              background: ingredientReady ? '#39ff1412' : '#11182766',
-                              border: `1px solid ${ingredientReady ? '#39ff1440' : '#374151'}`,
+                              background: ingredientReady ? '#0f766e12' : '#f1f5f966',
+                              border: `1px solid ${ingredientReady ? '#0f766e40' : '#94a3b8'}`,
                               color: ingredientReady ? '#86efac' : '#9ca3af',
                             }}>
                             {ingredient.icon} {ingredient.itemName} {ownedQuantity}/{ingredient.quantity}
@@ -296,10 +296,10 @@ function BaseOperationsPanel({
             const canCraftRecipe = maxBatches > 0;
 
             return (
-              <div key={recipe.id} className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+              <div key={recipe.id} className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="text-xs font-semibold" style={{ color: '#f8fafc' }}>{recipe.icon} {recipe.name}</p>
+                    <p className="text-xs font-semibold" style={{ color: '#0f172a' }}>{recipe.icon} {recipe.name}</p>
                     <p className="mt-1 text-[11px]" style={{ color: '#6b7280' }}>{recipe.description}</p>
                     <p className="mt-2 text-[11px]" style={{ color: '#5eead4' }}>{recipe.componentCost} components per batch · Available {maxBatches}</p>
                   </div>
@@ -320,18 +320,18 @@ function BaseOperationsPanel({
       </div>
 
       {activeProperty.tier === 'dumpster' && activeProperty.assemblyTier >= 1 && (
-        <div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-          <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#39ff1480' }}>Bench Crafts</p>
+        <div className="rounded-lg p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+          <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#0f766e99' }}>Bench Crafts</p>
           <div className="space-y-2">
             {availableAssemblyRecipes.map((recipe) => {
               const maxBatches = Math.floor(componentQuantity / recipe.componentCost);
               const canCraftRecipe = maxBatches > 0;
 
               return (
-                <div key={recipe.id} className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+                <div key={recipe.id} className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <p className="text-xs font-semibold" style={{ color: '#f8fafc' }}>{recipe.icon} {recipe.name}</p>
+                      <p className="text-xs font-semibold" style={{ color: '#0f172a' }}>{recipe.icon} {recipe.name}</p>
                       <p className="mt-1 text-[11px]" style={{ color: '#6b7280' }}>{recipe.description}</p>
                       <p className="mt-2 text-[11px]" style={{ color: '#5eead4' }}>Tier {recipe.requiredAssemblyTier} · {recipe.componentCost} components per batch · Available {maxBatches}</p>
                     </div>
@@ -467,32 +467,37 @@ export default function JunkyardPage() {
     return (
       <div className="p-6 space-y-6">
         <div>
-          <h1 className="text-xl font-bold tracking-widest uppercase" style={{ color: '#39ff14' }}>Base</h1>
+          <h1 className="text-xl font-bold tracking-widest uppercase" style={{ color: '#0f766e' }}>Base</h1>
           <p className="text-xs mt-0.5" style={{ color: '#6b7280' }}>Manage your stash, install early workbench gear, and grow toward full junkyard operations.</p>
         </div>
 
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-          <div className="rounded-lg p-5" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-            <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Active Base</p>
-            <h2 className="mt-3 text-2xl font-semibold" style={{ color: '#f8fafc' }}>{activeProperty.name}</h2>
-            <p className="mt-2 text-sm" style={{ color: '#d1d5db' }}>{getPropertyTierLabel(activeProperty.tier)} in {activeProperty.district === 'rich_hills' ? 'Rich Hills' : activeProperty.district.replace('_', ' ')}</p>
+          <div className="rounded-lg p-5" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+            <p className="text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>Active Base</p>
+            <h2 className="mt-3 text-2xl font-semibold" style={{ color: '#0f172a' }}>{activeProperty.name}</h2>
+            <p className="mt-2 text-sm" style={{ color: '#475569' }}>{getPropertyTierLabel(activeProperty.tier)} in {activeProperty.district === 'rich_hills' ? 'Rich Hills' : activeProperty.district.replace('_', ' ')}</p>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-lg p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+              <div className="rounded-lg p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
                 <p className="text-[11px] uppercase tracking-widest" style={{ color: '#6b7280' }}>Storage</p>
-                <p className="mt-2 text-lg font-semibold" style={{ color: '#f8fafc' }}>{activeProperty.storageCapacity}</p>
+                <p className="mt-2 text-lg font-semibold" style={{ color: '#0f172a' }}>{activeProperty.storageCapacity}</p>
               </div>
-              <div className="rounded-lg p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+              <div className="rounded-lg p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
                 <p className="text-[11px] uppercase tracking-widest" style={{ color: '#6b7280' }}>Assembly</p>
-                <p className="mt-2 text-lg font-semibold" style={{ color: '#f8fafc' }}>Tier {activeProperty.assemblyTier}</p>
+                <p className="mt-2 text-lg font-semibold" style={{ color: '#0f172a' }}>Tier {activeProperty.assemblyTier}</p>
               </div>
-              <div className="rounded-lg p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+              <div className="rounded-lg p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
                 <p className="text-[11px] uppercase tracking-widest" style={{ color: '#6b7280' }}>Employees</p>
-                <p className="mt-2 text-lg font-semibold" style={{ color: '#f8fafc' }}>{activeProperty.employeeCapacity}</p>
+                <p className="mt-2 text-lg font-semibold" style={{ color: '#0f172a' }}>{activeProperty.employeeCapacity}</p>
               </div>
             </div>
             <p className="mt-4 text-sm leading-6" style={{ color: '#94a3b8' }}>
               Dumpster and Shack tiers are intentionally limited. Recycling queues, facilities, and worker automation stay locked until you upgrade through Workshop into a full Junkyard.
             </p>
+            {property.shackAccess.unlocked && activeProperty.tier === 'dumpster' && (
+              <p className="mt-3 text-sm leading-6" style={{ color: '#fbbf24' }}>
+                Shack tier is unlocked, but your active base is still the starter Dumpster. Buy and activate a Shack from City &gt; Shack Market to see Shack storage and workbench rules here.
+              </p>
+            )}
           </div>
 
           <BaseOperationsPanel
@@ -505,12 +510,12 @@ export default function JunkyardPage() {
           />
         </div>
 
-        <div className="rounded-lg p-5" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-          <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Upgrade Path</p>
+        <div className="rounded-lg p-5" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+          <p className="text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>Upgrade Path</p>
           <div className="mt-4 space-y-3 text-sm">
             {['Dumpster', 'Shack', 'Workshop', 'Junkyard'].map((tier, index) => (
-              <div key={tier} className="rounded-lg p-3" style={{ background: '#0a0a0a', border: `1px solid ${index === 0 ? '#39ff1440' : '#1f2937'}` }}>
-                <p style={{ color: '#f8fafc' }}>{index + 1}. {tier}</p>
+              <div key={tier} className="rounded-lg p-3" style={{ background: '#f8fafc', border: `1px solid ${index === 0 ? '#0f766e40' : '#cbd5e1'}` }}>
+                <p style={{ color: '#0f172a' }}>{index + 1}. {tier}</p>
                 <p className="mt-1 text-xs" style={{ color: '#6b7280' }}>
                   {tier === 'Dumpster' ? 'Starter stash in Slums. One improvised teardown build only.' : tier === 'Shack' ? 'Adds simple storage upgrades and basic bench crafting.' : tier === 'Workshop' ? 'Expanded repair and crafting depth, still no full yard automation.' : 'Unlocks recycling queues, facilities, and employees.'}
                 </p>
@@ -520,16 +525,16 @@ export default function JunkyardPage() {
         </div>
 
         {selectedAssemblyRecipe && (
-          <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: '#00000088' }} onClick={() => setConfirmAssemblyRecipeId(null)}>
-            <motion.div onClick={(event) => event.stopPropagation()} className="rounded-lg p-4 space-y-3" style={{ background: '#1a1a1a', border: '1px solid #39ff1440', minWidth: '320px' }}>
-              <p className="text-sm font-bold" style={{ color: '#39ff14' }}>Confirm Build</p>
+          <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: '#f1f5f914' }} onClick={() => setConfirmAssemblyRecipeId(null)}>
+            <motion.div onClick={(event) => event.stopPropagation()} className="rounded-lg p-4 space-y-3" style={{ background: '#eef2f7', border: '1px solid #0f766e40', minWidth: '320px' }}>
+              <p className="text-sm font-bold" style={{ color: '#0f766e' }}>Confirm Build</p>
               <p className="text-xs" style={{ color: '#9ca3af' }}>
                 {'componentCost' in selectedAssemblyRecipe
                   ? `Craft 1x ${selectedAssemblyRecipe.name} using ${selectedAssemblyRecipe.componentCost} Salvaged Components?`
                   : `Build ${selectedAssemblyRecipe.name} using ${selectedAssemblyRecipe.ingredients.map((ingredient) => `${ingredient.quantity}x ${ingredient.itemName}`).join(', ')}?`}
               </p>
               <div className="grid grid-cols-2 gap-2">
-                <button onClick={() => setConfirmAssemblyRecipeId(null)} className="px-3 py-1.5 rounded text-xs tracking-wider uppercase" style={{ background: '#2a2a2a', border: '1px solid #3a3a3a', color: '#9ca3af' }}>Cancel</button>
+                <button onClick={() => setConfirmAssemblyRecipeId(null)} className="px-3 py-1.5 rounded text-xs tracking-wider uppercase" style={{ background: '#d1d5db', border: '1px solid #3a3a3a', color: '#9ca3af' }}>Cancel</button>
                 <button
                   onClick={() => {
                     assembleRecipe(selectedAssemblyRecipe.id, 1);
@@ -550,7 +555,7 @@ export default function JunkyardPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-xl font-bold tracking-widest uppercase" style={{ color: '#39ff14' }}>Base</h1>
+        <h1 className="text-xl font-bold tracking-widest uppercase" style={{ color: '#0f766e' }}>Base</h1>
         <p className="text-xs mt-0.5" style={{ color: '#6b7280' }}>Manage stash and workbench upgrades here, then run full junkyard operations once this base reaches yard tier.</p>
       </div>
 
@@ -564,20 +569,20 @@ export default function JunkyardPage() {
       />
 
       <div className="grid gap-4 md:grid-cols-4">
-        <div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-          <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Stored Materials</p>
+        <div className="rounded-lg p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+          <p className="text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>Stored Materials</p>
           <p className="mt-2 text-2xl font-bold" style={{ color: '#e5ffe1' }}>{totalMaterials.toLocaleString()}</p>
         </div>
-        <div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-          <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Capacity</p>
-          <p className="mt-2 text-2xl font-bold" style={{ color: '#d1d5db' }}>{totalUsedCapacity.toFixed(1)}/{totalCapacity.toFixed(0)} kg</p>
+        <div className="rounded-lg p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+          <p className="text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>Capacity</p>
+          <p className="mt-2 text-2xl font-bold" style={{ color: '#475569' }}>{totalUsedCapacity.toFixed(1)}/{totalCapacity.toFixed(0)} kg</p>
         </div>
-        <div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-          <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Unlocked Bays</p>
+        <div className="rounded-lg p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+          <p className="text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>Unlocked Bays</p>
           <p className="mt-2 text-2xl font-bold" style={{ color: '#60a5fa' }}>{unlockedBins.length}/{junkyardStorage.length}</p>
         </div>
-        <div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-          <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Processing / Crew</p>
+        <div className="rounded-lg p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+          <p className="text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>Processing / Crew</p>
           <p className="mt-2 text-2xl font-bold" style={{ color: '#fbbf24' }}>{processingJobs.length}/{effectiveParallelJobs} jobs</p>
           <p className="mt-1 text-xs" style={{ color: '#9ca3af' }}>{junkyardWorkers.length}/{maxWorkerSlots} workers hired</p>
         </div>
@@ -585,9 +590,9 @@ export default function JunkyardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="space-y-4 lg:col-span-2">
-          <div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
+          <div className="rounded-lg p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Facility Yard Map</h2>
+              <h2 className="text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>Facility Yard Map</h2>
               <span className="text-xs" style={{ color: '#6b7280' }}>{buildingFacility ? `${buildingFacility.name} under construction` : 'Construction bay idle'}</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -601,21 +606,21 @@ export default function JunkyardPage() {
                 const canStart = facility.status === 'locked' && !buildingFacility && prerequisitesMet;
 
                 return (
-                  <div key={facility.id} className="rounded-lg p-4" style={{ background: '#0a0a0a', border: `1px solid ${facility.status === 'active' ? '#22c55e55' : facility.status === 'building' ? '#f59e0b55' : '#1f2937'}` }}>
+                  <div key={facility.id} className="rounded-lg p-4" style={{ background: '#f8fafc', border: `1px solid ${facility.status === 'active' ? '#22c55e55' : facility.status === 'building' ? '#f59e0b55' : '#cbd5e1'}` }}>
                     <div className="flex items-start justify-between gap-3">
                       <div>
 
                       {selectedAssemblyRecipe && (
-                        <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: '#00000088' }} onClick={() => setConfirmAssemblyRecipeId(null)}>
-                          <motion.div onClick={(event) => event.stopPropagation()} className="rounded-lg p-4 space-y-3" style={{ background: '#1a1a1a', border: '1px solid #39ff1440', minWidth: '320px' }}>
-                            <p className="text-sm font-bold" style={{ color: '#39ff14' }}>Confirm Build</p>
+                        <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: '#f1f5f914' }} onClick={() => setConfirmAssemblyRecipeId(null)}>
+                          <motion.div onClick={(event) => event.stopPropagation()} className="rounded-lg p-4 space-y-3" style={{ background: '#eef2f7', border: '1px solid #0f766e40', minWidth: '320px' }}>
+                            <p className="text-sm font-bold" style={{ color: '#0f766e' }}>Confirm Build</p>
                             <p className="text-xs" style={{ color: '#9ca3af' }}>
                               {'componentCost' in selectedAssemblyRecipe
                                 ? `Craft 1x ${selectedAssemblyRecipe.name} using ${selectedAssemblyRecipe.componentCost} Salvaged Components?`
                                 : `Build ${selectedAssemblyRecipe.name} using ${selectedAssemblyRecipe.ingredients.map((ingredient) => `${ingredient.quantity}x ${ingredient.itemName}`).join(', ')}?`}
                             </p>
                             <div className="grid grid-cols-2 gap-2">
-                              <button onClick={() => setConfirmAssemblyRecipeId(null)} className="px-3 py-1.5 rounded text-xs tracking-wider uppercase" style={{ background: '#2a2a2a', border: '1px solid #3a3a3a', color: '#9ca3af' }}>Cancel</button>
+                              <button onClick={() => setConfirmAssemblyRecipeId(null)} className="px-3 py-1.5 rounded text-xs tracking-wider uppercase" style={{ background: '#d1d5db', border: '1px solid #3a3a3a', color: '#9ca3af' }}>Cancel</button>
                               <button
                                 onClick={() => {
                                   assembleRecipe(selectedAssemblyRecipe.id, 1);
@@ -629,10 +634,10 @@ export default function JunkyardPage() {
                           </motion.div>
                         </motion.div>
                       )}
-                        <p className="text-sm" style={{ color: '#d1d5db' }}>{facility.icon} {facility.name}</p>
+                        <p className="text-sm" style={{ color: '#475569' }}>{facility.icon} {facility.name}</p>
                         <p className="mt-1 text-[11px] uppercase tracking-widest" style={{ color: facility.tier === 1 ? '#93c5fd' : '#fca5a5' }}>Tier {facility.tier}</p>
                       </div>
-                      <span className="text-[11px] px-2 py-1 rounded" style={{ background: '#111827', border: '1px solid #1f2937', color: facility.status === 'active' ? '#86efac' : facility.status === 'building' ? '#fcd34d' : '#9ca3af' }}>
+                      <span className="text-[11px] px-2 py-1 rounded" style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: facility.status === 'active' ? '#86efac' : facility.status === 'building' ? '#fcd34d' : '#9ca3af' }}>
                         {facility.status}
                       </span>
                     </div>
@@ -663,11 +668,11 @@ export default function JunkyardPage() {
             </div>
           </div>
 
-          <div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-            <h2 className="text-xs uppercase tracking-widest mb-4" style={{ color: '#39ff1480' }}>Storage</h2>
+          <div className="rounded-lg p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+            <h2 className="text-xs uppercase tracking-widest mb-4" style={{ color: '#0f766e99' }}>Storage</h2>
             <div className="grid grid-cols-2 gap-4">
               {junkyardStorage.map((bin) => (
-                <div key={bin.category} className="rounded-lg p-3" style={{ background: '#0a0a0a', border: `1px solid ${bin.unlocked ? '#1f2937' : '#3f3f46'}` }}>
+                <div key={bin.category} className="rounded-lg p-3" style={{ background: '#f8fafc', border: `1px solid ${bin.unlocked ? '#cbd5e1' : '#3f3f46'}` }}>
                   <div className="flex items-center justify-between text-xs mb-1.5">
                     <span className="flex items-center gap-1.5">
                       <span>{bin.icon}</span>
@@ -689,16 +694,16 @@ export default function JunkyardPage() {
             </div>
           </div>
 
-          <div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
+          <div className="rounded-lg p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Recycling Queue</h2>
-              <span className="text-xs px-3 py-1 rounded" style={{ background: '#111827', border: '1px solid #1f2937', color: '#9ca3af' }}>
+              <h2 className="text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>Recycling Queue</h2>
+              <span className="text-xs px-3 py-1 rounded" style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#9ca3af' }}>
                 Inventory-driven intake
               </span>
             </div>
             <div className="space-y-3">
               {junkyardJobs.length === 0 && (
-                <div className="rounded-lg p-4" style={{ background: '#0a0a0a', border: '1px solid #1f2937', color: '#9ca3af' }}>
+                <div className="rounded-lg p-4" style={{ background: '#f8fafc', border: '1px solid #cbd5e1', color: '#9ca3af' }}>
                   No recycling jobs queued yet. Use recycle from Inventory to create timed jobs.
                 </div>
               )}
@@ -708,10 +713,10 @@ export default function JunkyardPage() {
                 const selectableWorkers = junkyardWorkers.filter((worker) => worker.status !== 'off_shift' && (worker.assignedJobId === null || worker.assignedJobId === job.id));
 
                 return (
-                  <div key={job.id} className="rounded-lg p-4" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+                  <div key={job.id} className="rounded-lg p-4" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
                     <div className="flex flex-wrap items-start justify-between gap-3 text-xs">
                       <div>
-                        <p style={{ color: '#d1d5db' }}>{job.itemIcon} {job.itemName} · {job.quantity}x</p>
+                        <p style={{ color: '#475569' }}>{job.itemIcon} {job.itemName} · {job.quantity}x</p>
                         <p className="mt-1" style={{ color: '#6b7280' }}>{job.category} · Yield {job.materialYield} · Output {job.outputWeight.toFixed(1)} kg</p>
                       </div>
                       <div className="text-right">
@@ -727,7 +732,7 @@ export default function JunkyardPage() {
                     </div>
                     <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
                       <span style={{ color: '#6b7280' }}>Worker</span>
-                      <select value={job.assignedWorkerId ?? ''} onChange={(event) => assignWorkerToJunkyardJob(selectableWorkers.find((worker) => worker.id === event.target.value)?.id ?? assignedWorker?.id ?? '', event.target.value || null)} className="rounded px-3 py-2 outline-none" style={{ background: '#111', border: '1px solid #2a2a2a', color: '#d1d5db' }}>
+                      <select value={job.assignedWorkerId ?? ''} onChange={(event) => assignWorkerToJunkyardJob(selectableWorkers.find((worker) => worker.id === event.target.value)?.id ?? assignedWorker?.id ?? '', event.target.value || null)} className="rounded px-3 py-2 outline-none" style={{ background: '#ffffff', border: '1px solid #d1d5db', color: '#475569' }}>
                         <option value="">Unassigned</option>
                         {selectableWorkers.map((worker) => (
                           <option key={worker.id} value={worker.id}>{worker.name} · {worker.specialization} · {worker.efficiency}%</option>
@@ -741,19 +746,19 @@ export default function JunkyardPage() {
             </div>
           </div>
 
-          <div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-            <h2 className="text-xs uppercase tracking-widest mb-4" style={{ color: '#39ff1480' }}>Worker Crew</h2>
+          <div className="rounded-lg p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+            <h2 className="text-xs uppercase tracking-widest mb-4" style={{ color: '#0f766e99' }}>Worker Crew</h2>
             <div className="space-y-3 text-xs">
               {junkyardWorkers.length === 0 && (
-                <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937', color: '#9ca3af' }}>
+                <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1', color: '#9ca3af' }}>
                   No workers hired yet. Recruit from the applicant list to speed jobs and improve yields.
                 </div>
               )}
               {junkyardWorkers.map((worker) => (
-                <div key={worker.id} className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+                <div key={worker.id} className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p style={{ color: '#d1d5db' }}>{worker.icon} {worker.name}</p>
+                      <p style={{ color: '#475569' }}>{worker.icon} {worker.name}</p>
                       <p className="mt-1" style={{ color: '#6b7280' }}>{worker.specialization} · {worker.efficiency}% efficiency · ${worker.costPerDay}/day</p>
                     </div>
                     <button onClick={() => fireJunkyardWorker(worker.id)} className="px-3 py-2 rounded text-xs uppercase tracking-widest" style={{ background: '#ef444415', border: '1px solid #ef444440', color: '#fca5a5' }}>
@@ -771,22 +776,22 @@ export default function JunkyardPage() {
         </div>
 
         <div>
-          <div className="rounded-lg p-4 space-y-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-            <h2 className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Operations</h2>
+          <div className="rounded-lg p-4 space-y-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+            <h2 className="text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>Operations</h2>
             <div className="space-y-4 text-xs">
-              <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937', color: '#d1d5db' }}>
+              <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1', color: '#475569' }}>
                 <p className="uppercase tracking-widest" style={{ color: '#6b7280' }}>Yard Treasury</p>
                 <p className="mt-2">${playerCash.toLocaleString()} cash</p>
                 <p className="mt-1" style={{ color: '#6b7280' }}>{totalMaterials.toLocaleString()} materials on hand</p>
               </div>
-              <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937', color: '#d1d5db' }}>
+              <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1', color: '#475569' }}>
                 <p className="uppercase tracking-widest" style={{ color: '#6b7280' }}>Revenue Tracker</p>
                 <p className="mt-2">Session: {junkyardSessionRevenue.toLocaleString()} mats</p>
                 <p className="mt-1" style={{ color: '#6b7280' }}>Daily avg: {dailyAverageRevenue.toLocaleString()} mats</p>
                 <p className="mt-1" style={{ color: '#6b7280' }}>Jobs this session: {junkyardSessionJobsCompleted}</p>
                 <p className="mt-1" style={{ color: '#6b7280' }}>Runtime: {formatDuration(Date.now() - junkyardSessionStartedAt)}</p>
               </div>
-              <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937', color: '#d1d5db' }}>
+              <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1', color: '#475569' }}>
                 <p className="uppercase tracking-widest" style={{ color: '#6b7280' }}>Parallel Jobs</p>
                 <p className="mt-2">{processingJobs.length}/{effectiveParallelJobs} active</p>
                 <p className="mt-1" style={{ color: '#6b7280' }}>Base {maxParallelJobs}{hasConveyorBelt ? ' + conveyor bonus' : ''}</p>
@@ -794,26 +799,26 @@ export default function JunkyardPage() {
                   Upgrade Parallel Jobs
                 </motion.button>
               </div>
-              <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937', color: '#d1d5db' }}>
+              <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1', color: '#475569' }}>
                 <p className="uppercase tracking-widest" style={{ color: '#6b7280' }}>Worker Slots</p>
                 <p className="mt-2">{junkyardWorkers.length}/{maxWorkerSlots} filled</p>
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => upgradeJunkyardOperations('workers')} className="mt-3 w-full py-2 rounded text-xs uppercase tracking-wider" style={{ background: '#3b82f615', border: '1px solid #3b82f640', color: '#93c5fd' }}>
                   Upgrade Worker Slots
                 </motion.button>
               </div>
-              <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937', color: '#9ca3af' }}>
+              <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1', color: '#9ca3af' }}>
                 Ready to recycle: {recyclableInventory.length} inventory entries. Jobs reserve storage capacity when queued, then settle materials on completion.
               </div>
-              <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937', color: '#9ca3af' }}>
+              <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1', color: '#9ca3af' }}>
                 Idle workers: {idleWorkers.length}. Off shift: {offShiftWorkers.length}. Assigned: {assignedWorkers.length}. Queued jobs: {queuedJobs.length}.
               </div>
             </div>
 
             <div>
-              <h2 className="text-xs uppercase tracking-widest mb-3" style={{ color: '#39ff1480' }}>Efficiency Leaderboard</h2>
+              <h2 className="text-xs uppercase tracking-widest mb-3" style={{ color: '#0f766e99' }}>Efficiency Leaderboard</h2>
               <div className="space-y-2 text-xs mb-4">
                 {efficiencyLeaderboard.map((entry) => (
-                  <div key={entry.name} className="rounded p-3 flex items-center justify-between gap-3" style={{ background: entry.isPlayer ? '#0f1b10' : '#0a0a0a', border: `1px solid ${entry.isPlayer ? '#22c55e40' : '#1f2937'}` }}>
+                  <div key={entry.name} className="rounded p-3 flex items-center justify-between gap-3" style={{ background: entry.isPlayer ? '#0f1b10' : '#f8fafc', border: `1px solid ${entry.isPlayer ? '#22c55e40' : '#cbd5e1'}` }}>
                     <div>
                       <p style={{ color: entry.isPlayer ? '#86efac' : '#d1d5db' }}>#{entry.rank} {entry.name}</p>
                       <p className="mt-1" style={{ color: '#6b7280' }}>{entry.detail}</p>
@@ -823,18 +828,18 @@ export default function JunkyardPage() {
                 ))}
               </div>
 
-              <h2 className="text-xs uppercase tracking-widest mb-3" style={{ color: '#39ff1480' }}>Applicants</h2>
+              <h2 className="text-xs uppercase tracking-widest mb-3" style={{ color: '#0f766e99' }}>Applicants</h2>
               <div className="space-y-3 text-xs">
                 {junkyardApplicants.length === 0 && (
-                  <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937', color: '#9ca3af' }}>
+                  <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1', color: '#9ca3af' }}>
                     No applicants on the board right now.
                   </div>
                 )}
                 {junkyardApplicants.map((applicant) => (
-                  <div key={applicant.id} className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+                  <div key={applicant.id} className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p style={{ color: '#d1d5db' }}>{applicant.icon} {applicant.name}</p>
+                        <p style={{ color: '#475569' }}>{applicant.icon} {applicant.name}</p>
                         <p className="mt-1" style={{ color: '#6b7280' }}>{applicant.specialization} · {applicant.efficiency}% efficiency · ${applicant.costPerDay}/day</p>
                       </div>
                       <button onClick={() => hireJunkyardWorker(applicant.id)} className="px-3 py-2 rounded text-xs uppercase tracking-widest" style={{ background: '#f59e0b15', border: '1px solid #f59e0b40', color: '#fcd34d' }}>
@@ -850,20 +855,20 @@ export default function JunkyardPage() {
       </div>
 
       {selectedFacility && (
-        <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: '#00000088' }} onClick={() => setConfirmFacilityId(null)}>
-          <motion.div onClick={(event) => event.stopPropagation()} className="w-full max-w-sm rounded-lg p-4 space-y-4" style={{ background: '#111', border: '1px solid #f59e0b40' }}>
+        <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: '#f1f5f914' }} onClick={() => setConfirmFacilityId(null)}>
+          <motion.div onClick={(event) => event.stopPropagation()} className="w-full max-w-sm rounded-lg p-4 space-y-4" style={{ background: '#ffffff', border: '1px solid #f59e0b40' }}>
             <div>
               <p className="text-sm font-bold" style={{ color: '#fcd34d' }}>Confirm Facility Upgrade</p>
-              <p className="mt-2 text-xs" style={{ color: '#d1d5db' }}>{selectedFacility.icon} {selectedFacility.name}</p>
+              <p className="mt-2 text-xs" style={{ color: '#475569' }}>{selectedFacility.icon} {selectedFacility.name}</p>
               <p className="mt-1 text-xs" style={{ color: '#6b7280' }}>{selectedFacility.effectDescription}</p>
             </div>
-            <div className="rounded p-3 text-xs" style={{ background: '#0a0a0a', border: '1px solid #1f2937', color: '#9ca3af' }}>
+            <div className="rounded p-3 text-xs" style={{ background: '#f8fafc', border: '1px solid #cbd5e1', color: '#9ca3af' }}>
               <p>Cash cost: ${selectedFacility.cashCost.toLocaleString()}</p>
               <p className="mt-1">Material cost: {selectedFacility.materialCost}</p>
               <p className="mt-1">Build time: {Math.round(selectedFacility.durationMs / (60 * 60 * 1000))} hours</p>
             </div>
             <div className="flex items-center justify-end gap-2">
-              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setConfirmFacilityId(null)} className="px-3 py-2 rounded text-xs uppercase tracking-wider" style={{ background: '#2a2a2a', border: '1px solid #3a3a3a', color: '#9ca3af' }}>
+              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setConfirmFacilityId(null)} className="px-3 py-2 rounded text-xs uppercase tracking-wider" style={{ background: '#d1d5db', border: '1px solid #3a3a3a', color: '#9ca3af' }}>
                 Cancel
               </motion.button>
               <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => {

@@ -342,15 +342,15 @@ export default function MarketPage() {
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.02 }}
       className="grid grid-cols-12 px-4 py-3 text-xs items-center transition-all hover:bg-white/[0.02]"
-      style={{ borderBottom: '1px solid #1a1a1a' }}>
+      style={{ borderBottom: '1px solid #eef2f7' }}>
       <div className="col-span-4 flex items-center gap-2">
         <span className="text-xl">{item.icon}</span>
         <div>
           <p style={{ color: RARITY_COLORS[item.rarity] }}>{item.name}</p>
-          <p style={{ color: '#374151' }}>{item.seller || 'Market Broker'} · {item.category}</p>
+          <p style={{ color: '#94a3b8' }}>{item.seller || 'Market Broker'} · {item.category}</p>
         </div>
       </div>
-      <div className="col-span-2 text-right font-bold" style={{ color: '#d1d5db' }}>${item.price.toLocaleString()}</div>
+      <div className="col-span-2 text-right font-bold" style={{ color: '#475569' }}>${item.price.toLocaleString()}</div>
       <div className="col-span-2 text-right font-bold" style={{ color: item.change24h > 0 ? '#22c55e' : item.change24h < 0 ? '#ef4444' : '#6b7280' }}>
         {item.change24h > 0 ? '+' : ''}{item.change24h}%
         <div className="mt-1 flex justify-end"><MiniSparkline points={item.sparkline} tone={item.change24h >= 0 ? '#22c55e' : '#ef4444'} /></div>
@@ -371,15 +371,15 @@ export default function MarketPage() {
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.02 }}
       className="grid grid-cols-12 px-4 py-3 text-xs items-center transition-all hover:bg-white/[0.02]"
-      style={{ borderBottom: '1px solid #1a1a1a' }}>
+      style={{ borderBottom: '1px solid #eef2f7' }}>
       <div className="col-span-4 flex items-center gap-2">
         <span className="text-xl">{item.icon}</span>
         <div>
           <p style={{ color: RARITY_COLORS[item.rarity] }}>{item.name}</p>
-          <p style={{ color: '#374151' }}>{getMarketCategoryForItem(item)} · You own {item.quantity}</p>
+          <p style={{ color: '#94a3b8' }}>{getMarketCategoryForItem(item)} · You own {item.quantity}</p>
         </div>
       </div>
-      <div className="col-span-2 text-right font-bold" style={{ color: '#d1d5db' }}>${item.value.toLocaleString()}</div>
+      <div className="col-span-2 text-right font-bold" style={{ color: '#475569' }}>${item.value.toLocaleString()}</div>
       <div className="col-span-2 text-right font-bold" style={{ color: '#fbbf24' }}>Review</div>
       <div className="col-span-2 text-right" style={{ color: '#6b7280' }}>{item.quantity}</div>
       <div className="col-span-2 flex justify-end gap-2">
@@ -400,15 +400,15 @@ export default function MarketPage() {
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.02 }}
       className="grid grid-cols-12 px-4 py-3 text-xs items-center transition-all hover:bg-white/[0.02]"
-      style={{ borderBottom: '1px solid #1a1a1a' }}>
+      style={{ borderBottom: '1px solid #eef2f7' }}>
       <div className="col-span-4 flex items-center gap-2">
         <span className="text-xl">{item.icon}</span>
         <div>
           <p style={{ color: RARITY_COLORS[item.rarity] }}>{item.name}</p>
-          <p style={{ color: '#374151' }}>{item.seller} · {item.category}</p>
+          <p style={{ color: '#94a3b8' }}>{item.seller} · {item.category}</p>
         </div>
       </div>
-      <div className="col-span-2 text-right font-bold" style={{ color: '#d1d5db' }}>${item.price.toLocaleString()}</div>
+      <div className="col-span-2 text-right font-bold" style={{ color: '#475569' }}>${item.price.toLocaleString()}</div>
       <div className="col-span-2 text-right font-bold" style={{ color: '#60a5fa' }}>
         {new Date(item.listedAt).toLocaleDateString()}
       </div>
@@ -428,15 +428,15 @@ export default function MarketPage() {
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.02 }}
       className="grid grid-cols-12 px-4 py-3 text-xs items-center transition-all hover:bg-white/[0.02]"
-      style={{ borderBottom: '1px solid #1a1a1a' }}>
+      style={{ borderBottom: '1px solid #eef2f7' }}>
       <div className="col-span-4 flex items-center gap-2">
         <span className="text-xl">{item.itemIcon}</span>
         <div>
           <p style={{ color: RARITY_COLORS[item.rarity] }}>{item.itemName}</p>
-          <p style={{ color: '#374151' }}>{item.sender} · Escrow held by {item.escrowHolder}</p>
+          <p style={{ color: '#94a3b8' }}>{item.sender} · Escrow held by {item.escrowHolder}</p>
         </div>
       </div>
-      <div className="col-span-2 text-right font-bold" style={{ color: '#d1d5db' }}>${(item.askingPrice * item.quantity).toLocaleString()}</div>
+      <div className="col-span-2 text-right font-bold" style={{ color: '#475569' }}>${(item.askingPrice * item.quantity).toLocaleString()}</div>
       <div className="col-span-2 text-right font-bold" style={{ color: item.status === 'open' ? '#fbbf24' : '#60a5fa' }}>
         {item.status.replaceAll('_', ' ')}
       </div>
@@ -453,26 +453,26 @@ export default function MarketPage() {
     if (modalState?.mode === 'buy' && selectedBuyListing && selectedBuyPricing) {
       return (
         <>
-          <p className="text-sm" style={{ color: '#d1d5db' }}>Confirm buying {modalState.quantity}x {selectedBuyListing.name}.</p>
+          <p className="text-sm" style={{ color: '#475569' }}>Confirm buying {modalState.quantity}x {selectedBuyListing.name}.</p>
           <div className="grid grid-cols-2 gap-3 text-xs">
-            <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+            <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
               <p style={{ color: '#6b7280' }}>Subtotal</p>
-              <p className="mt-1" style={{ color: '#d1d5db' }}>${selectedBuyPricing.subtotal.toLocaleString()}</p>
+              <p className="mt-1" style={{ color: '#475569' }}>${selectedBuyPricing.subtotal.toLocaleString()}</p>
             </div>
-            <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+            <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
               <p style={{ color: '#6b7280' }}>Surge Multiplier</p>
               <p className="mt-1" style={{ color: '#fbbf24' }}>{selectedBuyPricing.surgeMultiplier.toFixed(2)}x</p>
             </div>
-            <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+            <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
               <p style={{ color: '#6b7280' }}>Rank Discount</p>
               <p className="mt-1" style={{ color: '#22c55e' }}>{Math.round(selectedBuyPricing.rankDiscountRate * 100)}%</p>
             </div>
-            <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+            <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
               <p style={{ color: '#6b7280' }}>Bulk Discount</p>
               <p className="mt-1" style={{ color: '#22c55e' }}>{Math.round(selectedBuyPricing.bulkDiscountRate * 100)}%</p>
             </div>
           </div>
-          <div className="rounded p-3" style={{ background: '#11182755', border: '1px solid #60a5fa40' }}>
+          <div className="rounded p-3" style={{ background: '#f1f5f955', border: '1px solid #60a5fa40' }}>
             <p className="text-xs uppercase tracking-widest" style={{ color: '#93c5fd' }}>Final Total</p>
             <p className="mt-1 text-lg font-bold" style={{ color: '#dbeafe' }}>${selectedBuyPricing.total.toLocaleString()}</p>
           </div>
@@ -483,21 +483,21 @@ export default function MarketPage() {
     if (modalState?.mode === 'sell' && selectedSellItem && selectedSellPricing) {
       return (
         <>
-          <p className="text-sm" style={{ color: '#d1d5db' }}>Confirm selling {modalState.quantity}x {selectedSellItem.name}.</p>
+          <p className="text-sm" style={{ color: '#475569' }}>Confirm selling {modalState.quantity}x {selectedSellItem.name}.</p>
           <div className="grid grid-cols-2 gap-3 text-xs">
-            <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+            <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
               <p style={{ color: '#6b7280' }}>Gross Value</p>
-              <p className="mt-1" style={{ color: '#d1d5db' }}>${selectedSellPricing.gross.toLocaleString()}</p>
+              <p className="mt-1" style={{ color: '#475569' }}>${selectedSellPricing.gross.toLocaleString()}</p>
             </div>
-            <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+            <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
               <p style={{ color: '#6b7280' }}>Surge Multiplier</p>
               <p className="mt-1" style={{ color: '#fbbf24' }}>{selectedSellPricing.surgeMultiplier.toFixed(2)}x</p>
             </div>
-            <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+            <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
               <p style={{ color: '#6b7280' }}>Rank Bonus</p>
               <p className="mt-1" style={{ color: '#22c55e' }}>+{Math.round(selectedSellPricing.rankBonusRate * 100)}%</p>
             </div>
-            <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+            <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
               <p style={{ color: '#6b7280' }}>Fees</p>
               <p className="mt-1" style={{ color: '#fca5a5' }}>{Math.round(selectedSellPricing.feeRate * 100)}%</p>
             </div>
@@ -513,13 +513,13 @@ export default function MarketPage() {
     if (modalState?.mode === 'auction-buy' && selectedAuctionListing) {
       return (
         <>
-          <p className="text-sm" style={{ color: '#d1d5db' }}>Confirm buying {modalState.quantity}x {selectedAuctionListing.name} from {selectedAuctionListing.seller}.</p>
+          <p className="text-sm" style={{ color: '#475569' }}>Confirm buying {modalState.quantity}x {selectedAuctionListing.name} from {selectedAuctionListing.seller}.</p>
           <div className="grid grid-cols-2 gap-3 text-xs">
-            <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+            <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
               <p style={{ color: '#6b7280' }}>Unit Price</p>
-              <p className="mt-1" style={{ color: '#d1d5db' }}>${selectedAuctionListing.price.toLocaleString()}</p>
+              <p className="mt-1" style={{ color: '#475569' }}>${selectedAuctionListing.price.toLocaleString()}</p>
             </div>
-            <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+            <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
               <p style={{ color: '#6b7280' }}>Seller</p>
               <p className="mt-1" style={{ color: '#60a5fa' }}>{selectedAuctionListing.seller}</p>
             </div>
@@ -535,21 +535,21 @@ export default function MarketPage() {
     if (modalState?.mode === 'auction-list' && selectedAuctionListItem) {
       return (
         <>
-          <p className="text-sm" style={{ color: '#d1d5db' }}>List {modalState.quantity}x {selectedAuctionListItem.name} on the auction house.</p>
-          <div className="rounded-xl p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
+          <p className="text-sm" style={{ color: '#475569' }}>List {modalState.quantity}x {selectedAuctionListItem.name} on the auction house.</p>
+          <div className="rounded-xl p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
             <p className="text-xs uppercase tracking-widest" style={{ color: '#6b7280' }}>Price Per Item</p>
-            <input value={modalState.price} onChange={(event) => updateAuctionListPrice(Number(event.target.value) || 1)} className="mt-3 w-full rounded px-3 py-2 outline-none" style={{ background: '#0a0a0a', border: '1px solid #2a2a2a', color: '#f3f4f6' }} />
+            <input value={modalState.price} onChange={(event) => updateAuctionListPrice(Number(event.target.value) || 1)} className="mt-3 w-full rounded px-3 py-2 outline-none" style={{ background: '#f8fafc', border: '1px solid #d1d5db', color: '#1e293b' }} />
           </div>
           <div className="grid grid-cols-3 gap-3 text-xs">
-            <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+            <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
               <p style={{ color: '#6b7280' }}>Gross</p>
-              <p className="mt-1" style={{ color: '#d1d5db' }}>${selectedAuctionListGross.toLocaleString()}</p>
+              <p className="mt-1" style={{ color: '#475569' }}>${selectedAuctionListGross.toLocaleString()}</p>
             </div>
-            <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+            <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
               <p style={{ color: '#6b7280' }}>Auction Tax</p>
               <p className="mt-1" style={{ color: '#fca5a5' }}>${selectedAuctionListFee.toLocaleString()}</p>
             </div>
-            <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+            <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
               <p style={{ color: '#6b7280' }}>Net Payout</p>
               <p className="mt-1" style={{ color: '#86efac' }}>${selectedAuctionListNet.toLocaleString()}</p>
             </div>
@@ -561,18 +561,18 @@ export default function MarketPage() {
     if (modalState?.mode === 'direct-accept' && selectedDirectOffer) {
       return (
         <>
-          <p className="text-sm" style={{ color: '#d1d5db' }}>Accept {selectedDirectOffer.quantity}x {selectedDirectOffer.itemName} from {selectedDirectOffer.sender}.</p>
+          <p className="text-sm" style={{ color: '#475569' }}>Accept {selectedDirectOffer.quantity}x {selectedDirectOffer.itemName} from {selectedDirectOffer.sender}.</p>
           <div className="grid grid-cols-2 gap-3 text-xs">
-            <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+            <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
               <p style={{ color: '#6b7280' }}>Escrow Rule</p>
-              <p className="mt-1" style={{ color: '#d1d5db' }}>Cash is held until the next settlement cycle.</p>
+              <p className="mt-1" style={{ color: '#475569' }}>Cash is held until the next settlement cycle.</p>
             </div>
-            <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+            <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
               <p style={{ color: '#6b7280' }}>Counterparty Escrow</p>
               <p className="mt-1" style={{ color: '#60a5fa' }}>{selectedDirectOffer.escrowHolder}</p>
             </div>
           </div>
-          <div className="rounded p-3" style={{ background: '#11182755', border: '1px solid #60a5fa40' }}>
+          <div className="rounded p-3" style={{ background: '#f1f5f955', border: '1px solid #60a5fa40' }}>
             <p className="text-xs uppercase tracking-widest" style={{ color: '#93c5fd' }}>Escrow Funding</p>
             <p className="mt-1 text-lg font-bold" style={{ color: '#dbeafe' }}>${selectedDirectAcceptTotal.toLocaleString()}</p>
           </div>
@@ -583,15 +583,15 @@ export default function MarketPage() {
     if (modalState?.mode === 'direct-offer' && selectedDirectOfferItem) {
       return (
         <>
-          <p className="text-sm" style={{ color: '#d1d5db' }}>Create a direct offer for {modalState.quantity}x {selectedDirectOfferItem.name}.</p>
+          <p className="text-sm" style={{ color: '#475569' }}>Create a direct offer for {modalState.quantity}x {selectedDirectOfferItem.name}.</p>
           <div className="grid grid-cols-2 gap-3 text-xs">
-            <div className="rounded-xl p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
+            <div className="rounded-xl p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
               <p className="text-xs uppercase tracking-widest" style={{ color: '#6b7280' }}>Ask Price Per Item</p>
-              <input value={modalState.price} onChange={(event) => updateDirectOfferPrice(Number(event.target.value) || 1)} className="mt-3 w-full rounded px-3 py-2 outline-none" style={{ background: '#0a0a0a', border: '1px solid #2a2a2a', color: '#f3f4f6' }} />
+              <input value={modalState.price} onChange={(event) => updateDirectOfferPrice(Number(event.target.value) || 1)} className="mt-3 w-full rounded px-3 py-2 outline-none" style={{ background: '#f8fafc', border: '1px solid #d1d5db', color: '#1e293b' }} />
             </div>
-            <div className="rounded-xl p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
+            <div className="rounded-xl p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
               <p className="text-xs uppercase tracking-widest" style={{ color: '#6b7280' }}>Counterparty</p>
-              <select value={modalState.recipient} onChange={(event) => updateDirectOfferRecipient(event.target.value)} className="mt-3 w-full rounded px-3 py-2 outline-none" style={{ background: '#0a0a0a', border: '1px solid #2a2a2a', color: '#f3f4f6' }}>
+              <select value={modalState.recipient} onChange={(event) => updateDirectOfferRecipient(event.target.value)} className="mt-3 w-full rounded px-3 py-2 outline-none" style={{ background: '#f8fafc', border: '1px solid #d1d5db', color: '#1e293b' }}>
                 {DIRECT_TRADE_COUNTERPARTIES.map((peer) => (
                   <option key={peer} value={peer}>{peer}</option>
                 ))}
@@ -599,11 +599,11 @@ export default function MarketPage() {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3 text-xs">
-            <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+            <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
               <p style={{ color: '#6b7280' }}>Escrow Rule</p>
-              <p className="mt-1" style={{ color: '#d1d5db' }}>Your item moves into escrow until the buyer funds settlement.</p>
+              <p className="mt-1" style={{ color: '#475569' }}>Your item moves into escrow until the buyer funds settlement.</p>
             </div>
-            <div className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+            <div className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
               <p style={{ color: '#6b7280' }}>Trade Total</p>
               <p className="mt-1" style={{ color: '#86efac' }}>${selectedDirectOfferTotal.toLocaleString()}</p>
             </div>
@@ -643,7 +643,7 @@ export default function MarketPage() {
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold tracking-widest uppercase" style={{ color: '#39ff14' }}>Marketplace</h1>
+          <h1 className="text-xl font-bold tracking-widest uppercase" style={{ color: '#0f766e' }}>Marketplace</h1>
           <p className="text-xs mt-0.5" style={{ color: '#6b7280' }}>
             Live player-driven economy · Refresh in <span style={{ color: '#fbbf24' }}>{refreshTimer}s</span>
           </p>
@@ -653,9 +653,9 @@ export default function MarketPage() {
             <button key={t} onClick={() => setTab(t)}
               className="px-4 py-1.5 rounded text-xs uppercase tracking-widest transition-all"
               style={{
-                background: tab === t ? '#39ff1415' : 'transparent',
-                border: `1px solid ${tab === t ? '#39ff1460' : '#2a2a2a'}`,
-                color: tab === t ? '#39ff14' : '#6b7280',
+                background: tab === t ? '#0f766e15' : 'transparent',
+                border: `1px solid ${tab === t ? '#0f766e66' : '#d1d5db'}`,
+                color: tab === t ? '#0f766e' : '#6b7280',
               }}>
               {t}
             </button>
@@ -664,39 +664,39 @@ export default function MarketPage() {
       </div>
 
       <div className="grid lg:grid-cols-[1.2fr_0.8fr] gap-4">
-        <div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-          <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Market Pulse</p>
+        <div className="rounded-lg p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+          <p className="text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>Market Pulse</p>
           <div className="mt-3 grid sm:grid-cols-3 gap-3 text-xs">
             {topMovers.map((item) => (
-              <div key={item.id} className="rounded p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+              <div key={item.id} className="rounded p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
                 <p style={{ color: RARITY_COLORS[item.rarity] }}>{item.icon} {item.name}</p>
-                <p className="mt-1" style={{ color: '#d1d5db' }}>${item.price.toLocaleString()}</p>
+                <p className="mt-1" style={{ color: '#475569' }}>${item.price.toLocaleString()}</p>
                 <p className="mt-1" style={{ color: item.change24h > 0 ? '#22c55e' : item.change24h < 0 ? '#ef4444' : '#6b7280' }}>
                   {item.change24h > 0 ? '+' : ''}{item.change24h}% · Vol {item.volume}
                 </p>
                 <div className="mt-2">
-                  <MiniSparkline points={item.sparkline} tone={item.change24h >= 0 ? '#39ff14' : '#ef4444'} />
+                  <MiniSparkline points={item.sparkline} tone={item.change24h >= 0 ? '#0f766e' : '#ef4444'} />
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="rounded-lg p-4 space-y-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
+        <div className="rounded-lg p-4 space-y-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
           <div>
-            <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Filters</p>
+            <p className="text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>Filters</p>
             <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
               <label style={{ color: '#9ca3af' }}>
                 Min Price
-                <input value={minPrice} onChange={(event) => setMinPrice(event.target.value)} placeholder="0" className="mt-2 w-full rounded px-3 py-2 outline-none" style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#d1d5db' }} />
+                <input value={minPrice} onChange={(event) => setMinPrice(event.target.value)} placeholder="0" className="mt-2 w-full rounded px-3 py-2 outline-none" style={{ background: '#eef2f7', border: '1px solid #d1d5db', color: '#475569' }} />
               </label>
               <label style={{ color: '#9ca3af' }}>
                 Max Price
-                <input value={maxPrice} onChange={(event) => setMaxPrice(event.target.value)} placeholder="5000" className="mt-2 w-full rounded px-3 py-2 outline-none" style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#d1d5db' }} />
+                <input value={maxPrice} onChange={(event) => setMaxPrice(event.target.value)} placeholder="5000" className="mt-2 w-full rounded px-3 py-2 outline-none" style={{ background: '#eef2f7', border: '1px solid #d1d5db', color: '#475569' }} />
               </label>
               <label style={{ color: '#9ca3af' }}>
                 Rarity
-                <select value={rarityFilter} onChange={(event) => setRarityFilter(event.target.value as MarketRarityFilter)} className="mt-2 w-full rounded px-3 py-2 outline-none" style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#d1d5db' }}>
+                <select value={rarityFilter} onChange={(event) => setRarityFilter(event.target.value as MarketRarityFilter)} className="mt-2 w-full rounded px-3 py-2 outline-none" style={{ background: '#eef2f7', border: '1px solid #d1d5db', color: '#475569' }}>
                   {RARITY_FILTERS.map((option) => (
                     <option key={option} value={option}>{option === 'all' ? 'All rarities' : option}</option>
                   ))}
@@ -704,7 +704,7 @@ export default function MarketPage() {
               </label>
               <label style={{ color: '#9ca3af' }}>
                 Last Updated
-                <select value={freshnessFilter} onChange={(event) => setFreshnessFilter(event.target.value as MarketFreshnessFilter)} className="mt-2 w-full rounded px-3 py-2 outline-none" style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#d1d5db' }}>
+                <select value={freshnessFilter} onChange={(event) => setFreshnessFilter(event.target.value as MarketFreshnessFilter)} className="mt-2 w-full rounded px-3 py-2 outline-none" style={{ background: '#eef2f7', border: '1px solid #d1d5db', color: '#475569' }}>
                   <option value="all">Any time</option>
                   <option value="5m">Past 5 min</option>
                   <option value="30m">Past 30 min</option>
@@ -715,10 +715,10 @@ export default function MarketPage() {
           </div>
 
           <div>
-            <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Live Ticker</p>
+            <p className="text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>Live Ticker</p>
             <div className="mt-3 flex flex-wrap gap-2 text-xs">
               {marketTicker.map((item) => (
-                <span key={item.id} className="rounded-full px-3 py-1" style={{ background: '#0a0a0a', border: '1px solid #1f2937', color: item.change24h >= 0 ? '#86efac' : '#fca5a5' }}>
+                <span key={item.id} className="rounded-full px-3 py-1" style={{ background: '#f8fafc', border: '1px solid #cbd5e1', color: item.change24h >= 0 ? '#86efac' : '#fca5a5' }}>
                   {item.icon} {item.name} ${item.price.toLocaleString()} {item.change24h > 0 ? '+' : ''}{item.change24h}%
                 </span>
               ))}
@@ -726,9 +726,9 @@ export default function MarketPage() {
           </div>
 
           {strongestDemand && (
-            <div className="rounded p-3 text-xs" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+            <div className="rounded p-3 text-xs" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
               <p className="uppercase tracking-widest" style={{ color: '#fbbf24' }}>Demand Spike</p>
-              <p className="mt-2" style={{ color: '#d1d5db' }}>{strongestDemand.icon} {strongestDemand.name}</p>
+              <p className="mt-2" style={{ color: '#475569' }}>{strongestDemand.icon} {strongestDemand.name}</p>
               <p className="mt-1" style={{ color: '#6b7280' }}>Vol {strongestDemand.volume} vs Stock {strongestDemand.quantity}</p>
             </div>
           )}
@@ -741,9 +741,9 @@ export default function MarketPage() {
             <button key={c} onClick={() => setCategory(c)}
               className="px-2.5 py-1 rounded text-xs tracking-wider transition-all"
               style={{
-                background: category === c ? '#39ff1415' : 'transparent',
-                border: `1px solid ${category === c ? '#39ff1440' : '#2a2a2a'}`,
-                color: category === c ? '#39ff14' : '#6b7280',
+                background: category === c ? '#0f766e15' : 'transparent',
+                border: `1px solid ${category === c ? '#0f766e40' : '#d1d5db'}`,
+                color: category === c ? '#0f766e' : '#6b7280',
               }}>
               {c}
             </button>
@@ -751,7 +751,7 @@ export default function MarketPage() {
         </div>
         <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
           className="ml-auto text-xs px-2 py-1.5 rounded outline-none"
-          style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#9ca3af', fontFamily: 'monospace' }}>
+          style={{ background: '#eef2f7', border: '1px solid #d1d5db', color: '#9ca3af', fontFamily: 'monospace' }}>
           <option value="price-desc">Sort: Price High-Low</option>
           <option value="price-asc">Sort: Price Low-High</option>
           <option value="change">Sort: % Change</option>
@@ -763,21 +763,21 @@ export default function MarketPage() {
 
       {tab === 'auction' && (
         <div className="grid lg:grid-cols-[1.15fr_0.85fr] gap-4">
-          <div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-            <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Auction House</p>
+          <div className="rounded-lg p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+            <p className="text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>Auction House</p>
             <p className="mt-2 text-xs" style={{ color: '#6b7280' }}>Player listings charge a fixed 5% tax when they sell.</p>
           </div>
-          <div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-            <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Your Active Listings</p>
+          <div className="rounded-lg p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+            <p className="text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>Your Active Listings</p>
             <div className="mt-3 space-y-2 text-xs">
               {ownAuctionListings.length === 0 && <p style={{ color: '#6b7280' }}>No active player listings yet.</p>}
               {ownAuctionListings.map((listing) => (
-                <div key={listing.id} className="rounded p-3 flex items-center justify-between gap-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+                <div key={listing.id} className="rounded p-3 flex items-center justify-between gap-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
                   <div>
                     <p style={{ color: RARITY_COLORS[listing.rarity] }}>{listing.icon} {listing.name}</p>
                     <p className="mt-1" style={{ color: '#6b7280' }}>{listing.quantity}x at ${listing.price.toLocaleString()} · Net ${calculateAuctionSellerPayout(listing.price * listing.quantity).toLocaleString()}</p>
                   </div>
-                  <button onClick={() => cancelAuctionListing(listing.id)} className="px-3 py-2 rounded text-xs uppercase tracking-widest" style={{ background: '#111', border: '1px solid #374151', color: '#d1d5db' }}>
+                  <button onClick={() => cancelAuctionListing(listing.id)} className="px-3 py-2 rounded text-xs uppercase tracking-widest" style={{ background: '#ffffff', border: '1px solid #94a3b8', color: '#475569' }}>
                     Cancel
                   </button>
                 </div>
@@ -789,30 +789,30 @@ export default function MarketPage() {
 
       {tab === 'direct' && (
         <div className="grid lg:grid-cols-[1fr_1fr] gap-4">
-          <div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-            <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Peer Escrow Desk</p>
+          <div className="rounded-lg p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+            <p className="text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>Peer Escrow Desk</p>
             <p className="mt-2 text-xs" style={{ color: '#6b7280' }}>Direct trades escrow the seller item first, then the buyer cash, and only settle on a later market cycle.</p>
             <div className="mt-3 space-y-2 text-xs">
               {ownDirectOffers.length === 0 && <p style={{ color: '#6b7280' }}>No outgoing direct offers yet.</p>}
               {ownDirectOffers.map((offer) => (
-                <div key={offer.id} className="rounded p-3 flex items-center justify-between gap-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+                <div key={offer.id} className="rounded p-3 flex items-center justify-between gap-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
                   <div>
                     <p style={{ color: RARITY_COLORS[offer.rarity] }}>{offer.itemIcon} {offer.itemName}</p>
                     <p className="mt-1" style={{ color: '#6b7280' }}>{offer.quantity}x to {offer.recipient} · {offer.status.replaceAll('_', ' ')}</p>
                   </div>
-                  <button onClick={() => cancelDirectTradeOffer(offer.id)} className="px-3 py-2 rounded text-xs uppercase tracking-widest" style={{ background: '#111', border: '1px solid #374151', color: '#d1d5db' }}>
+                  <button onClick={() => cancelDirectTradeOffer(offer.id)} className="px-3 py-2 rounded text-xs uppercase tracking-widest" style={{ background: '#ffffff', border: '1px solid #94a3b8', color: '#475569' }}>
                     Cancel
                   </button>
                 </div>
               ))}
             </div>
           </div>
-          <div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-            <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Offer From Inventory</p>
+          <div className="rounded-lg p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+            <p className="text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>Offer From Inventory</p>
             <div className="mt-3 space-y-2 text-xs max-h-60 overflow-y-auto pr-1">
               {sellableInventory.length === 0 && <p style={{ color: '#6b7280' }}>You do not have inventory matching the current filters.</p>}
               {sellableInventory.map((item) => (
-                <div key={item.id} className="rounded p-3 flex items-center justify-between gap-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+                <div key={item.id} className="rounded p-3 flex items-center justify-between gap-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
                   <div>
                     <p style={{ color: RARITY_COLORS[item.rarity] }}>{item.icon} {item.name}</p>
                     <p className="mt-1" style={{ color: '#6b7280' }}>{item.quantity}x available · Base ${item.value.toLocaleString()}</p>
@@ -827,9 +827,9 @@ export default function MarketPage() {
         </div>
       )}
 
-      <div className="rounded-lg overflow-hidden" style={{ border: '1px solid #2a2a2a' }}>
+      <div className="rounded-lg overflow-hidden" style={{ border: '1px solid #d1d5db' }}>
         <div className="grid grid-cols-12 px-4 py-2 text-xs uppercase tracking-widest"
-          style={{ background: '#111', color: '#374151', borderBottom: '1px solid #1f1f1f' }}>
+          style={{ background: '#ffffff', color: '#94a3b8', borderBottom: '1px solid #1f1f1f' }}>
           <div className="col-span-4">Item</div>
           <div className="col-span-2 text-right">Price</div>
           <div className="col-span-2 text-right">{tab === 'buy' ? '24h' : tab === 'sell' ? 'Fee' : tab === 'auction' ? 'Listed' : 'Status'}</div>
@@ -862,24 +862,24 @@ export default function MarketPage() {
       </div>
 
       {modalState && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: '#00000088' }}>
-          <div className="w-full max-w-lg rounded-2xl p-5 space-y-4" style={{ background: '#0c0c0c', border: '1px solid #39ff1430', boxShadow: '0 0 60px rgba(57,255,20,0.08)' }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: '#f1f5f914' }}>
+          <div className="w-full max-w-lg rounded-2xl p-5 space-y-4" style={{ background: '#f8fafc', border: '1px solid #0f766e33', boxShadow: '0 0 60px rgba(57,255,20,0.08)' }}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>{modalLabel}</p>
+                <p className="text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>{modalLabel}</p>
                 <h2 className="text-lg font-bold uppercase" style={{ color: '#e5ffe1' }}>{modalItemName}</h2>
               </div>
-              <button onClick={() => setModalState(null)} className="px-3 py-1 rounded text-xs uppercase tracking-wider" style={{ background: '#111', border: '1px solid #2a2a2a', color: '#9ca3af' }}>
+              <button onClick={() => setModalState(null)} className="px-3 py-1 rounded text-xs uppercase tracking-wider" style={{ background: '#ffffff', border: '1px solid #d1d5db', color: '#9ca3af' }}>
                 Close
               </button>
             </div>
 
-            <div className="rounded-xl p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
+            <div className="rounded-xl p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
               <p className="text-xs uppercase tracking-widest" style={{ color: '#6b7280' }}>Quantity</p>
               <div className="mt-3 flex items-center gap-3">
-                <button disabled={modalState.mode === 'direct-accept'} onClick={() => updateModalQuantity((modalState?.quantity ?? 1) - 1)} className="px-3 py-2 rounded text-sm" style={{ background: '#111827', border: '1px solid #1f2937', color: '#d1d5db', opacity: modalState.mode === 'direct-accept' ? 0.4 : 1 }}>-</button>
-                <input disabled={modalState.mode === 'direct-accept'} value={modalState.quantity} onChange={(event) => updateModalQuantity(Number(event.target.value) || 1)} className="w-24 rounded px-3 py-2 text-center outline-none" style={{ background: '#0a0a0a', border: '1px solid #2a2a2a', color: '#f3f4f6', opacity: modalState.mode === 'direct-accept' ? 0.7 : 1 }} />
-                <button disabled={modalState.mode === 'direct-accept'} onClick={() => updateModalQuantity((modalState?.quantity ?? 1) + 1)} className="px-3 py-2 rounded text-sm" style={{ background: '#111827', border: '1px solid #1f2937', color: '#d1d5db', opacity: modalState.mode === 'direct-accept' ? 0.4 : 1 }}>+</button>
+                <button disabled={modalState.mode === 'direct-accept'} onClick={() => updateModalQuantity((modalState?.quantity ?? 1) - 1)} className="px-3 py-2 rounded text-sm" style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#475569', opacity: modalState.mode === 'direct-accept' ? 0.4 : 1 }}>-</button>
+                <input disabled={modalState.mode === 'direct-accept'} value={modalState.quantity} onChange={(event) => updateModalQuantity(Number(event.target.value) || 1)} className="w-24 rounded px-3 py-2 text-center outline-none" style={{ background: '#f8fafc', border: '1px solid #d1d5db', color: '#1e293b', opacity: modalState.mode === 'direct-accept' ? 0.7 : 1 }} />
+                <button disabled={modalState.mode === 'direct-accept'} onClick={() => updateModalQuantity((modalState?.quantity ?? 1) + 1)} className="px-3 py-2 rounded text-sm" style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#475569', opacity: modalState.mode === 'direct-accept' ? 0.4 : 1 }}>+</button>
                 <p className="text-xs" style={{ color: '#6b7280' }}>
                   Max {modalState.mode === 'buy'
                     ? selectedBuyListing?.quantity ?? 1
@@ -902,7 +902,7 @@ export default function MarketPage() {
             {renderModalSummary()}
 
             <div className="flex justify-end gap-3">
-              <button onClick={() => setModalState(null)} className="px-4 py-2 rounded text-xs uppercase tracking-widest" style={{ background: '#111', border: '1px solid #2a2a2a', color: '#9ca3af' }}>
+              <button onClick={() => setModalState(null)} className="px-4 py-2 rounded text-xs uppercase tracking-widest" style={{ background: '#ffffff', border: '1px solid #d1d5db', color: '#9ca3af' }}>
                 Cancel
               </button>
               <button onClick={confirmMarketAction} className="px-4 py-2 rounded text-xs uppercase tracking-widest" style={{ background: modalState.mode === 'buy' ? '#22c55e15' : modalState.mode === 'sell' ? '#ef444415' : modalState.mode === 'direct-accept' || modalState.mode === 'direct-offer' ? '#fbbf2415' : '#60a5fa15', border: `1px solid ${modalState.mode === 'buy' ? '#22c55e40' : modalState.mode === 'sell' ? '#ef444440' : modalState.mode === 'direct-accept' || modalState.mode === 'direct-offer' ? '#fbbf2440' : '#60a5fa40'}`, color: modalState.mode === 'buy' ? '#22c55e' : modalState.mode === 'sell' ? '#ef4444' : modalState.mode === 'direct-accept' || modalState.mode === 'direct-offer' ? '#fbbf24' : '#60a5fa' }}>

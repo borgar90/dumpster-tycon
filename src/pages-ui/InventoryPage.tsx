@@ -135,10 +135,14 @@ export default function InventoryPage() {
   const isConsumable = !!(selected && CONSUMABLE_IDS.has(selected.id));
   const hasDisassemblyAccess = Boolean(activeProperty?.canDisassemble);
   const hasAnyBreakdownAccess = hasQueueRecycleAccess || hasBenchBreakdownAccess || hasDisassemblyAccess;
-  const selectedBreakdownYield = selected ? getBreakdownComponentYield(selected.rarity, hasBenchBreakdownAccess) : 0;
+  const selectedBreakdownYield = selected ? getBreakdownComponentYield(selected.rarity, hasBenchBreakdownAccess || hasQueueRecycleAccess || hasDisassemblyAccess) : 0;
   const selectedCanBreakDown = Boolean(selected && hasDisassemblyAccess && selectedBreakdownYield > 0);
   const recycleActionLabel = hasQueueRecycleAccess ? 'Recycle' : hasAnyBreakdownAccess ? 'Break Down' : 'Recycle Locked';
   const canRecycleSelected = Boolean(selected && (hasQueueRecycleAccess || selectedCanBreakDown));
+  const equippedItemIds = useMemo(
+    () => new Set(Object.values(player.equipment).filter((itemId): itemId is string => Boolean(itemId))),
+    [player.equipment],
+  );
 
   const filtered = inventory
     .filter((i) => categoryTab === 'All' || getInventoryCategory(i) === categoryTab)
@@ -152,10 +156,15 @@ export default function InventoryPage() {
       return RARITY_ORDER.indexOf(b.rarity) - RARITY_ORDER.indexOf(a.rarity);
     });
 
-  const visibleSelectedCount = filtered.filter((item) => selectedIds.has(item.id)).length;
-  const allVisibleSelected = filtered.length > 0 && visibleSelectedCount === filtered.length;
+  const bulkSelectableItems = filtered.filter((item) => !equippedItemIds.has(item.id));
+  const visibleSelectedCount = bulkSelectableItems.filter((item) => selectedIds.has(item.id)).length;
+  const allVisibleSelected = bulkSelectableItems.length > 0 && visibleSelectedCount === bulkSelectableItems.length;
 
   const toggleMultiSelect = (itemId: string) => {
+    if (equippedItemIds.has(itemId)) {
+      return;
+    }
+
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(itemId)) next.delete(itemId);
@@ -165,12 +174,14 @@ export default function InventoryPage() {
   };
 
   const handleBulkSell = () => {
-    inventory.filter((item) => selectedIds.has(item.id)).forEach((item) => sellItem(item.id, item.quantity));
+    inventory
+      .filter((item) => selectedIds.has(item.id) && !equippedItemIds.has(item.id))
+      .forEach((item) => sellItem(item.id, item.quantity));
     setSelectedIds(new Set());
   };
 
   const handleBulkRecycle = () => {
-    const selectedItems = inventory.filter((item) => selectedIds.has(item.id));
+    const selectedItems = inventory.filter((item) => selectedIds.has(item.id) && !equippedItemIds.has(item.id));
 
     if (!hasQueueRecycleAccess && !hasAnyBreakdownAccess) {
       addNotification('Build a Crate-Lid Tinker Bench or upgrade to a Junkyard before recycling.', 'warning');
@@ -179,14 +190,30 @@ export default function InventoryPage() {
 
     const eligibleItems = hasQueueRecycleAccess
       ? selectedItems
-      : selectedItems.filter((item) => getBreakdownComponentYield(item.rarity, hasBenchBreakdownAccess) > 0);
+      : selectedItems.filter((item) => getBreakdownComponentYield(item.rarity, hasBenchBreakdownAccess || hasQueueRecycleAccess || hasDisassemblyAccess) > 0);
 
     if (eligibleItems.length === 0) {
-      addNotification(hasBenchBreakdownAccess ? 'Only uncommon+ items can be broken down on this bench.' : 'Only rare+ items can be stripped for parts with the tear-down rack.', 'warning');
+      addNotification(hasBenchBreakdownAccess ? 'Only common+ items can be broken down on this bench.' : 'Only rare+ items can be stripped for parts with the tear-down rack.', 'warning');
       return;
     }
 
     eligibleItems.forEach((item) => recycleItem(item.id, item.quantity));
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkMoveToStorage = () => {
+    if (!activeProperty) {
+      addNotification('No active base available for storage transfers.', 'warning');
+      return;
+    }
+
+    const selectedItems = inventory.filter((item) => selectedIds.has(item.id) && !equippedItemIds.has(item.id));
+
+    if (selectedItems.length === 0) {
+      return;
+    }
+
+    selectedItems.forEach((item) => moveItemToPropertyStorage(item.id, item.quantity));
     setSelectedIds(new Set());
   };
 
@@ -207,7 +234,7 @@ export default function InventoryPage() {
     }
 
     if (!hasQueueRecycleAccess && !selectedCanBreakDown) {
-      addNotification(hasBenchBreakdownAccess ? 'Only uncommon+ items can be broken down on this bench.' : 'Only rare+ items can be stripped for parts with the tear-down rack.', 'warning');
+      addNotification(hasBenchBreakdownAccess ? 'Only common+ items can be broken down on this bench.' : 'Only rare+ items can be stripped for parts with the tear-down rack.', 'warning');
       return;
     }
 
@@ -226,9 +253,9 @@ export default function InventoryPage() {
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (allVisibleSelected) {
-        filtered.forEach((item) => next.delete(item.id));
+        bulkSelectableItems.forEach((item) => next.delete(item.id));
       } else {
-        filtered.forEach((item) => next.add(item.id));
+        bulkSelectableItems.forEach((item) => next.add(item.id));
       }
       return next;
     });
@@ -238,7 +265,7 @@ export default function InventoryPage() {
     <div className="p-6 space-y-4 h-full">
       <div className="flex items-center justify-between">
         <div className="flex-1">
-          <h1 className="text-xl font-bold tracking-widest uppercase" style={{ color: '#39ff14' }}>
+          <h1 className="text-xl font-bold tracking-widest uppercase" style={{ color: '#0f766e' }}>
             Inventory
           </h1>
           <div className="mt-2 space-y-1">
@@ -246,7 +273,7 @@ export default function InventoryPage() {
               <span style={{ color: '#6b7280' }}>Capacity</span>
               <span style={{ color: capacityColor }}>{player.usedCapacity.toFixed(1)}/{effectiveCapacity.toFixed(1)} kg</span>
             </div>
-            <div className="h-1.5 rounded-full" style={{ background: '#2a2a2a' }}>
+            <div className="h-1.5 rounded-full" style={{ background: '#d1d5db' }}>
               <motion.div
                 animate={{ width: `${Math.min(capacityPercent, 100)}%` }}
                 className="h-full rounded-full"
@@ -263,7 +290,7 @@ export default function InventoryPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search item..."
             className="text-xs px-2 py-1.5 rounded outline-none w-36"
-            style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#9ca3af' }}
+            style={{ background: '#eef2f7', border: '1px solid #d1d5db', color: '#9ca3af' }}
           />
         </div>
       </div>
@@ -281,9 +308,9 @@ export default function InventoryPage() {
             onClick={() => setSort(tab.key as typeof sort)}
             className="px-3 py-1 rounded text-xs tracking-wider uppercase transition-all"
             style={{
-              background: sort === tab.key ? '#39ff1415' : 'transparent',
-              border: `1px solid ${sort === tab.key ? '#39ff1460' : '#2a2a2a'}`,
-              color: sort === tab.key ? '#39ff14' : '#6b7280',
+              background: sort === tab.key ? '#0f766e15' : 'transparent',
+              border: `1px solid ${sort === tab.key ? '#0f766e66' : '#d1d5db'}`,
+              color: sort === tab.key ? '#0f766e' : '#6b7280',
             }}>
             {tab.label}
           </button>
@@ -299,6 +326,13 @@ export default function InventoryPage() {
           Bulk Sell ({selectedIds.size})
         </button>
         <button
+          onClick={handleBulkMoveToStorage}
+          disabled={selectedIds.size === 0 || !activeProperty}
+          className="px-3 py-1 rounded text-xs tracking-wider uppercase"
+          style={{ background: '#0f766e15', border: '1px solid #0f766e40', color: '#86efac', opacity: selectedIds.size && activeProperty ? 1 : 0.5 }}>
+          Bulk Move To Stash ({selectedIds.size})
+        </button>
+        <button
           onClick={handleBulkRecycle}
           disabled={selectedIds.size === 0}
           className="px-3 py-1 rounded text-xs tracking-wider uppercase"
@@ -308,7 +342,7 @@ export default function InventoryPage() {
         <button
           onClick={() => setSelectedIds(new Set())}
           className="px-3 py-1 rounded text-xs tracking-wider uppercase"
-          style={{ background: '#2a2a2a55', border: '1px solid #3a3a3a', color: '#9ca3af' }}>
+          style={{ background: '#d1d5db55', border: '1px solid #3a3a3a', color: '#9ca3af' }}>
           Clear Multi-Select
         </button>
       </div>
@@ -325,9 +359,9 @@ export default function InventoryPage() {
               onClick={() => setCategoryTab(tab)}
               className="px-3 py-1 rounded text-xs tracking-wider uppercase transition-all"
               style={{
-                background: categoryTab === tab ? '#39ff1415' : 'transparent',
-                border: `1px solid ${categoryTab === tab ? '#39ff1460' : '#2a2a2a'}`,
-                color: categoryTab === tab ? '#39ff14' : '#6b7280',
+                background: categoryTab === tab ? '#0f766e15' : 'transparent',
+                border: `1px solid ${categoryTab === tab ? '#0f766e66' : '#d1d5db'}`,
+                color: categoryTab === tab ? '#0f766e' : '#6b7280',
               }}>
               {tab} ({count})
             </button>
@@ -340,9 +374,9 @@ export default function InventoryPage() {
           onClick={() => setFilter('all')}
           className="px-3 py-1 rounded text-xs tracking-wider uppercase transition-all"
           style={{
-            background: filter === 'all' ? '#39ff1415' : 'transparent',
-            border: `1px solid ${filter === 'all' ? '#39ff1460' : '#2a2a2a'}`,
-            color: filter === 'all' ? '#39ff14' : '#6b7280',
+            background: filter === 'all' ? '#0f766e15' : 'transparent',
+            border: `1px solid ${filter === 'all' ? '#0f766e66' : '#d1d5db'}`,
+            color: filter === 'all' ? '#0f766e' : '#6b7280',
           }}>
           All ({inventory.length})
         </button>
@@ -356,7 +390,7 @@ export default function InventoryPage() {
               className="px-3 py-1 rounded text-xs tracking-wider uppercase transition-all"
               style={{
                 background: filter === r ? RARITY_BG[r] : 'transparent',
-                border: `1px solid ${filter === r ? RARITY_COLORS[r] + '60' : '#2a2a2a'}`,
+                border: `1px solid ${filter === r ? RARITY_COLORS[r] + '60' : '#d1d5db'}`,
                 color: filter === r ? RARITY_COLORS[r] : '#6b7280',
               }}>
               {r} ({count})
@@ -367,24 +401,24 @@ export default function InventoryPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
-          <div className="rounded-lg overflow-hidden" style={{ background: '#0f0f0f', border: '1px solid #2a2a2a' }}>
-            <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: '#1f2937' }}>
+          <div className="rounded-lg overflow-hidden" style={{ background: '#f1f5f9', border: '1px solid #d1d5db' }}>
+            <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: '#cbd5e1' }}>
               <div>
-                <p className="text-xs uppercase tracking-widest" style={{ color: '#39ff1480' }}>Item Ledger</p>
+                <p className="text-xs uppercase tracking-widest" style={{ color: '#0f766e99' }}>Item Ledger</p>
                 <p className="text-[11px] mt-1" style={{ color: '#6b7280' }}>{filtered.length} visible rows · {selectedIds.size} marked for mass action</p>
               </div>
               <button
                 onClick={toggleSelectAllVisible}
                 disabled={filtered.length === 0}
                 className="px-3 py-1 rounded text-xs tracking-wider uppercase"
-                style={{ background: '#11182788', border: '1px solid #374151', color: '#d1d5db', opacity: filtered.length > 0 ? 1 : 0.45 }}>
+                style={{ background: '#f1f5f988', border: '1px solid #94a3b8', color: '#475569', opacity: filtered.length > 0 ? 1 : 0.45 }}>
                 {allVisibleSelected ? 'Clear Visible' : 'Mark Visible'}
               </button>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-sm" aria-label="inventory-table">
-                <thead style={{ background: '#11182788' }}>
+                <thead style={{ background: '#f1f5f988' }}>
                   <tr>
                     <th className="px-4 py-3 text-left text-[11px] uppercase tracking-widest" style={{ color: '#9ca3af' }}>
                       <input
@@ -410,7 +444,7 @@ export default function InventoryPage() {
                         onClick={() => setSelected(selected?.id === item.id ? null : item)}
                         className="cursor-pointer border-t"
                         style={{
-                          borderColor: '#1f2937',
+                          borderColor: '#cbd5e1',
                           background: selected?.id === item.id ? RARITY_BG[item.rarity] : 'transparent',
                         }}>
                         <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
@@ -418,6 +452,7 @@ export default function InventoryPage() {
                             type="checkbox"
                             checked={selectedIds.has(item.id)}
                             aria-label={`Select ${item.name}`}
+                            disabled={equippedItemIds.has(item.id)}
                             onChange={() => toggleMultiSelect(item.id)}
                           />
                         </td>
@@ -425,7 +460,7 @@ export default function InventoryPage() {
                           <div className="flex items-center gap-3">
                             <span className="text-xl">{item.icon}</span>
                             <div>
-                              <p className="text-sm font-semibold" style={{ color: '#f8fafc' }}>{item.name}</p>
+                              <p className="text-sm font-semibold" style={{ color: '#0f172a' }}>{item.name}</p>
                               <p className="text-[11px]" style={{ color: '#6b7280' }}>
                                 {itemCategory} · Qty {item.quantity} · {item.weight.toFixed(1)} kg each
                               </p>
@@ -438,7 +473,7 @@ export default function InventoryPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <p className="text-sm font-semibold" style={{ color: '#d1d5db' }}>${expectedValue}</p>
+                          <p className="text-sm font-semibold" style={{ color: '#475569' }}>${expectedValue}</p>
                           <p className="text-[11px]" style={{ color: '#6b7280' }}>${Math.floor(item.value * market.sell)} each at current rates</p>
                         </td>
                       </tr>
@@ -457,11 +492,11 @@ export default function InventoryPage() {
         </div>
 
         <div className="lg:col-span-1">
-          <div className="rounded-lg p-3 mb-3" style={{ background: '#0f0f0f', border: '1px solid #2a2a2a' }}>
-            <p className="text-xs uppercase tracking-widest mb-2" style={{ color: '#39ff1480' }}>Equipment Upgrade Path</p>
+          <div className="rounded-lg p-3 mb-3" style={{ background: '#f1f5f9', border: '1px solid #d1d5db' }}>
+            <p className="text-xs uppercase tracking-widest mb-2" style={{ color: '#0f766e99' }}>Equipment Upgrade Path</p>
             {Object.entries(EQUIPMENT_UPGRADE_PATHS).map(([slot, tiers]) => (
               <div key={slot} className="text-xs mb-1" style={{ color: '#9ca3af' }}>
-                <span style={{ color: '#d1d5db' }}>{EQUIPMENT_SLOT_LABELS[slot as keyof typeof EQUIPMENT_SLOT_LABELS]}:</span> {tiers.join(' -> ')}
+                <span style={{ color: '#475569' }}>{EQUIPMENT_SLOT_LABELS[slot as keyof typeof EQUIPMENT_SLOT_LABELS]}:</span> {tiers.join(' -> ')}
               </div>
             ))}
           </div>
@@ -474,7 +509,7 @@ export default function InventoryPage() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
                 className="rounded-lg p-4 space-y-4"
-                style={{ background: '#111', border: `1px solid ${RARITY_COLORS[selected.rarity]}33` }}>
+                style={{ background: '#ffffff', border: `1px solid ${RARITY_COLORS[selected.rarity]}33` }}>
                 <div className="flex items-center gap-3">
                   <div className="w-14 h-14 rounded flex items-center justify-center text-3xl" style={{ background: RARITY_BG[selected.rarity], border: `1px solid ${RARITY_COLORS[selected.rarity]}44` }}>
                     {selected.icon}
@@ -488,14 +523,14 @@ export default function InventoryPage() {
                 <p className="text-xs" style={{ color: '#9ca3af' }}>{selected.description}</p>
 
                 {selectedSlot && (
-                  <div className="rounded p-2 text-xs" style={{ background: '#0d0d0d', border: '1px solid #2a2a2a' }}>
+                  <div className="rounded p-2 text-xs" style={{ background: '#f8fafc', border: '1px solid #d1d5db' }}>
                     <p style={{ color: '#d8b4fe' }}>Slot: {EQUIPMENT_SLOT_LABELS[selectedSlot]}</p>
                     <p style={{ color: '#9ca3af' }}>Equipped now: {currentlyEquipped ? `${currentlyEquipped.icon} ${currentlyEquipped.name}` : 'Empty'}</p>
                   </div>
                 )}
 
                 {selectedSlot && selectedStats && (
-                  <div className="rounded p-2 text-xs space-y-1" style={{ background: '#11182744', border: '1px solid #1f2937' }}>
+                  <div className="rounded p-2 text-xs space-y-1" style={{ background: '#f1f5f944', border: '1px solid #cbd5e1' }}>
                     <p style={{ color: '#93c5fd' }}>Equipment Comparison</p>
                     {[['Capacity', selectedStats.capacityBonus, currentlyEquippedStats?.capacityBonus ?? 0],
                       ['Search Speed', selectedStats.searchSpeedBonus, currentlyEquippedStats?.searchSpeedBonus ?? 0],
@@ -530,7 +565,7 @@ export default function InventoryPage() {
                   })().map(([k, v]) => (
                     <div key={k} className="flex justify-between py-1 border-b" style={{ borderColor: '#1f1f1f' }}>
                       <span style={{ color: '#6b7280' }}>{k}</span>
-                      <span style={{ color: '#d1d5db' }}>{v}</span>
+                      <span style={{ color: '#475569' }}>{v}</span>
                     </div>
                   ))}
                 </div>
@@ -554,7 +589,7 @@ export default function InventoryPage() {
                         value={quantityToSell}
                         onChange={(e) => setQuantityToSell(Math.min(selected.quantity, Math.max(1, parseInt(e.target.value) || 1)))}
                         className="w-16 px-2 py-1 rounded text-xs"
-                        style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#9ca3af' }}
+                        style={{ background: '#eef2f7', border: '1px solid #d1d5db', color: '#9ca3af' }}
                       />
                       <span style={{ color: '#6b7280' }}>/ {selected.quantity}</span>
                     </div>
@@ -570,7 +605,7 @@ export default function InventoryPage() {
                       whileTap={{ scale: 0.98 }}
                       onClick={() => moveItemToPropertyStorage(selected.id, quantityToSell)}
                       className="px-2 py-2 rounded text-xs tracking-wider uppercase"
-                      style={{ background: '#39ff1415', border: '1px solid #39ff1440', color: '#86efac' }}>
+                      style={{ background: '#0f766e15', border: '1px solid #0f766e40', color: '#86efac' }}>
                       Move To Stash
                     </motion.button>
                   )}
@@ -591,7 +626,7 @@ export default function InventoryPage() {
                       {isSelectedEquipped ? 'Unequip' : `Equip ${EQUIPMENT_SLOT_LABELS[selectedSlot]}`}
                     </motion.button>
                   ) : (
-                    <div className="px-2 py-2 rounded text-xs text-center" style={{ background: '#2a2a2a33', border: '1px solid #2a2a2a', color: '#6b7280' }}>
+                    <div className="px-2 py-2 rounded text-xs text-center" style={{ background: '#d1d5db33', border: '1px solid #d1d5db', color: '#6b7280' }}>
                       Not Equipable
                     </div>
                   )}
@@ -613,17 +648,17 @@ export default function InventoryPage() {
 
               </motion.div>
             ) : (
-              <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-lg p-4 flex flex-col items-center justify-center text-center" style={{ background: '#111', border: '1px solid #2a2a2a', minHeight: '400px' }}>
+              <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-lg p-4 flex flex-col items-center justify-center text-center" style={{ background: '#ffffff', border: '1px solid #d1d5db', minHeight: '400px' }}>
                 <span className="text-4xl mb-3">📦</span>
-                <p className="text-xs" style={{ color: '#374151' }}>Select an item to view details</p>
+                <p className="text-xs" style={{ color: '#94a3b8' }}>Select an item to view details</p>
               </motion.div>
             )}
           </AnimatePresence>
 
           {confirmAction && (
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="fixed inset-0 flex items-center justify-center z-50" style={{ background: '#00000088' }} onClick={() => setConfirmAction(null)}>
-              <motion.div onClick={(e) => e.stopPropagation()} className="rounded-lg p-4 space-y-3" style={{ background: '#1a1a1a', border: '1px solid #39ff1440', minWidth: '280px' }}>
-                <p className="text-sm font-bold" style={{ color: '#39ff14' }}>Confirm {confirmAction.type === 'sell' ? 'Sell' : hasQueueRecycleAccess ? 'Recycle' : 'Break Down'}</p>
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="fixed inset-0 flex items-center justify-center z-50" style={{ background: '#f1f5f914' }} onClick={() => setConfirmAction(null)}>
+              <motion.div onClick={(e) => e.stopPropagation()} className="rounded-lg p-4 space-y-3" style={{ background: '#eef2f7', border: '1px solid #0f766e40', minWidth: '280px' }}>
+                <p className="text-sm font-bold" style={{ color: '#0f766e' }}>Confirm {confirmAction.type === 'sell' ? 'Sell' : hasQueueRecycleAccess ? 'Recycle' : 'Break Down'}</p>
                 <p className="text-xs" style={{ color: '#9ca3af' }}>
                   {confirmAction.type === 'sell'
                     ? `Sell ${confirmAction.quantity}x ${selected?.name ?? 'item'}?`
@@ -634,7 +669,7 @@ export default function InventoryPage() {
                       : null}
                 </p>
                 <div className="grid grid-cols-2 gap-2">
-                  <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setConfirmAction(null)} className="px-3 py-1.5 rounded text-xs tracking-wider uppercase" style={{ background: '#2a2a2a', border: '1px solid #3a3a3a', color: '#9ca3af' }}>Cancel</motion.button>
+                  <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setConfirmAction(null)} className="px-3 py-1.5 rounded text-xs tracking-wider uppercase" style={{ background: '#d1d5db', border: '1px solid #3a3a3a', color: '#9ca3af' }}>Cancel</motion.button>
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}

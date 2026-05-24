@@ -64,4 +64,32 @@ describe('PlayerSidebar', () => {
 
     vi.useRealTimers();
   });
+
+  it('shows current vehicle bonus when a fleet vehicle is built', () => {
+    useGameStore.setState((state) => ({
+      ...state,
+      player: {
+        ...state.player,
+        ownedVehicles: {
+          car: {
+            mode: 'car',
+            builtAt: Date.now(),
+            fuel: 92,
+            maxFuel: 130,
+            durability: 84,
+            maintenance: 71,
+            upgrades: [],
+          },
+        },
+      },
+    }));
+
+    render(<PlayerSidebar />);
+
+    expect(screen.getByText('Logistics')).toBeInTheDocument();
+    expect(screen.getByText('🚗 Car')).toBeInTheDocument();
+    expect(screen.getByText(/Current vehicle bonus/)).toBeInTheDocument();
+    expect(screen.getByText(/\+20 carry vs bus · Max haul 55/)).toBeInTheDocument();
+    expect(screen.getByText(/Fuel 92\/130 · Durability 84% · Maintenance 71%/)).toBeInTheDocument();
+  });
 });

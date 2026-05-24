@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DUMPSTER_ASSEMBLY_RECIPES, SHACK_ASSEMBLY_RECIPES, SHACK_PROPERTY_LISTINGS, getPlayerCoreStats, useGameStore } from '@/store/gameStore';
+import { DUMPSTER_ASSEMBLY_RECIPES, JUNKYARD_PROPERTY_LISTINGS, SHACK_ASSEMBLY_RECIPES, SHACK_PROPERTY_LISTINGS, WORKSHOP_PROPERTY_LISTINGS, getPlayerCoreStats, useGameStore } from '@/store/gameStore';
 
 describe('property progression', () => {
   beforeEach(() => {
@@ -191,6 +191,174 @@ describe('property progression', () => {
 
     useGameStore.getState().purchaseShack('slums');
     expect(useGameStore.getState().property.properties.some((entry) => entry.tier === 'shack')).toBe(true);
+  });
+
+  it('requires a shack progression step before workshop purchases unlock', () => {
+    const listing = WORKSHOP_PROPERTY_LISTINGS.tech;
+
+    useGameStore.setState((state) => ({
+      ...state,
+      notifications: [],
+      player: { ...state.player, rank: 15, cash: 12000 },
+      inventory: [
+        {
+          id: 'mat_components',
+          name: 'Salvaged Components',
+          icon: '🧩',
+          rarity: 'uncommon',
+          quantity: 12,
+          weight: 0.1,
+          value: 18,
+          description: 'parts',
+        },
+      ],
+      property: {
+        ...state.property,
+        shackAccess: {
+          unlocked: true,
+          completedAt: Date.now(),
+        },
+        activePropertyId: 'shack-tech',
+        properties: [
+          {
+            ...state.property.properties[0],
+            id: 'shack-tech',
+            name: 'Maker Shack',
+            district: 'tech',
+            tier: 'shack',
+            occupancyStatus: 'active',
+            storageCapacity: 70,
+            assemblyTier: 2,
+            canDisassemble: true,
+            canRecycle: false,
+            employeeCapacity: 0,
+            storedItems: [
+              {
+                id: 'heavy-crate',
+                name: 'Heavy Crate',
+                icon: '📦',
+                rarity: 'common',
+                quantity: 3,
+                weight: 8,
+                value: 12,
+                description: 'stash filler',
+              },
+            ],
+            letting: null,
+          },
+        ],
+      },
+    }));
+
+    useGameStore.getState().purchaseWorkshop('tech');
+    expect(useGameStore.getState().property.properties.filter((entry) => entry.tier === 'workshop')).toHaveLength(0);
+
+    useGameStore.getState().unlockWorkshopTier();
+
+    const unlocked = useGameStore.getState();
+    expect(unlocked.property.workshopAccess.unlocked).toBe(true);
+    expect(unlocked.inventory.find((entry) => entry.id === 'mat_components')).toBeUndefined();
+
+    useGameStore.getState().purchaseWorkshop('tech');
+
+    const after = useGameStore.getState();
+    const activeProperty = after.property.properties.find((entry) => entry.id === after.property.activePropertyId);
+
+    expect(after.player.cash).toBe(12000 - 2400 - listing.purchasePrice);
+    expect(activeProperty).toMatchObject({
+      district: 'tech',
+      tier: 'workshop',
+      occupancyStatus: 'active',
+      canDisassemble: true,
+      canRecycle: true,
+      assemblyTier: listing.assemblyTier,
+    });
+  });
+
+  it('requires a workshop progression step before junkyard purchases unlock', () => {
+    const listing = JUNKYARD_PROPERTY_LISTINGS.harbor;
+
+    useGameStore.setState((state) => ({
+      ...state,
+      notifications: [],
+      player: { ...state.player, rank: 23, cash: 30000 },
+      inventory: [
+        {
+          id: 'mat_components',
+          name: 'Salvaged Components',
+          icon: '🧩',
+          rarity: 'uncommon',
+          quantity: 20,
+          weight: 0.1,
+          value: 18,
+          description: 'parts',
+        },
+      ],
+      property: {
+        ...state.property,
+        shackAccess: {
+          unlocked: true,
+          completedAt: Date.now(),
+        },
+        workshopAccess: {
+          unlocked: true,
+          completedAt: Date.now(),
+        },
+        activePropertyId: 'workshop-harbor',
+        properties: [
+          {
+            ...state.property.properties[0],
+            id: 'workshop-harbor',
+            name: 'Dock Crane Workshop',
+            district: 'harbor',
+            tier: 'workshop',
+            occupancyStatus: 'active',
+            storageCapacity: 118,
+            assemblyTier: 3,
+            canDisassemble: true,
+            canRecycle: true,
+            employeeCapacity: 0,
+            storedItems: [
+              {
+                id: 'yard-feed',
+                name: 'Yard Feed Crate',
+                icon: '📦',
+                rarity: 'common',
+                quantity: 5,
+                weight: 9,
+                value: 20,
+                description: 'stash filler',
+              },
+            ],
+            letting: null,
+          },
+        ],
+      },
+    }));
+
+    useGameStore.getState().purchaseJunkyard('harbor');
+    expect(useGameStore.getState().property.properties.filter((entry) => entry.tier === 'junkyard')).toHaveLength(0);
+
+    useGameStore.getState().unlockJunkyardTier();
+
+    const unlocked = useGameStore.getState();
+    expect(unlocked.property.junkyardAccess.unlocked).toBe(true);
+    expect(unlocked.inventory.find((entry) => entry.id === 'mat_components')).toBeUndefined();
+
+    useGameStore.getState().purchaseJunkyard('harbor');
+
+    const after = useGameStore.getState();
+    const activeProperty = after.property.properties.find((entry) => entry.id === after.property.activePropertyId);
+
+    expect(after.player.cash).toBe(30000 - 5200 - listing.purchasePrice);
+    expect(activeProperty).toMatchObject({
+      district: 'harbor',
+      tier: 'junkyard',
+      occupancyStatus: 'active',
+      canDisassemble: true,
+      canRecycle: true,
+      employeeCapacity: listing.employeeCapacity,
+    });
   });
 
   it('lets the dumpster craft a teardown rack before disassembly, then still allows shack assembly later', () => {

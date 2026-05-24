@@ -174,6 +174,7 @@ export async function PUT(request: Request) {
         property: body.snapshot.property,
         guild: body.snapshot.guild,
         lastMissionRefreshAt: body.snapshot.lastMissionRefreshAt,
+        ownedVehicles: body.snapshot.player.ownedVehicles,
       }),
     },
   });

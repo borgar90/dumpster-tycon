@@ -47,10 +47,9 @@ export default function TopNav() {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-14 flex items-center justify-between px-4 border-b"
-      style={{ background: '#0d0d0d', borderColor: '#39ff1430' }}>
+      style={{ background: '#f8fafc', borderColor: '#cbd5e1' }}>
       {/* Logo */}
-      <div className="flex items-center gap-2 min-w-[160px]">
-        
+      <div className="flex items-start justify-ce gap-2 min-w-[160px]"> 
         <Image src={logo} alt="Dumpster Tycoon" width={120} height={24} />
       </div>
 
@@ -64,16 +63,16 @@ export default function TopNav() {
               onClick={() => setPage(item.id)}
               className="relative px-3 py-1.5 text-xs tracking-wider uppercase transition-all duration-200 rounded"
               style={{
-                color: active ? '#39ff14' : '#6b7280',
-                background: active ? '#39ff1410' : 'transparent',
-                border: active ? '1px solid #39ff1440' : '1px solid transparent',
+                color: active ? '#0f766e' : '#475569',
+                background: active ? '#ccfbf1' : 'transparent',
+                border: active ? '1px solid #5eead4' : '1px solid transparent',
               }}
             >
               {active && (
                 <motion.span
                   layoutId="nav-indicator"
                   className="absolute inset-0 rounded"
-                  style={{ background: '#39ff1410', border: '1px solid #39ff1440' }}
+                  style={{ background: '#ccfbf1', border: '1px solid #5eead4' }}
                   transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                 />
               )}
@@ -91,7 +90,7 @@ export default function TopNav() {
          <button
           onClick={() => signOut({ callbackUrl: '/' })}
           className="px-2 py-1 rounded uppercase tracking-wider"
-          style={{ color: '#f87171', border: '1px solid #7f1d1d', background: '#450a0a55' }}>
+          style={{ color: '#b91c1c', border: '1px solid #fecaca', background: '#fee2e2' }}>
           Logout
         </button>
       </div>

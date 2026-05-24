@@ -176,12 +176,12 @@ export default function MissionsPage() {
     <div className="p-6 space-y-6">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-xl font-bold tracking-widest uppercase" style={{ color: '#39ff14' }}>Missions</h1>
+          <h1 className="text-xl font-bold tracking-widest uppercase" style={{ color: '#0f766e' }}>Missions</h1>
           <p className="text-xs mt-0.5" style={{ color: '#6b7280' }}>Daily contracts now refresh from the live store with acceptance, tracking, and reward claims.</p>
         </div>
-        <div className="rounded-lg px-4 py-3" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-          <p className="text-[11px] uppercase tracking-widest" style={{ color: '#39ff1480' }}>Mission Ops</p>
-          <p className="mt-2 text-sm" style={{ color: '#d1d5db' }}>Active Slots: <span style={{ color: '#fbbf24' }}>{activeCount}/5</span></p>
+        <div className="rounded-lg px-4 py-3" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+          <p className="text-[11px] uppercase tracking-widest" style={{ color: '#0f766e99' }}>Mission Ops</p>
+          <p className="mt-2 text-sm" style={{ color: '#475569' }}>Active Slots: <span style={{ color: '#fbbf24' }}>{activeCount}/5</span></p>
           <p className="mt-1 text-xs" style={{ color: '#6b7280' }}>Cash on hand: ${player.cash.toLocaleString()}</p>
           <p className="mt-1 text-xs" style={{ color: '#6b7280' }}>
             Faction heat: {factionSummary.length > 0
@@ -192,7 +192,7 @@ export default function MissionsPage() {
           <button
             onClick={() => refreshMissionBoard(true)}
             className="mt-3 px-3 py-1.5 rounded text-xs uppercase tracking-widest"
-            style={{ background: '#39ff1415', border: '1px solid #39ff1440', color: '#39ff14' }}>
+            style={{ background: '#0f766e15', border: '1px solid #0f766e40', color: '#0f766e' }}>
             Refresh Board
           </button>
         </div>
@@ -205,7 +205,7 @@ export default function MissionsPage() {
           const accent = typedKey === 'active'
             ? '#fbbf24'
             : typedKey === 'available'
-              ? '#39ff14'
+              ? '#0f766e'
               : typedKey === 'completed'
                 ? '#22c55e'
                 : '#6b7280';
@@ -223,7 +223,7 @@ export default function MissionsPage() {
               className="rounded-lg p-4"
               style={{ background: '#0e0e0e', border: `1px solid ${accent}30` }}>
               <p className="text-[11px] uppercase tracking-[0.28em]" style={{ color: `${accent}b0` }}>{label}</p>
-              <p className="mt-2 text-2xl font-semibold" style={{ color: '#f3f4f6' }}>{value}</p>
+              <p className="mt-2 text-2xl font-semibold" style={{ color: '#1e293b' }}>{value}</p>
               <p className="mt-1 text-xs" style={{ color: '#6b7280' }}>{caption}</p>
             </div>
           );
@@ -232,7 +232,7 @@ export default function MissionsPage() {
 
       <div className="space-y-3" aria-label="faction-questgivers">
         <div>
-          <h2 className="text-sm font-semibold uppercase tracking-[0.28em]" style={{ color: '#f3f4f6' }}>Faction Questgivers</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-[0.28em]" style={{ color: '#1e293b' }}>Faction Questgivers</h2>
           <p className="mt-1 text-xs" style={{ color: '#6b7280' }}>These three crews now post portrait-led faction contracts. Completing their jobs raises rep and unlocks long-term rewards.</p>
         </div>
         <div className="grid gap-4 lg:grid-cols-3">
@@ -247,7 +247,7 @@ export default function MissionsPage() {
                 key={factionId}
                 className="overflow-hidden rounded-xl"
                 aria-label={`questgiver-${factionId}`}
-                style={{ background: '#0c0c0c', border: `1px solid ${definition.color}55` }}>
+                style={{ background: '#f8fafc', border: `1px solid ${definition.color}55` }}>
                 <div
                   className="min-h-[188px] p-4 flex flex-col justify-end"
                   style={{
@@ -256,32 +256,32 @@ export default function MissionsPage() {
                     backgroundPosition: 'center',
                   }}>
                   <p className="text-[11px] uppercase tracking-[0.28em]" style={{ color: `${definition.color}dd` }}>{definition.label}</p>
-                  <h3 className="mt-2 text-xl font-semibold" style={{ color: '#f9fafb' }}>{questgiver.name}</h3>
-                  <p className="text-xs" style={{ color: '#d1d5db' }}>{questgiver.title}</p>
+                  <h3 className="mt-2 text-xl font-semibold" style={{ color: '#0f172a' }}>{questgiver.name}</h3>
+                  <p className="text-xs" style={{ color: '#475569' }}>{questgiver.title}</p>
                 </div>
                 <div className="p-4 space-y-3">
                   <p className="text-sm" style={{ color: '#9ca3af' }}>{questgiver.summary}</p>
 
                   <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="rounded-md px-2 py-2" style={{ background: '#111827', border: '1px solid #1f2937' }}>
+                    <div className="rounded-md px-2 py-2" style={{ background: '#f1f5f9', border: '1px solid #cbd5e1' }}>
                       <p className="text-[11px] uppercase tracking-widest" style={{ color: '#6b7280' }}>Rep</p>
                       <p className="mt-1 text-lg font-semibold" style={{ color: definition.color }}>{standing > 0 ? `+${standing}` : standing}</p>
                     </div>
-                    <div className="rounded-md px-2 py-2" style={{ background: '#111827', border: '1px solid #1f2937' }}>
+                    <div className="rounded-md px-2 py-2" style={{ background: '#f1f5f9', border: '1px solid #cbd5e1' }}>
                       <p className="text-[11px] uppercase tracking-widest" style={{ color: '#6b7280' }}>Tier</p>
-                      <p className="mt-1 text-sm font-semibold" style={{ color: '#f3f4f6' }}>{tier}</p>
+                      <p className="mt-1 text-sm font-semibold" style={{ color: '#1e293b' }}>{tier}</p>
                     </div>
-                    <div className="rounded-md px-2 py-2" style={{ background: '#111827', border: '1px solid #1f2937' }}>
+                    <div className="rounded-md px-2 py-2" style={{ background: '#f1f5f9', border: '1px solid #cbd5e1' }}>
                       <p className="text-[11px] uppercase tracking-widest" style={{ color: '#6b7280' }}>Quests</p>
-                      <p className="mt-1 text-sm font-semibold" style={{ color: '#f3f4f6' }}>{activeContracts} live / {completedContracts} done</p>
+                      <p className="mt-1 text-sm font-semibold" style={{ color: '#1e293b' }}>{activeContracts} live / {completedContracts} done</p>
                     </div>
                   </div>
 
-                  <div className="rounded-lg p-3" style={{ background: '#111', border: '1px solid #1f2937' }}>
+                  <div className="rounded-lg p-3" style={{ background: '#ffffff', border: '1px solid #cbd5e1' }}>
                     <p className="text-[11px] uppercase tracking-[0.28em]" style={{ color: `${definition.color}cc` }}>High Rep Rewards</p>
                     <div className="mt-2 space-y-2 text-xs">
                       {questgiver.highRepRewards.map((reward) => (
-                        <p key={reward} style={{ color: '#d1d5db' }}>{reward}</p>
+                        <p key={reward} style={{ color: '#475569' }}>{reward}</p>
                       ))}
                     </div>
                     <p className="mt-3 text-[11px]" style={{ color: '#6b7280' }}>
@@ -306,9 +306,9 @@ export default function MissionsPage() {
             <button key={s} onClick={() => setTab(s)}
               className="px-3 py-1.5 rounded text-xs uppercase tracking-widest transition-all"
               style={{
-                background: tab === s ? '#39ff1415' : 'transparent',
-                border: `1px solid ${tab === s ? '#39ff1440' : '#2a2a2a'}`,
-                color: tab === s ? '#39ff14' : '#6b7280',
+                background: tab === s ? '#0f766e15' : 'transparent',
+                border: `1px solid ${tab === s ? '#0f766e40' : '#d1d5db'}`,
+                color: tab === s ? '#0f766e' : '#6b7280',
               }}>
               {STATUS_LABELS[s]} ({count})
             </button>
@@ -330,14 +330,14 @@ export default function MissionsPage() {
                 transition={{ delay: i * 0.06 }}
                 className="p-4 rounded-lg"
                 style={{
-                  background: '#111',
+                  background: '#ffffff',
                   border: m.status === 'claimable'
                     ? '1px solid #22c55e50'
                     : m.status === 'active'
-                      ? '1px solid #39ff1430'
+                      ? '1px solid #0f766e33'
                       : m.status === 'completed'
                         ? '1px solid #22c55e30'
-                        : '1px solid #2a2a2a',
+                        : '1px solid #d1d5db',
                 }}>
                 <div className="flex items-start gap-3">
                   <span className="text-2xl">{m.icon}</span>
@@ -374,17 +374,17 @@ export default function MissionsPage() {
                     <p className="text-xs mb-3" style={{ color: '#6b7280' }}>{m.description}</p>
 
                     <div className="grid gap-3 mb-3 md:grid-cols-3">
-                      <div className="rounded-md px-3 py-2" style={{ background: '#0c0c0c', border: '1px solid #2a2a2a' }}>
+                      <div className="rounded-md px-3 py-2" style={{ background: '#f8fafc', border: '1px solid #d1d5db' }}>
                         <p className="text-[11px] uppercase tracking-widest" style={{ color: '#4b5563' }}>Objective</p>
-                        <p className="mt-1 text-xs" style={{ color: '#d1d5db' }}>{formatMissionObjective(m.objective)}</p>
+                        <p className="mt-1 text-xs" style={{ color: '#475569' }}>{formatMissionObjective(m.objective)}</p>
                       </div>
-                      <div className="rounded-md px-3 py-2" style={{ background: '#0c0c0c', border: '1px solid #2a2a2a' }}>
+                      <div className="rounded-md px-3 py-2" style={{ background: '#f8fafc', border: '1px solid #d1d5db' }}>
                         <p className="text-[11px] uppercase tracking-widest" style={{ color: '#4b5563' }}>Reward</p>
                         <p className="mt-1 text-xs" style={{ color: '#22c55e' }}>{formatMissionReward(m.reward)}</p>
                       </div>
-                      <div className="rounded-md px-3 py-2" style={{ background: '#0c0c0c', border: '1px solid #2a2a2a' }}>
+                      <div className="rounded-md px-3 py-2" style={{ background: '#f8fafc', border: '1px solid #d1d5db' }}>
                         <p className="text-[11px] uppercase tracking-widest" style={{ color: '#4b5563' }}>Timer</p>
-                        <p className="mt-1 text-xs" style={{ color: '#d1d5db' }}>{formatTimeRemaining(m.expiresAt)}</p>
+                        <p className="mt-1 text-xs" style={{ color: '#475569' }}>{formatTimeRemaining(m.expiresAt)}</p>
                       </div>
                     </div>
 
@@ -413,10 +413,10 @@ export default function MissionsPage() {
                     {(m.status === 'active' || m.status === 'claimable' || (m.steps?.length ?? 0) > 1) && (
                       <div className="mb-3">
                         <div className="flex justify-between text-xs mb-1">
-                          <span style={{ color: '#374151' }}>Progress</span>
+                          <span style={{ color: '#94a3b8' }}>Progress</span>
                           <span style={{ color: '#fbbf24' }}>{m.progress}/{m.required}</span>
                         </div>
-                        <div className="h-1.5 rounded-full" style={{ background: '#2a2a2a' }}>
+                        <div className="h-1.5 rounded-full" style={{ background: '#d1d5db' }}>
                           <motion.div className="h-full rounded-full" style={{ background: '#fbbf24' }}
                             initial={{ width: 0 }}
                             animate={{ width: `${Math.min(100, (m.progress / Math.max(1, m.required)) * 100)}%` }}
@@ -426,7 +426,7 @@ export default function MissionsPage() {
                     )}
 
                     {m.status === 'active' && m.branchOptions && m.branchOptions.length > 0 && !m.selectedBranchId && m.progress >= m.required && (
-                      <div className="mb-3 rounded-lg p-3" style={{ background: '#0c0c0c', border: '1px solid #2a2a2a' }}>
+                      <div className="mb-3 rounded-lg p-3" style={{ background: '#f8fafc', border: '1px solid #d1d5db' }}>
                         <p className="text-[11px] uppercase tracking-widest mb-2" style={{ color: '#fbbf24' }}>Choose A Side</p>
                         <div className="flex flex-col gap-2">
                           {m.branchOptions.map((branch) => (
@@ -434,7 +434,7 @@ export default function MissionsPage() {
                               key={branch.id}
                               onClick={() => chooseMissionBranch(m.id, branch.id)}
                               className="text-left rounded px-3 py-2 text-xs"
-                              style={{ background: '#111', border: '1px solid #2a2a2a', color: '#d1d5db' }}>
+                              style={{ background: '#ffffff', border: '1px solid #d1d5db', color: '#475569' }}>
                               <span className="block font-semibold">{branch.label}</span>
                               <span style={{ color: '#6b7280' }}>{branch.description}</span>
                             </button>
@@ -445,20 +445,20 @@ export default function MissionsPage() {
 
                     <div className="flex items-center justify-between gap-3 flex-wrap">
                       <span className="text-xs" style={{ color: '#6b7280' }}>
-                        Status: <span style={{ color: '#d1d5db' }}>{STATUS_LABELS[m.status as VisibleMissionStatus] ?? 'Locked'}</span>
+                        Status: <span style={{ color: '#475569' }}>{STATUS_LABELS[m.status as VisibleMissionStatus] ?? 'Locked'}</span>
                       </span>
                       {m.status === 'available' && (
                         <div className="flex items-center gap-2 flex-wrap justify-end">
                           <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
                             onClick={() => setPendingAction({ missionId: m.id, action: 'decline' })}
                             className="px-3 py-1 rounded text-xs uppercase tracking-wider"
-                            style={{ background: '#1f2937', border: '1px solid #4b5563', color: '#d1d5db' }}>
+                            style={{ background: '#cbd5e1', border: '1px solid #4b5563', color: '#475569' }}>
                             Decline
                           </motion.button>
                           <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
                             onClick={() => setPendingAction({ missionId: m.id, action: 'accept' })}
                             className="px-3 py-1 rounded text-xs uppercase tracking-wider"
-                            style={{ background: '#39ff1415', border: '1px solid #39ff1440', color: '#39ff14' }}>
+                            style={{ background: '#0f766e15', border: '1px solid #0f766e40', color: '#0f766e' }}>
                             Accept
                           </motion.button>
                         </div>
@@ -474,8 +474,8 @@ export default function MissionsPage() {
                     </div>
 
                     {(isPendingAccept || isPendingDecline) && (
-                      <div className="mt-3 rounded-lg p-3" style={{ background: '#0c0c0c', border: `1px solid ${isPendingAccept ? '#39ff1440' : '#6b728040'}` }}>
-                        <p className="text-xs" style={{ color: '#d1d5db' }}>
+                      <div className="mt-3 rounded-lg p-3" style={{ background: '#f8fafc', border: `1px solid ${isPendingAccept ? '#0f766e40' : '#6b728040'}` }}>
+                        <p className="text-xs" style={{ color: '#475569' }}>
                           {isPendingAccept
                             ? `Confirm accepting ${m.title}? This will occupy one of your active mission slots.`
                             : `Confirm declining ${m.title}? This may damage faction standing.`}
@@ -484,13 +484,13 @@ export default function MissionsPage() {
                           <button
                             onClick={() => handleConfirmedAction(m.id, isPendingAccept ? 'accept' : 'decline')}
                             className="px-3 py-1 rounded text-xs uppercase tracking-wider"
-                            style={{ background: isPendingAccept ? '#14532d' : '#3f3f46', border: `1px solid ${isPendingAccept ? '#22c55e60' : '#71717a'}`, color: '#f3f4f6' }}>
+                            style={{ background: isPendingAccept ? '#14532d' : '#3f3f46', border: `1px solid ${isPendingAccept ? '#22c55e60' : '#71717a'}`, color: '#1e293b' }}>
                             {isPendingAccept ? 'Confirm Accept' : 'Confirm Decline'}
                           </button>
                           <button
                             onClick={() => setPendingAction(null)}
                             className="px-3 py-1 rounded text-xs uppercase tracking-wider"
-                            style={{ background: 'transparent', border: '1px solid #2a2a2a', color: '#9ca3af' }}>
+                            style={{ background: 'transparent', border: '1px solid #d1d5db', color: '#9ca3af' }}>
                             Cancel
                           </button>
                         </div>
@@ -502,38 +502,38 @@ export default function MissionsPage() {
             );
           })}
           {shown.length === 0 && (
-            <div className="text-center py-12" style={{ color: '#374151' }}>
+            <div className="text-center py-12" style={{ color: '#94a3b8' }}>
               <p className="text-4xl mb-3">📋</p>
               <p className="text-sm">No {STATUS_LABELS[tab].toLowerCase()} missions</p>
             </div>
           )}
         </div>
 
-        <aside className="rounded-xl p-4 h-fit" aria-label="recent-mission-history" style={{ background: '#0f0f0f', border: '1px solid #1f2937' }}>
+        <aside className="rounded-xl p-4 h-fit" aria-label="recent-mission-history" style={{ background: '#f1f5f9', border: '1px solid #cbd5e1' }}>
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold uppercase tracking-[0.28em]" style={{ color: '#f3f4f6' }}>Recent History</h2>
+              <h2 className="text-sm font-semibold uppercase tracking-[0.28em]" style={{ color: '#1e293b' }}>Recent History</h2>
               <p className="mt-1 text-xs" style={{ color: '#6b7280' }}>Last 10 completed contracts with payout timestamps.</p>
             </div>
-            <span className="text-xs px-2 py-1 rounded" style={{ background: '#111827', border: '1px solid #1f2937', color: '#9ca3af' }}>
+            <span className="text-xs px-2 py-1 rounded" style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#9ca3af' }}>
               {completedHistory.length}/10
             </span>
           </div>
 
           <div className="mt-4 space-y-3">
             {completedHistory.length > 0 ? completedHistory.map((mission) => (
-              <div key={mission.id} className="rounded-lg p-3" style={{ background: '#111', border: '1px solid #1f2937' }}>
+              <div key={mission.id} className="rounded-lg p-3" style={{ background: '#ffffff', border: '1px solid #cbd5e1' }}>
                 <div className="flex items-start gap-3">
                   <span className="text-lg">{mission.icon}</span>
                   <div>
-                    <p className="text-sm font-medium" style={{ color: '#d1d5db' }}>{mission.title}</p>
+                    <p className="text-sm font-medium" style={{ color: '#475569' }}>{mission.title}</p>
                     <p className="mt-1 text-[11px]" style={{ color: '#22c55e' }}>{formatMissionReward(mission.reward)}</p>
                     <p className="mt-1 text-[11px]" style={{ color: '#6b7280' }}>{formatMissionTimestamp(mission.claimedAt ?? mission.completedAt)}</p>
                   </div>
                 </div>
               </div>
             )) : (
-              <div className="rounded-lg p-4 text-sm" style={{ background: '#111', border: '1px solid #1f2937', color: '#6b7280' }}>
+              <div className="rounded-lg p-4 text-sm" style={{ background: '#ffffff', border: '1px solid #cbd5e1', color: '#6b7280' }}>
                 Completed missions will appear here once rewards are claimed.
               </div>
             )}

@@ -213,10 +213,10 @@ export default function GameBootstrap({ children }: { children: React.ReactNode 
 
   if (!isReady) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0a0a0a' }}>
-        <div className="px-6 py-5 rounded-2xl border text-center" style={{ background: '#111', borderColor: '#39ff1430' }}>
-          <p className="text-xs uppercase tracking-[0.3em] mb-2" style={{ color: '#39ff1480' }}>Profile Sync</p>
-          <p className="text-sm" style={{ color: '#d1d5db' }}>Loading your scavenger data...</p>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#f8fafc' }}>
+        <div className="px-6 py-5 rounded-2xl border text-center" style={{ background: '#ffffff', borderColor: '#0f766e33' }}>
+          <p className="text-xs uppercase tracking-[0.3em] mb-2" style={{ color: '#0f766e99' }}>Profile Sync</p>
+          <p className="text-sm" style={{ color: '#475569' }}>Loading your scavenger data...</p>
         </div>
       </div>
     );
@@ -238,12 +238,12 @@ export default function GameBootstrap({ children }: { children: React.ReactNode 
     <>
       {children}
       {shouldShowOnboardingPopup && onboardingPrompt && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-3xl overflow-hidden rounded-2xl border" style={{ background: '#0c0c0c', borderColor: '#f9731655' }}>
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/20 p-4">
+          <div className="w-full max-w-3xl overflow-hidden rounded-2xl border" style={{ background: '#f8fafc', borderColor: '#f9731655' }}>
             <div className="grid md:grid-cols-[1.05fr_1.2fr]">
               <div
                 className="relative min-h-[280px] p-6 flex flex-col justify-end overflow-hidden"
-                style={{ background: 'linear-gradient(180deg, #111827 0%, #030712 100%)' }}>
+                style={{ background: 'linear-gradient(180deg, #f1f5f9 0%, #030712 100%)' }}>
                 {questgiver && (
                   <img
                     src={questgiver.portraitPath}
@@ -257,20 +257,20 @@ export default function GameBootstrap({ children }: { children: React.ReactNode 
                 />
                 <div className="relative z-10">
                 <p className="text-[11px] uppercase tracking-[0.28em]" style={{ color: '#fdba74' }}>Faction Questline</p>
-                <h2 className="mt-2 text-2xl font-semibold" style={{ color: '#f9fafb' }}>{onboardingPrompt.stage.popupTitle}</h2>
-                <p className="mt-2 text-sm" style={{ color: '#e5e7eb' }}>{questgiver?.name ?? onboardingPrompt.mission.title}</p>
+                <h2 className="mt-2 text-2xl font-semibold" style={{ color: '#0f172a' }}>{onboardingPrompt.stage.popupTitle}</h2>
+                <p className="mt-2 text-sm" style={{ color: '#334155' }}>{questgiver?.name ?? onboardingPrompt.mission.title}</p>
                 </div>
               </div>
 
               <div className="p-6 space-y-4">
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.28em]" style={{ color: '#6b7280' }}>Campaign</p>
-                  <p className="mt-2 text-sm" style={{ color: '#d1d5db' }}>{onboardingPrompt.stage.popupBody}</p>
+                  <p className="mt-2 text-sm" style={{ color: '#475569' }}>{onboardingPrompt.stage.popupBody}</p>
                 </div>
 
-                <div className="rounded-xl p-4" style={{ background: '#111', border: '1px solid #1f2937' }}>
+                <div className="rounded-xl p-4" style={{ background: '#ffffff', border: '1px solid #cbd5e1' }}>
                   <p className="text-[11px] uppercase tracking-[0.28em]" style={{ color: '#6b7280' }}>First Contract</p>
-                  <p className="mt-2 text-lg font-semibold" style={{ color: '#f3f4f6' }}>{onboardingPrompt.mission.title}</p>
+                  <p className="mt-2 text-lg font-semibold" style={{ color: '#1e293b' }}>{onboardingPrompt.mission.title}</p>
                   <p className="mt-1 text-sm" style={{ color: '#9ca3af' }}>{onboardingPrompt.mission.description}</p>
                 </div>
 
@@ -287,7 +287,7 @@ export default function GameBootstrap({ children }: { children: React.ReactNode 
                   <button
                     onClick={() => setDismissedOnboardingIds((current) => [...current, onboardingPrompt.stage.chain.chainId])}
                     className="px-4 py-2 rounded text-xs uppercase tracking-[0.24em]"
-                    style={{ background: 'transparent', border: '1px solid #374151', color: '#9ca3af' }}>
+                    style={{ background: 'transparent', border: '1px solid #94a3b8', color: '#9ca3af' }}>
                     Dismiss For Now
                   </button>
                 </div>

@@ -1,15 +1,15 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0a0a;
-  --foreground: #d4d4d4;
-  --neon-green: #39ff14;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --neon-green: #0f766e;
   --neon-yellow: #ffe600;
   --neon-orange: #ff6a00;
-  --charcoal: #141414;
-  --panel: #1a1a1a;
-  --border: #2a2a2a;
-  --border-glow: #39ff1440;
+  --charcoal: #eef2f7;
+  --panel: #eef2f7;
+  --border: #d1d5db;
+  --border-glow: #0f766e40;
 }
 
 @theme inline {
@@ -35,15 +35,15 @@ html, body {
   height: 4px;
 }
 ::-webkit-scrollbar-track {
-  background: #111;
+  background: #ffffff;
 }
 ::-webkit-scrollbar-thumb {
-  background: #39ff14;
+  background: #0f766e;
   border-radius: 2px;
 }
 
 .glow-green {
-  box-shadow: 0 0 8px #39ff1466, 0 0 20px #39ff1422;
+  box-shadow: 0 0 8px #0f766e66, 0 0 20px #0f766e22;
 }
 .glow-orange {
   box-shadow: 0 0 8px #ff6a0066, 0 0 20px #ff6a0022;
@@ -52,7 +52,7 @@ html, body {
   box-shadow: 0 0 8px #ffe60066, 0 0 20px #ffe60022;
 }
 .text-glow-green {
-  text-shadow: 0 0 8px #39ff14, 0 0 20px #39ff1466;
+  text-shadow: 0 0 8px #0f766e, 0 0 20px #0f766e66;
 }
 .text-glow-orange {
   text-shadow: 0 0 8px #ff6a00, 0 0 20px #ff6a0066;
@@ -65,8 +65,8 @@ html, body {
 
 .panel-glow {
   background: var(--panel);
-  border: 1px solid #39ff1430;
-  box-shadow: 0 0 15px #39ff1410;
+  border: 1px solid #0f766e33;
+  box-shadow: 0 0 15px #0f766e10;
 }
 
 @keyframes scanline {
@@ -80,8 +80,8 @@ html, body {
   94% { opacity: 1; }
 }
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 8px #39ff1466; }
-  50% { box-shadow: 0 0 20px #39ff14aa, 0 0 40px #39ff1444; }
+  0%, 100% { box-shadow: 0 0 8px #0f766e66; }
+  50% { box-shadow: 0 0 20px #0f766eaa, 0 0 40px #0f766e44; }
 }
 
 .animate-flicker {

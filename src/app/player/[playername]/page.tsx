@@ -62,7 +62,7 @@ export default async function PlayerProfilePage(props: PageProps<'/player/[playe
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center gap-3">
-                    <h2 className="text-2xl font-semibold" style={{ color: '#f8fafc' }}>{profile.displayName}</h2>
+                    <h2 className="text-2xl font-semibold" style={{ color: '#0f172a' }}>{profile.displayName}</h2>
                     <span className="rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.25em]" style={{ background: '#f59e0b18', border: '1px solid #f59e0b50', color: '#fbbf24' }}>
                       Rank {profile.rank}
                     </span>
@@ -81,7 +81,7 @@ export default async function PlayerProfilePage(props: PageProps<'/player/[playe
                 </div>
                 <div className="rounded-xl p-4" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
                   <p className="text-[11px] uppercase tracking-widest" style={{ color: '#6b7280' }}>Items Found</p>
-                  <p className="mt-2 text-2xl font-semibold" style={{ color: '#e5e7eb' }}>{profile.itemsFound.toLocaleString()}</p>
+                  <p className="mt-2 text-2xl font-semibold" style={{ color: '#334155' }}>{profile.itemsFound.toLocaleString()}</p>
                 </div>
                 <div className="rounded-xl p-4" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
                   <p className="text-[11px] uppercase tracking-widest" style={{ color: '#6b7280' }}>Districts Open</p>

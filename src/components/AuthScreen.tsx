@@ -189,15 +189,15 @@ export default function AuthScreen({ enabledProviders, authBaseUrl }: AuthScreen
         : 'Create Scavenger';
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6 py-10" style={{ background: 'radial-gradient(circle at top, #143d1d 0%, #0a0a0a 45%)' }}>
+    <div className="min-h-screen flex items-center justify-center px-6 py-10" style={{ background: 'radial-gradient(circle at top, #143d1d 0%, #f8fafc 45%)' }}>
       <motion.div
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-5xl grid lg:grid-cols-[1.1fr_0.9fr] rounded-3xl overflow-hidden border"
-        style={{ background: '#0c0c0c', borderColor: '#39ff1430', boxShadow: '0 0 60px rgba(57,255,20,0.08)' }}>
+        style={{ background: '#f8fafc', borderColor: '#0f766e33', boxShadow: '0 0 60px rgba(57,255,20,0.08)' }}>
         <div className="p-8 md:p-10 space-y-6" style={{ background: 'linear-gradient(160deg, rgba(57,255,20,0.08), rgba(10,10,10,0.2))' }}>
           <div className="space-y-3">
-            <p className="text-xs uppercase tracking-[0.35em]" style={{ color: '#39ff1480' }}>Sprint 3 Foundation</p>
+            <p className="text-xs uppercase tracking-[0.35em]" style={{ color: '#0f766e99' }}>Sprint 3 Foundation</p>
             <h1 className="text-4xl font-bold uppercase leading-tight" style={{ color: '#e5ffe1' }}>
               Authenticate scavengers before the economy goes live.
             </h1>
@@ -213,7 +213,7 @@ export default function AuthScreen({ enabledProviders, authBaseUrl }: AuthScreen
               'Google OAuth hook-in',
               'Starter profile records on first account creation',
             ].map((item) => (
-              <div key={item} className="rounded-2xl border p-4" style={{ borderColor: '#2a2a2a', background: '#111111b3', color: '#d1d5db' }}>
+              <div key={item} className="rounded-2xl border p-4" style={{ borderColor: '#d1d5db', background: '#f1f5f9b3', color: '#475569' }}>
                 {item}
               </div>
             ))}
@@ -221,7 +221,7 @@ export default function AuthScreen({ enabledProviders, authBaseUrl }: AuthScreen
         </div>
 
         <div className="p-8 md:p-10 space-y-4">
-          <div className="flex gap-2 rounded-full p-1 w-fit" style={{ background: '#141414', border: '1px solid #2a2a2a' }}>
+          <div className="flex gap-2 rounded-full p-1 w-fit" style={{ background: '#eef2f7', border: '1px solid #d1d5db' }}>
             {[
               { id: 'sign-in', label: 'Sign In' },
               { id: 'sign-up', label: 'Create Account' },
@@ -231,8 +231,8 @@ export default function AuthScreen({ enabledProviders, authBaseUrl }: AuthScreen
                 onClick={() => setMode(tab.id as 'sign-in' | 'sign-up')}
                 className="px-4 py-2 rounded-full text-xs uppercase tracking-[0.25em]"
                 style={{
-                  background: !resetToken && mode === tab.id ? '#39ff1418' : 'transparent',
-                  color: !resetToken && mode === tab.id ? '#39ff14' : '#6b7280',
+                  background: !resetToken && mode === tab.id ? '#0f766e18' : 'transparent',
+                  color: !resetToken && mode === tab.id ? '#0f766e' : '#6b7280',
                 }}>
                 {tab.label}
               </button>
@@ -241,8 +241,8 @@ export default function AuthScreen({ enabledProviders, authBaseUrl }: AuthScreen
               onClick={() => setMode('forgot-password')}
               className="px-4 py-2 rounded-full text-xs uppercase tracking-[0.25em]"
               style={{
-                background: !resetToken && mode === 'forgot-password' ? '#39ff1418' : 'transparent',
-                color: !resetToken && mode === 'forgot-password' ? '#39ff14' : '#6b7280',
+                background: !resetToken && mode === 'forgot-password' ? '#0f766e18' : 'transparent',
+                color: !resetToken && mode === 'forgot-password' ? '#0f766e' : '#6b7280',
               }}>
               Recover
             </button>
@@ -257,7 +257,7 @@ export default function AuthScreen({ enabledProviders, authBaseUrl }: AuthScreen
                   onChange={(event) => setName(event.target.value)}
                   placeholder="Scavenger handle"
                   className="mt-2 w-full rounded-xl px-4 py-3 outline-none"
-                  style={{ background: '#111', border: '1px solid #2a2a2a', color: '#f3f4f6' }}
+                  style={{ background: '#ffffff', border: '1px solid #d1d5db', color: '#1e293b' }}
                 />
               </label>
             )}
@@ -270,7 +270,7 @@ export default function AuthScreen({ enabledProviders, authBaseUrl }: AuthScreen
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="you@dumpstertycoon.dev"
                 className="mt-2 w-full rounded-xl px-4 py-3 outline-none"
-                style={{ background: '#111', border: '1px solid #2a2a2a', color: '#f3f4f6' }}
+                style={{ background: '#ffffff', border: '1px solid #d1d5db', color: '#1e293b' }}
                 disabled={Boolean(resetToken)}
               />
             </label>
@@ -284,7 +284,7 @@ export default function AuthScreen({ enabledProviders, authBaseUrl }: AuthScreen
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder={resetToken ? 'Choose a new password' : 'Minimum 8 characters'}
                 className="mt-2 w-full rounded-xl px-4 py-3 outline-none"
-                style={{ background: '#111', border: '1px solid #2a2a2a', color: '#f3f4f6' }}
+                style={{ background: '#ffffff', border: '1px solid #d1d5db', color: '#1e293b' }}
               />
               </label>
             )}
@@ -294,7 +294,7 @@ export default function AuthScreen({ enabledProviders, authBaseUrl }: AuthScreen
             onClick={handleCredentialsAuth}
             disabled={isPending}
             className="w-full rounded-xl px-4 py-3 text-sm font-bold uppercase tracking-[0.25em]"
-            style={{ background: '#39ff1418', border: '1px solid #39ff1450', color: '#39ff14', opacity: isPending ? 0.6 : 1 }}>
+            style={{ background: '#0f766e18', border: '1px solid #0f766e55', color: '#0f766e', opacity: isPending ? 0.6 : 1 }}>
             {isPending ? 'Processing...' : actionLabel}
           </button>
 
@@ -321,8 +321,8 @@ export default function AuthScreen({ enabledProviders, authBaseUrl }: AuthScreen
           {!resetToken && mode !== 'forgot-password' && (
             <>
               <div className="relative py-2 text-center text-xs uppercase tracking-[0.25em]" style={{ color: '#4b5563' }}>
-                <span className="px-3" style={{ background: '#0c0c0c' }}>or continue with</span>
-                <div className="absolute left-0 right-0 top-1/2 -z-10 border-t" style={{ borderColor: '#1f2937' }} />
+                <span className="px-3" style={{ background: '#f8fafc' }}>or continue with</span>
+                <div className="absolute left-0 right-0 top-1/2 -z-10 border-t" style={{ borderColor: '#cbd5e1' }} />
               </div>
 
               <div className="grid sm:grid-cols-2 gap-3">
@@ -330,14 +330,14 @@ export default function AuthScreen({ enabledProviders, authBaseUrl }: AuthScreen
                   onClick={() => signIn('google', { callbackUrl: '/' })}
                   disabled={!enabledProviders.google}
                   className="rounded-xl px-4 py-3 text-sm font-semibold"
-                  style={{ background: '#111', border: '1px solid #2a2a2a', color: enabledProviders.google ? '#f3f4f6' : '#6b7280' }}>
+                  style={{ background: '#ffffff', border: '1px solid #d1d5db', color: enabledProviders.google ? '#f3f4f6' : '#6b7280' }}>
                   Google
                 </button>
                 <button
                   onClick={() => signIn('discord', { callbackUrl: '/' })}
                   disabled={!enabledProviders.discord}
                   className="rounded-xl px-4 py-3 text-sm font-semibold"
-                  style={{ background: '#111', border: '1px solid #2a2a2a', color: enabledProviders.discord ? '#f3f4f6' : '#6b7280' }}>
+                  style={{ background: '#ffffff', border: '1px solid #d1d5db', color: enabledProviders.discord ? '#f3f4f6' : '#6b7280' }}>
                   Discord
                 </button>
               </div>
@@ -361,7 +361,7 @@ export default function AuthScreen({ enabledProviders, authBaseUrl }: AuthScreen
           )}
 
           {discordCallbackUrl && (
-            <div className="rounded-xl border px-4 py-3 text-xs" style={{ borderColor: '#1f2937', background: '#0f172a33', color: '#93c5fd' }}>
+            <div className="rounded-xl border px-4 py-3 text-xs" style={{ borderColor: '#cbd5e1', background: '#f1f5f933', color: '#93c5fd' }}>
               Discord redirect URI must exactly match: {discordCallbackUrl}
             </div>
           )}
@@ -379,7 +379,7 @@ export default function AuthScreen({ enabledProviders, authBaseUrl }: AuthScreen
           )}
 
           {previewUrl && (
-            <div className="rounded-xl border px-4 py-3 text-sm" style={{ borderColor: '#60a5fa66', background: '#0f172a55', color: '#bfdbfe' }}>
+            <div className="rounded-xl border px-4 py-3 text-sm" style={{ borderColor: '#60a5fa66', background: '#f1f5f955', color: '#bfdbfe' }}>
               Local preview link: <Link href={previewUrl} className="underline underline-offset-4">{previewUrl}</Link>
             </div>
           )}

@@ -341,6 +341,17 @@ describe('profileState', () => {
             police: -3,
             neutrals: 0,
           },
+          ownedVehicles: {
+            car: {
+              mode: 'car',
+              builtAt: 123456,
+              fuel: 96,
+              maxFuel: 130,
+              durability: 88,
+              maintenance: 73,
+              upgrades: ['cargo_rack'],
+            },
+          },
         }),
         createdAt: new Date('2026-05-10T00:00:00.000Z'),
         updatedAt: new Date('2026-05-19T10:00:00.000Z'),
@@ -368,6 +379,7 @@ describe('profileState', () => {
     expect(snapshot.missions[0]).toMatchObject({ sponsorFaction: 'gangs', rivalFaction: 'police' });
     expect(snapshot.factionStandings).toMatchObject({ gangs: 10, police: -3 });
     expect(snapshot.factionRewardHistory).toEqual([]);
+    expect(snapshot.player.ownedVehicles.car).toMatchObject({ fuel: 96, upgrades: ['cargo_rack'] });
     expect(snapshot.travel.status).toBe('idle');
     expect(snapshot.property.activePropertyId).toBe('starter-dumpster');
     expect(snapshot.guild.membershipStatus).toBe('none');
@@ -425,5 +437,33 @@ describe('profileState', () => {
     expect(snapshot.progressionHoursPlayed).toBe(0);
     expect(snapshot.maxParallelJobs).toBe(3);
     expect(snapshot.marketCycle).toBe(0);
+  });
+
+  it('does not fabricate owned vehicles from transport unlock progress alone', () => {
+    const snapshot = buildPersistedGameState({
+      username: 'yardboss',
+      profile: {
+        displayName: 'Yard Boss',
+        avatar: '🗑️',
+        rank: 7,
+        reputation: 0,
+        cash: 250,
+        heat: 0,
+        energy: 100,
+        maxEnergy: 100,
+        inventoryCapacity: 100,
+        currentDistrict: 'slums',
+        currentPage: 'city',
+        totalScavenged: 0,
+        inventoryJson: '[]',
+        equipmentJson: JSON.stringify({ cart: null, backpack: null, flashlight: null, gloves: null }),
+        settingsJson: JSON.stringify({ tutorialSeen: false, notifications: true, theme: 'neon', upgradeTreeProgress: { transport: 'transport_2', equipment: null, lighting: null, storage: null }, ownedVehicles: {} }),
+        createdAt: new Date('2026-05-10T00:00:00.000Z'),
+        updatedAt: new Date('2026-05-19T10:00:00.000Z'),
+      },
+    });
+
+    expect(snapshot.upgradeTreeProgress.transport).toBe('transport_2');
+    expect(snapshot.player.ownedVehicles).toEqual({});
   });
 });

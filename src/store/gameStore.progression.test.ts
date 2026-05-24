@@ -56,6 +56,7 @@ describe('progression upgrades', () => {
     expect(after.upgradeTreeProgress.transport).toBe('transport_1');
     expect(after.player.cash).toBe(4550);
     expect(after.player.equipment.cart).toBe('eq_cart_u1');
+    expect(after.player.ownedVehicles.scooter).toBeUndefined();
     expect(after.inventory).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: 'eq_cart_u1', quantity: 1 }),
     ]));

@@ -95,6 +95,45 @@ describe('JunkyardPage', () => {
     expect(screen.getAllByText(/Tier 1/).length).toBeGreaterThan(0);
   });
 
+  it('shows workshop-only repair recipes from a workshop base without exposing junkyard ops yet', () => {
+    useGameStore.setState((state) => ({
+      ...state,
+      inventory: [],
+      player: { ...state.player, usedCapacity: 0 },
+      property: {
+        ...state.property,
+        activePropertyId: 'workshop-tech',
+        properties: [
+          {
+            ...state.property.properties[0],
+            id: 'workshop-tech',
+            name: 'Prototype Repair Loft',
+            district: 'tech',
+            tier: 'workshop',
+            occupancyStatus: 'active',
+            storageCapacity: 108,
+            assemblyTier: 3,
+            canDisassemble: true,
+            canRecycle: true,
+            employeeCapacity: 0,
+            storedItems: [
+              { id: 'mat_components', name: 'Salvaged Components', icon: '🧩', rarity: 'uncommon', quantity: 20, weight: 0.1, value: 18, description: 'parts' },
+            ],
+            letting: null,
+          },
+        ],
+      },
+    }));
+
+    render(<JunkyardPage />);
+
+    expect(screen.getByText('Base')).toBeInTheDocument();
+    expect(screen.getByText('Base Workbench')).toBeInTheDocument();
+    expect(screen.getByText(/Precision Repair Kit/, { selector: 'p' })).toBeInTheDocument();
+    expect(screen.getByText(/Calibration Tuner/, { selector: 'p' })).toBeInTheDocument();
+    expect(screen.queryByText(/Stored Materials/)).not.toBeInTheDocument();
+  });
+
   it('can strip qualifying stored items directly from the base stash', async () => {
     useGameStore.setState((state) => ({
       ...state,

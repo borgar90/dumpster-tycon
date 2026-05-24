@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useGameStore, DISTRICTS, SHACK_PROPERTY_LISTINGS, TRAIN_MIN_RANK, VEHICLE_TRAVEL_SPECS, getActiveProperty, getBusTravelQuote, getPlayerScavengeBonuses, getPropertyListing, getPropertyStorageUpgradeCost, getPropertyStoredWeight, getPropertyTierLabel, getShackUnlockStatus, getTransportUpgradeTier, getTravelModeIcon, getTravelModeLabel, getTravelQuote, getUnlockedVehicleModes, isTrainRouteAvailable, type District, type TravelMode } from '@/store/gameStore';
+import { useGameStore, AIRPORT_MIN_RANK, DISTRICTS, JUNKYARD_PROPERTY_LISTINGS, SHACK_PROPERTY_LISTINGS, TRAIN_MIN_RANK, VEHICLE_TRAVEL_SPECS, VEHICLE_UPGRADE_DEFINITIONS, WORKSHOP_PROPERTY_LISTINGS, getActiveProperty, getBuiltVehicleModes, getBusTravelQuote, getCombinedItemQuantity, getJunkyardUnlockStatus, getPlayerScavengeBonuses, getPropertyListing, getPropertyStorageUpgradeCost, getPropertyStoredWeight, getPropertyTierLabel, getShackUnlockStatus, getTravelModeIcon, getTravelModeLabel, getTravelQuoteForFleetLoad, getTravelShipmentOptions, getTravelShipmentPreview, getVehicleConstructionRecipe, getVehicleRefuelCost, getVehicleRepairCost, getVehicleUpgradeEffects, getWorkshopUnlockStatus, getWorkshopVehicleRepairRequirements, hasRequiredPropertyTier, isAirportRouteAvailable, isTrainRouteAvailable, type District, type TravelMode, type TravelQuote, type TravelShipmentSelection, type VehicleUpgradeKey } from '@/store/gameStore';
 
 const RARITY_COLORS: Record<string, string> = {
   common: '#9ca3af',
@@ -100,7 +100,11 @@ export default function CityPage() {
     inventory,
     setActiveProperty,
     unlockShackTier,
+    unlockWorkshopTier,
+    unlockJunkyardTier,
     purchaseShack,
+    purchaseWorkshop,
+    purchaseJunkyard,
     listPropertyForRent,
     endPropertyRental,
     upgradePropertyStorage,
@@ -117,7 +121,13 @@ export default function CityPage() {
     policeChase,
     escapePolice,
     getEquipmentStats,
-    upgradeTreeProgress,
+    junkyardStorage,
+    auctionListings,
+    guild,
+    buildVehicle,
+    repairVehicle,
+    refuelVehicle,
+    installVehicleUpgrade,
   } = useGameStore();
 
   const [hoveredDistrict, setHoveredDistrict] = useState<string | null>(null);
@@ -128,25 +138,38 @@ export default function CityPage() {
   const [showTutorial, setShowTutorial] = useState(false);
   const [selectedDestination, setSelectedDestination] = useState<District>(currentDistrict);
   const [selectedTravelMode, setSelectedTravelMode] = useState<TravelMode>('bus');
-  const [confirmTravelQuote, setConfirmTravelQuote] = useState<ReturnType<typeof getTravelQuote> | null>(null);
+  const [shipmentQuantities, setShipmentQuantities] = useState<Record<string, number>>({});
+  const [confirmTravelQuote, setConfirmTravelQuote] = useState<TravelQuote | null>(null);
   const [travelNow, setTravelNow] = useState(Date.now());
 
   const activeProperty = useMemo(() => getActiveProperty(property), [property]);
-  const currentDistrictShack = useMemo(() => getPropertyListing(currentDistrict), [currentDistrict]);
+  const currentDistrictShack = useMemo(() => getPropertyListing('shack', currentDistrict), [currentDistrict]);
+  const currentDistrictWorkshop = useMemo(() => getPropertyListing('workshop', currentDistrict), [currentDistrict]);
+  const currentDistrictJunkyard = useMemo(() => getPropertyListing('junkyard', currentDistrict), [currentDistrict]);
   const shackUnlockStatus = useMemo(() => getShackUnlockStatus(property, player, inventory), [inventory, player, property]);
-  const currentDistrictOwnedProperty = useMemo(
+  const workshopUnlockStatus = useMemo(() => getWorkshopUnlockStatus(property, player, inventory), [inventory, player, property]);
+  const junkyardUnlockStatus = useMemo(() => getJunkyardUnlockStatus(property, player, inventory), [inventory, player, property]);
+  const currentDistrictOwnedShack = useMemo(
     () => property.properties.find((entry) => entry.district === currentDistrict && entry.tier === 'shack'),
+    [currentDistrict, property.properties],
+  );
+  const currentDistrictOwnedWorkshop = useMemo(
+    () => property.properties.find((entry) => entry.district === currentDistrict && entry.tier === 'workshop'),
+    [currentDistrict, property.properties],
+  );
+  const currentDistrictOwnedJunkyard = useMemo(
+    () => property.properties.find((entry) => entry.district === currentDistrict && entry.tier === 'junkyard'),
     [currentDistrict, property.properties],
   );
 
   useEffect(() => {
     setSelectedDestination(currentDistrict);
     setSelectedTravelMode('bus');
+    setShipmentQuantities({});
     setConfirmTravelQuote(null);
   }, [currentDistrict]);
 
-  const transportTier = useMemo(() => getTransportUpgradeTier(upgradeTreeProgress), [upgradeTreeProgress]);
-  const unlockedVehicleModes = useMemo(() => getUnlockedVehicleModes(upgradeTreeProgress), [upgradeTreeProgress]);
+  const builtVehicleModes = useMemo(() => getBuiltVehicleModes(player.ownedVehicles), [player.ownedVehicles]);
 
   useEffect(() => {
     if (travel.status !== 'travelling') {
@@ -226,9 +249,14 @@ export default function CityPage() {
     selectedDestination !== currentDistrict && isTrainRouteAvailable(currentDistrict, selectedDestination)
   ), [currentDistrict, selectedDestination]);
   const trainRouteUnlocked = player.rank >= TRAIN_MIN_RANK;
+  const airportRouteAvailable = useMemo(() => (
+    selectedDestination !== currentDistrict && isAirportRouteAvailable(currentDistrict, selectedDestination)
+  ), [currentDistrict, selectedDestination]);
+  const airportRouteUnlocked = player.rank >= AIRPORT_MIN_RANK;
   const selectedTravelModeUnlocked = selectedTravelMode === 'bus'
     || (selectedTravelMode === 'train' && trainRouteAvailable && trainRouteUnlocked)
-    || unlockedVehicleModes.includes(selectedTravelMode as (typeof unlockedVehicleModes)[number]);
+    || (selectedTravelMode === 'plane' && airportRouteAvailable && airportRouteUnlocked)
+    || builtVehicleModes.includes(selectedTravelMode as (typeof builtVehicleModes)[number]);
 
   useEffect(() => {
     if (!selectedTravelModeUnlocked) {
@@ -236,33 +264,102 @@ export default function CityPage() {
     }
   }, [selectedTravelModeUnlocked]);
 
-  const selectedTravelQuote = useMemo(() => {
+  const requestedTravelMode = useMemo(() => {
+    if (selectedDestination === currentDistrict) {
+      return 'bus' as const;
+    }
+
+    return selectedTravelMode === 'train'
+      ? (trainRouteAvailable && trainRouteUnlocked ? 'train' : 'bus')
+      : selectedTravelMode === 'plane'
+        ? (airportRouteAvailable && airportRouteUnlocked ? 'plane' : 'bus')
+        : selectedTravelMode !== 'bus' && builtVehicleModes.includes(selectedTravelMode as (typeof builtVehicleModes)[number])
+          ? selectedTravelMode
+          : 'bus';
+  }, [airportRouteAvailable, airportRouteUnlocked, builtVehicleModes, currentDistrict, selectedDestination, selectedTravelMode, trainRouteAvailable, trainRouteUnlocked]);
+
+  const selectedTravelBaseQuote = useMemo(() => {
     if (selectedDestination === currentDistrict) {
       return null;
     }
+    const ownedVehicle = requestedTravelMode !== 'bus' && requestedTravelMode !== 'train' && requestedTravelMode !== 'plane'
+      ? player.ownedVehicles[requestedTravelMode] ?? null
+      : null;
+    return getTravelQuoteForFleetLoad(currentDistrict, selectedDestination, requestedTravelMode, player.usedCapacity, ownedVehicle);
+  }, [currentDistrict, player.ownedVehicles, player.usedCapacity, requestedTravelMode, selectedDestination]);
 
-    const requestedMode = selectedTravelMode === 'train'
-      ? (trainRouteAvailable && trainRouteUnlocked ? 'train' : 'bus')
-      : selectedTravelMode !== 'bus' && unlockedVehicleModes.includes(selectedTravelMode as (typeof unlockedVehicleModes)[number])
-        ? selectedTravelMode
-        : 'bus';
-    return getTravelQuote(currentDistrict, selectedDestination, requestedMode);
-  }, [currentDistrict, selectedDestination, selectedTravelMode, trainRouteAvailable, trainRouteUnlocked, unlockedVehicleModes]);
+  const selectedTravelShipmentOptions = useMemo(() => {
+    if (selectedDestination === currentDistrict) {
+      return [];
+    }
+
+    return getTravelShipmentOptions(property, junkyardStorage, auctionListings, guild, selectedDestination);
+  }, [auctionListings, guild, junkyardStorage, property, selectedDestination]);
+
+  useEffect(() => {
+    setShipmentQuantities((current) => {
+      const availableIds = new Set(selectedTravelShipmentOptions.map((entry) => entry.id));
+      const nextEntries = Object.entries(current)
+        .filter(([id, quantity]) => availableIds.has(id) && quantity > 0);
+      if (nextEntries.length === Object.keys(current).length) {
+        return current;
+      }
+      return Object.fromEntries(nextEntries);
+    });
+  }, [selectedTravelShipmentOptions]);
+
+  const selectedShipmentSelections = useMemo<TravelShipmentSelection[]>(() => (
+    selectedTravelShipmentOptions
+      .map((option) => ({ optionId: option.id, quantity: Math.max(0, Math.floor(shipmentQuantities[option.id] ?? 0)) }))
+      .filter((entry) => entry.quantity > 0)
+  ), [selectedTravelShipmentOptions, shipmentQuantities]);
+
+  const selectedTravelShipmentPreview = useMemo(() => {
+    if (!selectedTravelBaseQuote || selectedShipmentSelections.length === 0) {
+      return null;
+    }
+
+    const shipmentHeadroom = Math.max(0, selectedTravelBaseQuote.cargoCapacity - player.usedCapacity);
+    return getTravelShipmentPreview({
+      property,
+      junkyardStorage,
+      auctionListings,
+      guild,
+      destination: selectedDestination,
+      maxShipmentWeight: shipmentHeadroom,
+      selections: selectedShipmentSelections,
+    });
+  }, [auctionListings, guild, junkyardStorage, player.usedCapacity, property, selectedDestination, selectedShipmentSelections, selectedTravelBaseQuote]);
+
+  const selectedTravelCargoLoad = player.usedCapacity + (selectedTravelShipmentPreview?.totalWeight ?? 0);
+
+  const selectedTravelQuote = useMemo(() => {
+    if (!selectedTravelBaseQuote) {
+      return null;
+    }
+    const ownedVehicle = selectedTravelBaseQuote.mode !== 'bus' && selectedTravelBaseQuote.mode !== 'train' && selectedTravelBaseQuote.mode !== 'plane'
+      ? player.ownedVehicles[selectedTravelBaseQuote.mode] ?? null
+      : null;
+    return getTravelQuoteForFleetLoad(currentDistrict, selectedDestination, selectedTravelBaseQuote.mode, selectedTravelCargoLoad, ownedVehicle);
+  }, [currentDistrict, player.ownedVehicles, selectedDestination, selectedTravelBaseQuote, selectedTravelCargoLoad]);
 
   const availableTravelModes = useMemo(() => {
     const modes: TravelMode[] = ['bus'];
     if (trainRouteAvailable && trainRouteUnlocked) {
       modes.push('train');
     }
+    if (airportRouteAvailable && airportRouteUnlocked) {
+      modes.push('plane');
+    }
 
     for (const mode of VEHICLE_MODE_ORDER) {
-      if (unlockedVehicleModes.includes(mode)) {
+      if (builtVehicleModes.includes(mode)) {
         modes.push(mode);
       }
     }
 
     return modes;
-  }, [trainRouteAvailable, trainRouteUnlocked, unlockedVehicleModes]);
+  }, [airportRouteAvailable, airportRouteUnlocked, builtVehicleModes, trainRouteAvailable, trainRouteUnlocked]);
   const travelRemainingMs = travel.status === 'travelling' && travel.arrivalAt
     ? Math.max(0, travel.arrivalAt - travelNow)
     : 0;
@@ -451,7 +548,7 @@ export default function CityPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold tracking-widest uppercase" style={{ color: '#39ff14' }}>
+          <h1 className="text-xl font-bold tracking-widest uppercase" style={{ color: '#0f766e' }}>
             City Map
           </h1>
           <p className="text-xs mt-0.5" style={{ color: '#6b7280' }}>
@@ -473,9 +570,9 @@ export default function CityPage() {
           disabled={isScavenging || isResting || player.energy < energyCost || travel.status === 'travelling'}
           className="px-6 py-2.5 rounded text-sm font-bold tracking-widest uppercase transition-all"
           style={{
-            background: isScavenging ? '#1a1a1a' : '#39ff1415',
-            border: '1px solid #39ff1460',
-            color: isScavenging ? '#6b7280' : '#39ff14',
+            background: isScavenging ? '#eef2f7' : '#0f766e15',
+            border: '1px solid #0f766e66',
+            color: isScavenging ? '#6b7280' : '#0f766e',
             cursor: isScavenging || isResting || player.energy < energyCost || travel.status === 'travelling' ? 'not-allowed' : 'pointer',
             opacity: player.energy < energyCost || travel.status === 'travelling' ? 0.6 : 1,
           }}>
@@ -564,13 +661,13 @@ export default function CityPage() {
 
         {/* Right Panel */}
         <div className="space-y-4">
-          <motion.div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-            <h3 className="text-xs uppercase tracking-widest mb-2" style={{ color: '#39ff1480' }}>Base Operations</h3>
+          <motion.div className="rounded-lg p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+            <h3 className="text-xs uppercase tracking-widest mb-2" style={{ color: '#0f766e99' }}>Base Operations</h3>
             {activeProperty ? (
               <div className="space-y-3">
-                <div className="rounded-lg p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+                <div className="rounded-lg p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
                   <p className="text-[11px] uppercase tracking-widest" style={{ color: '#6b7280' }}>Active Base</p>
-                  <p className="mt-1 text-sm font-bold" style={{ color: '#f8fafc' }}>{activeProperty.name}</p>
+                  <p className="mt-1 text-sm font-bold" style={{ color: '#0f172a' }}>{activeProperty.name}</p>
                   <p className="mt-1 text-xs" style={{ color: '#9ca3af' }}>
                     {getPropertyTierLabel(activeProperty.tier)} in {DISTRICTS[activeProperty.district].name}
                   </p>
@@ -582,12 +679,14 @@ export default function CityPage() {
                 <div className="space-y-2">
                   {property.properties.map((ownedProperty) => {
                     const isActive = ownedProperty.id === property.activePropertyId;
-                    const localShackListing = ownedProperty.tier === 'shack' ? getPropertyListing(ownedProperty.district) : null;
+                    const localPropertyListing = ownedProperty.tier === 'shack' || ownedProperty.tier === 'workshop'
+                      ? getPropertyListing(ownedProperty.tier, ownedProperty.district)
+                      : null;
                     return (
-                      <div key={ownedProperty.id} className="rounded-lg p-3" style={{ background: '#0a0a0a', border: `1px solid ${isActive ? '#39ff1440' : '#1f2937'}` }}>
+                      <div key={ownedProperty.id} className="rounded-lg p-3" style={{ background: '#f8fafc', border: `1px solid ${isActive ? '#0f766e40' : '#cbd5e1'}` }}>
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <p className="text-xs font-semibold" style={{ color: '#f8fafc' }}>{ownedProperty.name}</p>
+                            <p className="text-xs font-semibold" style={{ color: '#0f172a' }}>{ownedProperty.name}</p>
                             <p className="mt-1 text-[11px]" style={{ color: '#6b7280' }}>{DISTRICTS[ownedProperty.district].name} · {getPropertyTierLabel(ownedProperty.tier)}</p>
                             <p className="mt-1 text-[11px]" style={{ color: ownedProperty.occupancyStatus === 'rented_out' ? '#fbbf24' : '#60a5fa' }}>
                               {ownedProperty.occupancyStatus === 'active' ? 'Active base' : ownedProperty.occupancyStatus === 'rented_out' ? `${ownedProperty.letting?.mode === 'public' ? 'Public letting' : 'Friend rental'} · $${ownedProperty.letting?.dailyRate ?? 0}/day · ${ownedProperty.letting?.durationDays ?? 0}d` : 'Inactive property'}
@@ -602,8 +701,8 @@ export default function CityPage() {
                             disabled={isActive || ownedProperty.occupancyStatus === 'rented_out'}
                             className="px-2 py-1 rounded text-[11px] uppercase tracking-widest"
                             style={{
-                              background: isActive ? '#1f2937' : '#39ff1412',
-                              border: `1px solid ${isActive ? '#374151' : '#39ff1455'}`,
+                              background: isActive ? '#cbd5e1' : '#0f766e12',
+                              border: `1px solid ${isActive ? '#94a3b8' : '#0f766e59'}`,
                               color: isActive ? '#6b7280' : '#86efac',
                               opacity: isActive || ownedProperty.occupancyStatus === 'rented_out' ? 0.8 : 1,
                             }}>
@@ -633,16 +732,16 @@ export default function CityPage() {
                                   onClick={() => listPropertyForRent(ownedProperty.id, 'friends')}
                                   className="px-2 py-1.5 rounded text-[11px] uppercase tracking-widest"
                                   style={{ background: '#60a5fa18', border: '1px solid #60a5fa55', color: '#93c5fd' }}>
-                                  Friend ${localShackListing?.friendDailyRate ?? 0}
+                                  Friend ${localPropertyListing?.friendDailyRate ?? 0}
                                 </button>
                                 <button
                                   onClick={() => listPropertyForRent(ownedProperty.id, 'public')}
                                   className="px-2 py-1.5 rounded text-[11px] uppercase tracking-widest"
                                   style={{ background: '#f59e0b18', border: '1px solid #f59e0b55', color: '#fbbf24' }}>
-                                  Public ${localShackListing?.publicDailyRate ?? 0}
+                                  Public ${localPropertyListing?.publicDailyRate ?? 0}
                                 </button>
                                 <div className="px-2 py-1.5 rounded text-[11px] text-center"
-                                  style={{ background: '#11182766', border: '1px solid #1f2937', color: '#94a3b8' }}>
+                                  style={{ background: '#f1f5f966', border: '1px solid #cbd5e1', color: '#94a3b8' }}>
                                   Letting Ready
                                 </div>
                               </>
@@ -659,32 +758,32 @@ export default function CityPage() {
             )}
           </motion.div>
 
-          <motion.div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-            <h3 className="text-xs uppercase tracking-widest mb-2" style={{ color: '#39ff1480' }}>Shack Market</h3>
-            {currentDistrictOwnedProperty ? (
+          <motion.div className="rounded-lg p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+            <h3 className="text-xs uppercase tracking-widest mb-2" style={{ color: '#0f766e99' }}>Shack Market</h3>
+            {currentDistrictOwnedShack ? (
               <div className="space-y-3">
-                <p className="text-sm font-bold" style={{ color: '#f8fafc' }}>You already own a Shack in {DISTRICTS[currentDistrict].name}</p>
+                <p className="text-sm font-bold" style={{ color: '#0f172a' }}>You already own a Shack in {DISTRICTS[currentDistrict].name}</p>
                 <p className="text-xs" style={{ color: '#9ca3af' }}>Use it as your active base when you want better storage and simple disassembly without full junkyard automation.</p>
                 <button
-                  onClick={() => setActiveProperty(currentDistrictOwnedProperty.id)}
-                  disabled={currentDistrictOwnedProperty.id === property.activePropertyId}
+                  onClick={() => setActiveProperty(currentDistrictOwnedShack.id)}
+                  disabled={currentDistrictOwnedShack.id === property.activePropertyId}
                   className="w-full px-3 py-2 rounded text-xs font-bold uppercase tracking-widest"
                   style={{
-                    background: '#39ff1412',
-                    border: '1px solid #39ff1455',
+                    background: '#0f766e12',
+                    border: '1px solid #0f766e59',
                     color: '#86efac',
-                    opacity: currentDistrictOwnedProperty.id === property.activePropertyId ? 0.55 : 1,
+                    opacity: currentDistrictOwnedShack.id === property.activePropertyId ? 0.55 : 1,
                   }}>
-                  {currentDistrictOwnedProperty.id === property.activePropertyId ? 'Already Active' : 'Activate Local Shack'}
+                  {currentDistrictOwnedShack.id === property.activePropertyId ? 'Already Active' : 'Activate Local Shack'}
                 </button>
               </div>
             ) : currentDistrictShack ? (
               <div className="space-y-3">
-                <p className="text-sm font-bold" style={{ color: '#f8fafc' }}>{currentDistrictShack.label}</p>
+                <p className="text-sm font-bold" style={{ color: '#0f172a' }}>{currentDistrictShack.label}</p>
                 <p className="text-xs" style={{ color: '#9ca3af' }}>{currentDistrictShack.riskNote}</p>
                 {!property.shackAccess.unlocked && (
-                  <div className="rounded p-3 text-xs space-y-2" style={{ background: '#11182766', border: '1px solid #1f2937' }}>
-                    <p style={{ color: '#f8fafc' }}>Dumpster-to-Shack Upgrade Path</p>
+                  <div className="rounded p-3 text-xs space-y-2" style={{ background: '#f1f5f966', border: '1px solid #cbd5e1' }}>
+                    <p style={{ color: '#0f172a' }}>Dumpster-to-Shack Upgrade Path</p>
                     <p style={{ color: shackUnlockStatus.hasCorrectBase ? '#86efac' : '#fca5a5' }}>Active base is Dumpster: {shackUnlockStatus.hasCorrectBase ? 'ready' : 'switch back to Dumpster'}</p>
                     <p style={{ color: shackUnlockStatus.rankReady ? '#86efac' : '#fca5a5' }}>Rank {player.rank}/{8}</p>
                     <p style={{ color: shackUnlockStatus.stashReady ? '#86efac' : '#fca5a5' }}>Dumpster stash {shackUnlockStatus.activeProperty ? getPropertyStoredWeight(shackUnlockStatus.activeProperty).toFixed(1) : '0.0'}/{10} kg</p>
@@ -694,23 +793,23 @@ export default function CityPage() {
                       onClick={unlockShackTier}
                       disabled={!shackUnlockStatus.hasCorrectBase || !shackUnlockStatus.rankReady || !shackUnlockStatus.stashReady || !shackUnlockStatus.componentReady || !shackUnlockStatus.cashReady}
                       className="w-full px-3 py-2 rounded text-xs font-bold uppercase tracking-widest"
-                      style={{ background: '#39ff1412', border: '1px solid #39ff1455', color: '#86efac', opacity: (!shackUnlockStatus.hasCorrectBase || !shackUnlockStatus.rankReady || !shackUnlockStatus.stashReady || !shackUnlockStatus.componentReady || !shackUnlockStatus.cashReady) ? 0.45 : 1 }}>
+                      style={{ background: '#0f766e12', border: '1px solid #0f766e59', color: '#86efac', opacity: (!shackUnlockStatus.hasCorrectBase || !shackUnlockStatus.rankReady || !shackUnlockStatus.stashReady || !shackUnlockStatus.componentReady || !shackUnlockStatus.cashReady) ? 0.45 : 1 }}>
                       Unlock Shack Tier
                     </button>
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-2 text-[11px]">
-                  <div className="rounded p-2" style={{ background: '#0a0a0a', border: '1px solid #1f2937', color: '#9ca3af' }}>
+                  <div className="rounded p-2" style={{ background: '#f8fafc', border: '1px solid #cbd5e1', color: '#9ca3af' }}>
                     Buy-in <span style={{ color: '#86efac' }}>${currentDistrictShack.purchasePrice}</span>
                   </div>
-                  <div className="rounded p-2" style={{ background: '#0a0a0a', border: '1px solid #1f2937', color: '#9ca3af' }}>
+                  <div className="rounded p-2" style={{ background: '#f8fafc', border: '1px solid #cbd5e1', color: '#9ca3af' }}>
                     Rent/day <span style={{ color: '#93c5fd' }}>${currentDistrictShack.rentPerDay}</span>
                   </div>
-                  <div className="rounded p-2" style={{ background: '#0a0a0a', border: '1px solid #1f2937', color: '#9ca3af' }}>
-                    Storage <span style={{ color: '#f8fafc' }}>{currentDistrictShack.storageCapacity}</span>
+                  <div className="rounded p-2" style={{ background: '#f8fafc', border: '1px solid #cbd5e1', color: '#9ca3af' }}>
+                    Storage <span style={{ color: '#0f172a' }}>{currentDistrictShack.storageCapacity}</span>
                   </div>
-                  <div className="rounded p-2" style={{ background: '#0a0a0a', border: '1px solid #1f2937', color: '#9ca3af' }}>
-                    Assembly <span style={{ color: '#f8fafc' }}>Tier {currentDistrictShack.assemblyTier}</span>
+                  <div className="rounded p-2" style={{ background: '#f8fafc', border: '1px solid #cbd5e1', color: '#9ca3af' }}>
+                    Assembly <span style={{ color: '#0f172a' }}>Tier {currentDistrictShack.assemblyTier}</span>
                   </div>
                 </div>
                 <div aria-label="shack-district-comparison" className="space-y-2">
@@ -784,32 +883,335 @@ export default function CityPage() {
             )}
           </motion.div>
 
-          <motion.div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-            <h3 className="text-xs uppercase tracking-widest mb-2" style={{ color: '#39ff1480' }}>Travel</h3>
-            <div aria-label="vehicle-progression-panel" className="mb-3 rounded-lg p-3" style={{ background: '#0a0a0a', border: '1px solid #1f2937' }}>
+          <motion.div className="rounded-lg p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+            <h3 className="text-xs uppercase tracking-widest mb-2" style={{ color: '#0f766e99' }}>Workshop Market</h3>
+            {currentDistrictOwnedWorkshop ? (
+              <div className="space-y-3">
+                <p className="text-sm font-bold" style={{ color: '#0f172a' }}>You already own a Workshop in {DISTRICTS[currentDistrict].name}</p>
+                <p className="text-xs" style={{ color: '#9ca3af' }}>Workshops open higher-tier repair, recycling, and vehicle assembly without unlocking full junkyard automation yet.</p>
+                <button
+                  onClick={() => setActiveProperty(currentDistrictOwnedWorkshop.id)}
+                  disabled={currentDistrictOwnedWorkshop.id === property.activePropertyId}
+                  className="w-full px-3 py-2 rounded text-xs font-bold uppercase tracking-widest"
+                  style={{
+                    background: '#0f766e12',
+                    border: '1px solid #0f766e59',
+                    color: '#86efac',
+                    opacity: currentDistrictOwnedWorkshop.id === property.activePropertyId ? 0.55 : 1,
+                  }}>
+                  {currentDistrictOwnedWorkshop.id === property.activePropertyId ? 'Already Active' : 'Activate Local Workshop'}
+                </button>
+              </div>
+            ) : currentDistrictWorkshop ? (
+              <div className="space-y-3">
+                <p className="text-sm font-bold" style={{ color: '#0f172a' }}>{currentDistrictWorkshop.label}</p>
+                <p className="text-xs" style={{ color: '#9ca3af' }}>{currentDistrictWorkshop.riskNote}</p>
+                {!property.workshopAccess.unlocked && (
+                  <div aria-label="workshop-upgrade-path" className="rounded p-3 text-xs space-y-2" style={{ background: '#f1f5f966', border: '1px solid #cbd5e1' }}>
+                    <p style={{ color: '#0f172a' }}>Shack-to-Workshop Upgrade Path</p>
+                    <p style={{ color: workshopUnlockStatus.hasCorrectBase ? '#86efac' : '#fca5a5' }}>Active base is Shack: {workshopUnlockStatus.hasCorrectBase ? 'ready' : 'switch to an owned Shack'}</p>
+                    <p style={{ color: workshopUnlockStatus.rankReady ? '#86efac' : '#fca5a5' }}>Rank {player.rank}/{14}</p>
+                    <p style={{ color: workshopUnlockStatus.stashReady ? '#86efac' : '#fca5a5' }}>Shack stash {workshopUnlockStatus.activeProperty ? getPropertyStoredWeight(workshopUnlockStatus.activeProperty).toFixed(1) : '0.0'}/{24} kg</p>
+                    <p style={{ color: workshopUnlockStatus.componentReady ? '#86efac' : '#fca5a5' }}>Components {(inventory.find((entry) => entry.id === 'mat_components')?.quantity ?? 0)}/{12}</p>
+                    <p style={{ color: workshopUnlockStatus.cashReady ? '#86efac' : '#fca5a5' }}>Permit cash ${player.cash.toLocaleString()}/${2400}</p>
+                    <button
+                      onClick={unlockWorkshopTier}
+                      disabled={!property.shackAccess.unlocked || !workshopUnlockStatus.hasCorrectBase || !workshopUnlockStatus.rankReady || !workshopUnlockStatus.stashReady || !workshopUnlockStatus.componentReady || !workshopUnlockStatus.cashReady}
+                      className="w-full px-3 py-2 rounded text-xs font-bold uppercase tracking-widest"
+                      style={{ background: '#0f766e12', border: '1px solid #0f766e59', color: '#86efac', opacity: (!property.shackAccess.unlocked || !workshopUnlockStatus.hasCorrectBase || !workshopUnlockStatus.rankReady || !workshopUnlockStatus.stashReady || !workshopUnlockStatus.componentReady || !workshopUnlockStatus.cashReady) ? 0.45 : 1 }}>
+                      Unlock Workshop Tier
+                    </button>
+                  </div>
+                )}
+                <div aria-label="workshop-district-comparison" className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[11px] uppercase tracking-widest" style={{ color: '#39ff1480' }}>Workshop Tradeoffs</p>
+                    <p className="text-[11px]" style={{ color: '#6b7280' }}>Move up once your Shack loop is stable enough to support deeper builds.</p>
+                  </div>
+                  <div className="space-y-2">
+                    {Object.values(WORKSHOP_PROPERTY_LISTINGS).map((listing) => {
+                      const isCurrentDistrict = listing.district === currentDistrict;
+
+                      return (
+                        <div
+                          key={listing.district}
+                          aria-label={`workshop-option-${listing.district}`}
+                          className="rounded p-3"
+                          style={{
+                            background: isCurrentDistrict ? '#39ff140d' : '#0a0a0a',
+                            border: `1px solid ${isCurrentDistrict ? '#39ff1455' : '#1f2937'}`,
+                          }}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-xs font-semibold" style={{ color: '#f8fafc' }}>{listing.district === 'rich_hills' ? 'Rich Hills' : DISTRICTS[listing.district].name}</p>
+                              <p className="mt-1 text-[11px]" style={{ color: '#6b7280' }}>{listing.label}</p>
+                            </div>
+                            <span
+                              className="rounded px-2 py-1 text-[10px] uppercase tracking-widest"
+                              style={{
+                                background: isCurrentDistrict ? '#39ff1418' : '#11182766',
+                                border: `1px solid ${isCurrentDistrict ? '#39ff1455' : '#1f2937'}`,
+                                color: isCurrentDistrict ? '#86efac' : '#94a3b8',
+                              }}>
+                              {isCurrentDistrict ? 'Current district' : 'Remote option'}
+                            </span>
+                          </div>
+                          <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]" style={{ color: '#9ca3af' }}>
+                            <div className="rounded p-2" style={{ background: '#11182744', border: '1px solid #1f2937' }}>
+                              Buy-in <span style={{ color: '#86efac' }}>${listing.purchasePrice}</span>
+                            </div>
+                            <div className="rounded p-2" style={{ background: '#11182744', border: '1px solid #1f2937' }}>
+                              Storage <span style={{ color: '#f8fafc' }}>{listing.storageCapacity}</span>
+                            </div>
+                            <div className="rounded p-2" style={{ background: '#11182744', border: '1px solid #1f2937' }}>
+                              Assembly <span style={{ color: '#93c5fd' }}>Tier {listing.assemblyTier}</span>
+                            </div>
+                            <div className="rounded p-2" style={{ background: '#11182744', border: '1px solid #1f2937' }}>
+                              Recycling <span style={{ color: '#86efac' }}>{listing.canRecycle ? 'Enabled' : 'Locked'}</span>
+                            </div>
+                          </div>
+                          <p className="mt-2 text-[11px]" style={{ color: '#9ca3af' }}>{listing.riskNote}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <button
+                  onClick={() => purchaseWorkshop(currentDistrict)}
+                  disabled={!property.workshopAccess.unlocked || player.cash < currentDistrictWorkshop.purchasePrice || travel.status === 'travelling'}
+                  className="w-full px-3 py-2 rounded text-xs font-bold uppercase tracking-widest"
+                  style={{
+                    background: '#f59e0b18',
+                    border: '1px solid #f59e0b66',
+                    color: '#fcd34d',
+                    opacity: !property.workshopAccess.unlocked || player.cash < currentDistrictWorkshop.purchasePrice || travel.status === 'travelling' ? 0.55 : 1,
+                  }}>
+                  {property.workshopAccess.unlocked ? `Buy Workshop in ${DISTRICTS[currentDistrict].name}` : 'Unlock Workshop Tier First'}
+                </button>
+              </div>
+            ) : (
+              <p className="text-xs" style={{ color: '#9ca3af' }}>No workshop listing is available in this district yet.</p>
+            )}
+          </motion.div>
+
+          <motion.div className="rounded-lg p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+            <h3 className="text-xs uppercase tracking-widest mb-2" style={{ color: '#0f766e99' }}>Junkyard Market</h3>
+            {currentDistrictOwnedJunkyard ? (
+              <div className="space-y-3">
+                <p className="text-sm font-bold" style={{ color: '#0f172a' }}>You already own a Junkyard in {DISTRICTS[currentDistrict].name}</p>
+                <p className="text-xs" style={{ color: '#9ca3af' }}>This is the full yard tier: recycling queues, workers, facilities, and production flow all run from here.</p>
+                <button
+                  onClick={() => setActiveProperty(currentDistrictOwnedJunkyard.id)}
+                  disabled={currentDistrictOwnedJunkyard.id === property.activePropertyId}
+                  className="w-full px-3 py-2 rounded text-xs font-bold uppercase tracking-widest"
+                  style={{
+                    background: '#0f766e12',
+                    border: '1px solid #0f766e59',
+                    color: '#86efac',
+                    opacity: currentDistrictOwnedJunkyard.id === property.activePropertyId ? 0.55 : 1,
+                  }}>
+                  {currentDistrictOwnedJunkyard.id === property.activePropertyId ? 'Already Active' : 'Activate Local Junkyard'}
+                </button>
+              </div>
+            ) : currentDistrictJunkyard ? (
+              <div className="space-y-3">
+                <p className="text-sm font-bold" style={{ color: '#0f172a' }}>{currentDistrictJunkyard.label}</p>
+                <p className="text-xs" style={{ color: '#9ca3af' }}>{currentDistrictJunkyard.riskNote}</p>
+                {!property.junkyardAccess.unlocked && (
+                  <div aria-label="junkyard-upgrade-path" className="rounded p-3 text-xs space-y-2" style={{ background: '#f1f5f966', border: '1px solid #cbd5e1' }}>
+                    <p style={{ color: '#0f172a' }}>Workshop-to-Junkyard Upgrade Path</p>
+                    <p style={{ color: junkyardUnlockStatus.hasCorrectBase ? '#86efac' : '#fca5a5' }}>Active base is Workshop: {junkyardUnlockStatus.hasCorrectBase ? 'ready' : 'switch to an owned Workshop'}</p>
+                    <p style={{ color: junkyardUnlockStatus.rankReady ? '#86efac' : '#fca5a5' }}>Rank {player.rank}/{22}</p>
+                    <p style={{ color: junkyardUnlockStatus.stashReady ? '#86efac' : '#fca5a5' }}>Workshop stash {junkyardUnlockStatus.activeProperty ? getPropertyStoredWeight(junkyardUnlockStatus.activeProperty).toFixed(1) : '0.0'}/{45} kg</p>
+                    <p style={{ color: junkyardUnlockStatus.componentReady ? '#86efac' : '#fca5a5' }}>Components {(inventory.find((entry) => entry.id === 'mat_components')?.quantity ?? 0)}/{20}</p>
+                    <p style={{ color: junkyardUnlockStatus.cashReady ? '#86efac' : '#fca5a5' }}>Permit cash ${player.cash.toLocaleString()}/${5200}</p>
+                    <button
+                      onClick={unlockJunkyardTier}
+                      disabled={!property.workshopAccess.unlocked || !junkyardUnlockStatus.hasCorrectBase || !junkyardUnlockStatus.rankReady || !junkyardUnlockStatus.stashReady || !junkyardUnlockStatus.componentReady || !junkyardUnlockStatus.cashReady}
+                      className="w-full px-3 py-2 rounded text-xs font-bold uppercase tracking-widest"
+                      style={{ background: '#0f766e12', border: '1px solid #0f766e59', color: '#86efac', opacity: (!property.workshopAccess.unlocked || !junkyardUnlockStatus.hasCorrectBase || !junkyardUnlockStatus.rankReady || !junkyardUnlockStatus.stashReady || !junkyardUnlockStatus.componentReady || !junkyardUnlockStatus.cashReady) ? 0.45 : 1 }}>
+                      Unlock Junkyard Tier
+                    </button>
+                  </div>
+                )}
+                <div aria-label="junkyard-district-comparison" className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[11px] uppercase tracking-widest" style={{ color: '#39ff1480' }}>Junkyard Tradeoffs</p>
+                    <p className="text-[11px]" style={{ color: '#6b7280' }}>This is the full operations leap: capacity, crew slots, and true recycling throughput.</p>
+                  </div>
+                  <div className="space-y-2">
+                    {Object.values(JUNKYARD_PROPERTY_LISTINGS).map((listing) => {
+                      const isCurrentDistrict = listing.district === currentDistrict;
+
+                      return (
+                        <div
+                          key={listing.district}
+                          aria-label={`junkyard-option-${listing.district}`}
+                          className="rounded p-3"
+                          style={{
+                            background: isCurrentDistrict ? '#39ff140d' : '#0a0a0a',
+                            border: `1px solid ${isCurrentDistrict ? '#39ff1455' : '#1f2937'}`,
+                          }}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-xs font-semibold" style={{ color: '#f8fafc' }}>{listing.district === 'rich_hills' ? 'Rich Hills' : DISTRICTS[listing.district].name}</p>
+                              <p className="mt-1 text-[11px]" style={{ color: '#6b7280' }}>{listing.label}</p>
+                            </div>
+                            <span
+                              className="rounded px-2 py-1 text-[10px] uppercase tracking-widest"
+                              style={{
+                                background: isCurrentDistrict ? '#39ff1418' : '#11182766',
+                                border: `1px solid ${isCurrentDistrict ? '#39ff1455' : '#1f2937'}`,
+                                color: isCurrentDistrict ? '#86efac' : '#94a3b8',
+                              }}>
+                              {isCurrentDistrict ? 'Current district' : 'Remote option'}
+                            </span>
+                          </div>
+                          <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]" style={{ color: '#9ca3af' }}>
+                            <div className="rounded p-2" style={{ background: '#11182744', border: '1px solid #1f2937' }}>
+                              Buy-in <span style={{ color: '#86efac' }}>${listing.purchasePrice}</span>
+                            </div>
+                            <div className="rounded p-2" style={{ background: '#11182744', border: '1px solid #1f2937' }}>
+                              Storage <span style={{ color: '#f8fafc' }}>{listing.storageCapacity}</span>
+                            </div>
+                            <div className="rounded p-2" style={{ background: '#11182744', border: '1px solid #1f2937' }}>
+                              Staff <span style={{ color: '#93c5fd' }}>{listing.employeeCapacity}</span>
+                            </div>
+                            <div className="rounded p-2" style={{ background: '#11182744', border: '1px solid #1f2937' }}>
+                              Assembly <span style={{ color: '#86efac' }}>Tier {listing.assemblyTier}</span>
+                            </div>
+                          </div>
+                          <p className="mt-2 text-[11px]" style={{ color: '#9ca3af' }}>{listing.riskNote}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <button
+                  onClick={() => purchaseJunkyard(currentDistrict)}
+                  disabled={!property.junkyardAccess.unlocked || player.cash < currentDistrictJunkyard.purchasePrice || travel.status === 'travelling'}
+                  className="w-full px-3 py-2 rounded text-xs font-bold uppercase tracking-widest"
+                  style={{
+                    background: '#f59e0b18',
+                    border: '1px solid #f59e0b66',
+                    color: '#fcd34d',
+                    opacity: !property.junkyardAccess.unlocked || player.cash < currentDistrictJunkyard.purchasePrice || travel.status === 'travelling' ? 0.55 : 1,
+                  }}>
+                  {property.junkyardAccess.unlocked ? `Buy Junkyard in ${DISTRICTS[currentDistrict].name}` : 'Unlock Junkyard Tier First'}
+                </button>
+              </div>
+            ) : (
+              <p className="text-xs" style={{ color: '#9ca3af' }}>No junkyard listing is available in this district yet.</p>
+            )}
+          </motion.div>
+
+          <motion.div className="rounded-lg p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+            <h3 className="text-xs uppercase tracking-widest mb-2" style={{ color: '#0f766e99' }}>Travel</h3>
+            <div aria-label="vehicle-progression-panel" className="mb-3 rounded-lg p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: '#22c55e' }}>Transport Progression</p>
-                  <p className="text-[11px]" style={{ color: '#6b7280' }}>Transport tier {transportTier} controls private district vehicles.</p>
+                  <p className="text-[11px]" style={{ color: '#6b7280' }}>Your active base tier controls which private rigs can be assembled from found parts.</p>
                 </div>
-                <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: '#86efac' }}>Owned {unlockedVehicleModes.length}</p>
+                <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: '#86efac' }}>Built {builtVehicleModes.length}</p>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 {VEHICLE_MODE_ORDER.map((mode) => {
                   const spec = VEHICLE_TRAVEL_SPECS[mode];
-                  const unlocked = unlockedVehicleModes.includes(mode);
+                  const recipe = getVehicleConstructionRecipe(mode);
+                  const recipeUnlocked = hasRequiredPropertyTier(activeProperty?.tier, recipe.requiredPropertyTier);
+                  const builtVehicle = player.ownedVehicles[mode] ?? null;
+                  const hasBuildTier = hasRequiredPropertyTier(activeProperty?.tier, recipe.requiredPropertyTier);
+                  const upgradeEffects = getVehicleUpgradeEffects(builtVehicle);
+                  const nextUpgradeKey = (Object.keys(VEHICLE_UPGRADE_DEFINITIONS) as VehicleUpgradeKey[]).find((key) => !builtVehicle?.upgrades.includes(key)) ?? null;
+                  const nextUpgrade = nextUpgradeKey ? VEHICLE_UPGRADE_DEFINITIONS[nextUpgradeKey] : null;
+                  const repairCost = builtVehicle ? getVehicleRepairCost(builtVehicle) : null;
+                  const workshopRepair = builtVehicle ? getWorkshopVehicleRepairRequirements(builtVehicle) : null;
+                  const refuelCost = builtVehicle ? getVehicleRefuelCost(builtVehicle) : null;
+                  const workshopRepairVisible = Boolean(
+                    builtVehicle
+                    && activeProperty
+                    && hasRequiredPropertyTier(activeProperty.tier, 'workshop')
+                    && !hasRequiredPropertyTier(activeProperty.tier, 'junkyard')
+                    && workshopRepair
+                    && (workshopRepair.overhaulCrates > 0 || workshopRepair.precisionRepairKits > 0 || workshopRepair.calibrationTuners > 0),
+                  );
                   return (
                     <div
                       key={mode}
                       className="rounded p-2"
                       style={{
-                        background: unlocked ? '#052e16' : '#111827',
-                        border: `1px solid ${unlocked ? '#166534' : '#1f2937'}`,
-                        opacity: unlocked ? 1 : 0.72,
+                        background: builtVehicle ? '#052e16' : recipeUnlocked ? '#f8fafc' : '#f1f5f9',
+                        border: `1px solid ${builtVehicle ? '#166534' : recipeUnlocked ? '#22c55e55' : '#cbd5e1'}`,
+                        opacity: recipeUnlocked ? 1 : 0.72,
                       }}>
-                      <p className="text-xs font-bold" style={{ color: unlocked ? '#86efac' : '#9ca3af' }}>{spec.icon} {spec.label}</p>
-                      <p className="text-[11px] mt-1" style={{ color: '#6b7280' }}>{unlocked ? `Unlocked at tier ${spec.unlockTier}` : `Needs transport tier ${spec.unlockTier}`}</p>
-                      <p className="text-[11px] mt-1" style={{ color: '#6b7280' }}>Carry {spec.cargoCapacity} · {spec.summary}</p>
+                      <p className="text-xs font-bold" style={{ color: builtVehicle ? '#86efac' : recipeUnlocked ? '#0f172a' : '#9ca3af' }}>{spec.icon} {spec.label}</p>
+                      <p className="text-[11px] mt-1" style={{ color: builtVehicle ? '#bbf7d0' : '#6b7280' }}>
+                        {builtVehicle ? 'Fleet ready' : recipeUnlocked ? `${getPropertyTierLabel(recipe.requiredPropertyTier)} recipe ready` : `Needs ${getPropertyTierLabel(recipe.requiredPropertyTier)} base`}
+                      </p>
+                      <p className="text-[11px] mt-1" style={{ color: builtVehicle ? '#d1fae5' : '#6b7280' }}>
+                        Carry {spec.cargoCapacity + upgradeEffects.cargoBonus} · {spec.summary}
+                      </p>
+                      {builtVehicle && (
+                        <div className="mt-2 space-y-1 text-[11px]" style={{ color: '#d1fae5' }}>
+                          <p>Fuel {Math.round(builtVehicle.fuel)}/{builtVehicle.maxFuel}</p>
+                          <p>Durability {Math.round(builtVehicle.durability)}% · Maintenance {Math.round(builtVehicle.maintenance)}%</p>
+                          <p>Upgrades {builtVehicle.upgrades.length} · Stealth +{spec.stealthBonus + upgradeEffects.stealthBonus}</p>
+                          {workshopRepairVisible && workshopRepair && (
+                            <p style={{ color: '#fde68a' }}>
+                              Workshop service: {workshopRepair.overhaulCrates > 0 ? `${workshopRepair.overhaulCrates} Overhaul Crate` : '0 Overhaul Crates'} · {workshopRepair.precisionRepairKits} Precision Kits · {workshopRepair.calibrationTuners} Tuners
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      {!builtVehicle && (
+                        <div className="mt-2 space-y-2">
+                          <div className="rounded p-2 text-[10px]" style={{ background: '#ecfdf5', border: '1px solid #86efac', color: '#166534' }}>
+                            <p className="font-bold uppercase tracking-widest">Found Parts Recipe</p>
+                            <p className="mt-1">Cash ${recipe.cashCost.toLocaleString()}</p>
+                            <p className="mt-1">Base: {getPropertyTierLabel(recipe.requiredPropertyTier)}</p>
+                            {recipe.ingredients.map((ingredient) => {
+                              const quantity = getCombinedItemQuantity(inventory, activeProperty?.storedItems ?? [], ingredient.itemId);
+                              return (
+                                <p key={`${mode}-${ingredient.itemId}`} className="mt-1">
+                                  {ingredient.icon} {quantity}/{ingredient.quantity} {ingredient.itemName}
+                                </p>
+                              );
+                            })}
+                          </div>
+                          <button
+                            onClick={() => buildVehicle(mode)}
+                            disabled={!hasBuildTier}
+                            className="w-full rounded px-2 py-1 text-[10px] font-bold uppercase tracking-widest"
+                            style={{ background: '#22c55e18', border: '1px solid #22c55e55', color: '#15803d', opacity: hasBuildTier ? 1 : 0.55 }}>
+                            {hasBuildTier ? `Assemble ${spec.label}` : `${getPropertyTierLabel(recipe.requiredPropertyTier)} Base Needed`}
+                          </button>
+                        </div>
+                      )}
+                      {builtVehicle && (
+                        <div className="mt-2 grid grid-cols-1 gap-1">
+                          <button
+                            onClick={() => refuelVehicle(mode)}
+                            className="rounded px-2 py-1 text-[10px] font-bold uppercase tracking-widest"
+                            style={{ background: '#60a5fa18', border: '1px solid #60a5fa55', color: '#bfdbfe' }}>
+                            Refuel ${refuelCost?.cashCost ?? 0}
+                          </button>
+                          <button
+                            onClick={() => repairVehicle(mode)}
+                            className="rounded px-2 py-1 text-[10px] font-bold uppercase tracking-widest"
+                            style={{ background: '#f59e0b18', border: '1px solid #f59e0b55', color: '#fde68a' }}>
+                            Repair ${repairCost?.cashCost ?? 0}
+                          </button>
+                          {nextUpgrade && (
+                            <button
+                              onClick={() => installVehicleUpgrade(mode, nextUpgrade.key)}
+                              className="rounded px-2 py-1 text-[10px] font-bold uppercase tracking-widest"
+                              style={{ background: '#a855f718', border: '1px solid #a855f755', color: '#e9d5ff' }}>
+                              Fit {nextUpgrade.label}
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -819,7 +1221,7 @@ export default function CityPage() {
               <div className="space-y-3">
                 <p className="text-sm font-bold" style={{ color: '#93c5fd' }}>En route to {DISTRICTS[travel.destination].name}</p>
                 <p className="text-xs" style={{ color: '#9ca3af' }}>From {DISTRICTS[travel.origin].name} by {travel.mode}. Arrival in {travelRemainingLabel}.</p>
-                <div className="w-full bg-black rounded overflow-hidden h-1.5">
+                <div className="w-full bg-slate-200 rounded overflow-hidden h-1.5">
                   <motion.div
                     animate={{ width: `${travel.durationMs > 0 && travel.departureAt ? Math.min(100, ((travelNow - travel.departureAt) / travel.durationMs) * 100) : 0}%` }}
                     className="h-full"
@@ -835,6 +1237,8 @@ export default function CityPage() {
                     const isSelected = selectedTravelQuote.mode === mode;
                     const accent = mode === 'train'
                       ? '#f59e0b'
+                      : mode === 'plane'
+                        ? '#6366f1'
                       : mode === 'bus'
                         ? '#60a5fa'
                         : '#22c55e';
@@ -846,8 +1250,8 @@ export default function CityPage() {
                         aria-label={getTravelModeLabel(mode)}
                         className="px-3 py-2 rounded text-[11px] font-bold uppercase tracking-widest"
                         style={{
-                          background: isSelected ? `${accent}18` : '#0a0a0a',
-                          border: `1px solid ${isSelected ? `${accent}55` : '#1f2937'}`,
+                          background: isSelected ? `${accent}18` : '#f8fafc',
+                          border: `1px solid ${isSelected ? `${accent}55` : '#cbd5e1'}`,
                           color: isSelected ? accent : '#6b7280',
                         }}>
                         {getTravelModeIcon(mode)} {getTravelModeLabel(mode)}
@@ -855,40 +1259,101 @@ export default function CityPage() {
                     );
                   })}
                 </div>
-                <p className="text-sm font-bold" style={{ color: '#f8fafc' }}>{getTravelModeLabel(selectedTravelQuote.mode)} to {DISTRICTS[selectedTravelQuote.destination].name}</p>
+                <p className="text-sm font-bold" style={{ color: '#0f172a' }}>{getTravelModeLabel(selectedTravelQuote.mode)} to {DISTRICTS[selectedTravelQuote.destination].name}</p>
                 <p className="text-xs" style={{ color: '#9ca3af' }}>
                   Fare ${selectedTravelQuote.fareCost} · ETA {Math.ceil(selectedTravelQuote.durationMs / 1000)}s · Carry limit {selectedTravelQuote.cargoCapacity}
                 </p>
+                <div aria-label="travel-shipment-panel" className="rounded p-2" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
+                  <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: '#475569' }}>Shipment Manifest</p>
+                  {selectedTravelShipmentOptions.length > 0 ? (
+                    <div className="mt-2 space-y-2">
+                      {selectedTravelShipmentOptions.map((option) => {
+                        const selectedQuantity = shipmentQuantities[option.id] ?? 0;
+                        return (
+                          <div key={option.id} className="rounded p-2" style={{ background: '#ffffff', border: '1px solid #dbe4ee' }}>
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-xs font-bold" style={{ color: '#0f172a' }}>{option.icon} {option.name}</p>
+                                <p className="mt-1 text-[11px]" style={{ color: '#64748b' }}>{option.sourceLabel} · {option.quantityAvailable} available · {option.weightPerUnit.toFixed(1)} wt each</p>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => setShipmentQuantities((current) => ({
+                                    ...current,
+                                    [option.id]: Math.max(0, (current[option.id] ?? 0) - 1),
+                                  }))}
+                                  aria-label={`Decrease ${option.name}`}
+                                  className="h-7 w-7 rounded text-sm font-bold"
+                                  style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#475569' }}>
+                                  -
+                                </button>
+                                <span className="inline-flex min-w-[2rem] items-center justify-center text-xs font-bold" style={{ color: '#0f172a' }}>{selectedQuantity}</span>
+                                <button
+                                  onClick={() => setShipmentQuantities((current) => ({
+                                    ...current,
+                                    [option.id]: Math.min(option.quantityAvailable, (current[option.id] ?? 0) + 1),
+                                  }))}
+                                  aria-label={`Increase ${option.name}`}
+                                  className="h-7 w-7 rounded text-sm font-bold"
+                                  style={{ background: '#ecfdf5', border: '1px solid #86efac', color: '#15803d' }}>
+                                  +
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <p className="text-[11px]" style={{ color: selectedTravelShipmentPreview ? '#15803d' : '#94a3b8' }}>
+                        {selectedTravelShipmentPreview
+                          ? `Manifest loaded: ${selectedTravelShipmentPreview.totalWeight.toFixed(1)} weight into ${selectedTravelShipmentPreview.targetPropertyName}.`
+                          : 'Select item quantities to attach a shipment to this trip.'}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="mt-1 text-[11px]" style={{ color: '#94a3b8' }}>
+                      No eligible shipment sources or destination storage for this route.
+                    </p>
+                  )}
+                </div>
                 {!trainRouteUnlocked && (
                   <p className="text-[11px]" style={{ color: '#f59e0b' }}>Train routes unlock at Rank {TRAIN_MIN_RANK}.</p>
                 )}
                 {trainRouteUnlocked && !trainRouteAvailable && (
                   <p className="text-[11px]" style={{ color: '#6b7280' }}>Train service only runs between the major districts.</p>
                 )}
+                {!airportRouteUnlocked && (
+                  <p className="text-[11px]" style={{ color: '#6366f1' }}>Airport routes unlock at Rank {AIRPORT_MIN_RANK}.</p>
+                )}
+                {airportRouteUnlocked && !airportRouteAvailable && (
+                  <p className="text-[11px]" style={{ color: '#6b7280' }}>Airport routes only run between premium districts.</p>
+                )}
                 {selectedTravelQuote.mode === 'train' && (
                   <p className="text-[11px]" style={{ color: '#fbbf24' }}>Bulk passenger line: higher fare, faster arrival, higher carry allowance.</p>
                 )}
-                {selectedTravelQuote.mode !== 'bus' && selectedTravelQuote.mode !== 'train' && (
+                {selectedTravelQuote.mode === 'plane' && (
+                  <p className="text-[11px]" style={{ color: '#818cf8' }}>Premium air route: fastest district transfer with high fare and broad cargo allowance.</p>
+                )}
+                {selectedTravelQuote.mode !== 'bus' && selectedTravelQuote.mode !== 'train' && selectedTravelQuote.mode !== 'plane' && (
                   <p className="text-[11px]" style={{ color: '#86efac' }}>{VEHICLE_TRAVEL_SPECS[selectedTravelQuote.mode].summary}</p>
                 )}
                 <p className="text-[11px]" style={{ color: '#fca5a5' }}>
                   Route risk: {getTravelRiskSummary(DISTRICTS[selectedTravelQuote.destination].danger)}
                 </p>
-                <p className="text-[11px]" style={{ color: player.usedCapacity > selectedTravelQuote.cargoCapacity ? '#fca5a5' : '#86efac' }}>
-                  Current load {player.usedCapacity.toFixed(1)} / {selectedTravelQuote.cargoCapacity}
+                <p className="text-[11px]" style={{ color: selectedTravelCargoLoad > selectedTravelQuote.cargoCapacity ? '#fca5a5' : '#86efac' }}>
+                  Current load {selectedTravelCargoLoad.toFixed(1)} / {selectedTravelQuote.cargoCapacity}
                 </p>
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setConfirmTravelQuote(selectedTravelQuote)}
-                  aria-label={selectedTravelQuote.mode === 'train' ? 'Ride Train' : selectedTravelQuote.mode === 'bus' ? 'Ride Bus' : `Ride ${getTravelModeLabel(selectedTravelQuote.mode)}`}
-                  disabled={player.cash < selectedTravelQuote.fareCost || player.usedCapacity > selectedTravelQuote.cargoCapacity || isScavenging}
+                  aria-label={selectedTravelQuote.mode === 'train' ? 'Ride Train' : selectedTravelQuote.mode === 'plane' ? 'Ride Plane' : selectedTravelQuote.mode === 'bus' ? 'Ride Bus' : `Ride ${getTravelModeLabel(selectedTravelQuote.mode)}`}
+                  disabled={player.cash < selectedTravelQuote.fareCost || selectedTravelCargoLoad > selectedTravelQuote.cargoCapacity || isScavenging}
                   className="w-full px-3 py-2 rounded text-xs font-bold uppercase tracking-widest"
                   style={{
-                    background: selectedTravelQuote.mode === 'train' ? '#f59e0b18' : selectedTravelQuote.mode === 'bus' ? '#60a5fa22' : '#22c55e18',
-                    border: selectedTravelQuote.mode === 'train' ? '1px solid #f59e0b55' : selectedTravelQuote.mode === 'bus' ? '1px solid #60a5fa55' : '1px solid #22c55e55',
-                    color: selectedTravelQuote.mode === 'train' ? '#fbbf24' : selectedTravelQuote.mode === 'bus' ? '#93c5fd' : '#86efac',
-                    opacity: player.cash < selectedTravelQuote.fareCost || player.usedCapacity > selectedTravelQuote.cargoCapacity || isScavenging ? 0.55 : 1,
+                    background: selectedTravelQuote.mode === 'train' ? '#f59e0b18' : selectedTravelQuote.mode === 'plane' ? '#6366f118' : selectedTravelQuote.mode === 'bus' ? '#60a5fa22' : '#22c55e18',
+                    border: selectedTravelQuote.mode === 'train' ? '1px solid #f59e0b55' : selectedTravelQuote.mode === 'plane' ? '1px solid #6366f155' : selectedTravelQuote.mode === 'bus' ? '1px solid #60a5fa55' : '1px solid #22c55e55',
+                    color: selectedTravelQuote.mode === 'train' ? '#fbbf24' : selectedTravelQuote.mode === 'plane' ? '#818cf8' : selectedTravelQuote.mode === 'bus' ? '#93c5fd' : '#86efac',
+                    opacity: player.cash < selectedTravelQuote.fareCost || selectedTravelCargoLoad > selectedTravelQuote.cargoCapacity || isScavenging ? 0.55 : 1,
                   }}>
                   Confirm {getTravelModeLabel(selectedTravelQuote.mode)} Route
                 </motion.button>
@@ -911,51 +1376,59 @@ export default function CityPage() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 16, scale: 0.98 }}
                   className="w-full max-w-md rounded-xl p-5"
-                  style={{ background: '#0f172a', border: '1px solid #1e293b', boxShadow: '0 20px 60px rgba(15, 23, 42, 0.45)' }}>
+                  style={{ background: '#f1f5f9', border: '1px solid #1e293b', boxShadow: '0 20px 60px rgba(15, 23, 42, 0.45)' }}>
                   <p className="text-[11px] font-bold uppercase tracking-[0.3em]" style={{ color: '#60a5fa' }}>Travel Confirmation</p>
-                  <h3 className="mt-2 text-lg font-bold" style={{ color: '#f8fafc' }}>{getTravelModeIcon(confirmTravelQuote.mode)} {getTravelModeLabel(confirmTravelQuote.mode)} to {DISTRICTS[confirmTravelQuote.destination].name}</h3>
+                  <h3 className="mt-2 text-lg font-bold" style={{ color: '#0f172a' }}>{getTravelModeIcon(confirmTravelQuote.mode)} {getTravelModeLabel(confirmTravelQuote.mode)} to {DISTRICTS[confirmTravelQuote.destination].name}</h3>
                   <p className="mt-2 text-sm" style={{ color: '#94a3b8' }}>{DISTRICTS[confirmTravelQuote.destination].description}</p>
                   <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
                     <div className="rounded-lg p-3" style={{ background: '#020617', border: '1px solid #1e293b' }}>
                       <p style={{ color: '#64748b' }}>Fare</p>
-                      <p className="mt-1 font-bold" style={{ color: '#f8fafc' }}>${confirmTravelQuote.fareCost}</p>
+                      <p className="mt-1 font-bold" style={{ color: '#0f172a' }}>${confirmTravelQuote.fareCost}</p>
                     </div>
                     <div className="rounded-lg p-3" style={{ background: '#020617', border: '1px solid #1e293b' }}>
                       <p style={{ color: '#64748b' }}>ETA</p>
-                      <p className="mt-1 font-bold" style={{ color: '#f8fafc' }}>{Math.ceil(confirmTravelQuote.durationMs / 1000)}s</p>
+                      <p className="mt-1 font-bold" style={{ color: '#0f172a' }}>{Math.ceil(confirmTravelQuote.durationMs / 1000)}s</p>
                     </div>
                     <div className="rounded-lg p-3" style={{ background: '#020617', border: '1px solid #1e293b' }}>
                       <p style={{ color: '#64748b' }}>Cargo Limit</p>
-                      <p className="mt-1 font-bold" style={{ color: '#f8fafc' }}>{confirmTravelQuote.cargoCapacity}</p>
+                      <p className="mt-1 font-bold" style={{ color: '#0f172a' }}>{confirmTravelQuote.cargoCapacity}</p>
                     </div>
                     <div className="rounded-lg p-3" style={{ background: '#020617', border: '1px solid #1e293b' }}>
                       <p style={{ color: '#64748b' }}>Current Load</p>
-                      <p className="mt-1 font-bold" style={{ color: player.usedCapacity > confirmTravelQuote.cargoCapacity ? '#fca5a5' : '#86efac' }}>{player.usedCapacity.toFixed(1)}</p>
+                      <p className="mt-1 font-bold" style={{ color: selectedTravelCargoLoad > confirmTravelQuote.cargoCapacity ? '#fca5a5' : '#86efac' }}>{selectedTravelCargoLoad.toFixed(1)}</p>
                     </div>
                   </div>
-                  <div className="mt-4 rounded-lg p-3" style={{ background: '#111827', border: '1px solid #1f2937' }}>
+                  {selectedTravelShipmentPreview && (
+                    <div className="mt-3 rounded-lg p-3" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
+                      <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: '#15803d' }}>Attached Shipment</p>
+                      <p className="mt-1 text-sm" style={{ color: '#475569' }}>
+                        {selectedTravelShipmentPreview.totalWeight.toFixed(1)} weight across {selectedTravelShipmentPreview.entries.length} cargo line(s) to {selectedTravelShipmentPreview.targetPropertyName}
+                      </p>
+                    </div>
+                  )}
+                  <div className="mt-4 rounded-lg p-3" style={{ background: '#f1f5f9', border: '1px solid #cbd5e1' }}>
                     <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: '#fca5a5' }}>Route Risk</p>
-                    <p className="mt-1 text-sm" style={{ color: '#cbd5e1' }}>{getTravelRiskSummary(DISTRICTS[confirmTravelQuote.destination].danger)}</p>
+                    <p className="mt-1 text-sm" style={{ color: '#475569' }}>{getTravelRiskSummary(DISTRICTS[confirmTravelQuote.destination].danger)}</p>
                   </div>
                   <div className="mt-5 grid grid-cols-2 gap-3">
                     <button
                       onClick={() => setConfirmTravelQuote(null)}
                       className="px-3 py-2 rounded text-xs font-bold uppercase tracking-widest"
-                      style={{ background: '#111827', border: '1px solid #1f2937', color: '#cbd5e1' }}>
+                      style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#475569' }}>
                       Cancel
                     </button>
                     <button
                       onClick={() => {
-                        startTravel(confirmTravelQuote.destination, confirmTravelQuote.mode);
+                        startTravel(confirmTravelQuote.destination, confirmTravelQuote.mode, { shipmentSelections: selectedShipmentSelections });
                         setConfirmTravelQuote(null);
                       }}
-                      disabled={player.cash < confirmTravelQuote.fareCost || player.usedCapacity > confirmTravelQuote.cargoCapacity || isScavenging}
+                      disabled={player.cash < confirmTravelQuote.fareCost || selectedTravelCargoLoad > confirmTravelQuote.cargoCapacity || isScavenging}
                       className="px-3 py-2 rounded text-xs font-bold uppercase tracking-widest"
                       style={{
                         background: '#60a5fa22',
                         border: '1px solid #60a5fa55',
                         color: '#93c5fd',
-                        opacity: player.cash < confirmTravelQuote.fareCost || player.usedCapacity > confirmTravelQuote.cargoCapacity || isScavenging ? 0.55 : 1,
+                        opacity: player.cash < confirmTravelQuote.fareCost || selectedTravelCargoLoad > confirmTravelQuote.cargoCapacity || isScavenging ? 0.55 : 1,
                       }}>
                       Depart Now
                     </button>
@@ -976,8 +1449,8 @@ export default function CityPage() {
             </motion.div>
           )}
 
-          <motion.div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-            <h3 className="text-xs uppercase tracking-widest mb-2" style={{ color: '#39ff1480' }}>Recovery</h3>
+          <motion.div className="rounded-lg p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+            <h3 className="text-xs uppercase tracking-widest mb-2" style={{ color: '#0f766e99' }}>Recovery</h3>
             <p className="text-xs mb-3" style={{ color: '#9ca3af' }}>Passive: +4 energy on each 5-minute mark, up to full energy. Use consumables from Inventory for quick boosts.</p>
             <div className="grid grid-cols-2 gap-2">
               <motion.button
@@ -1013,7 +1486,7 @@ export default function CityPage() {
               <p className="text-xs mt-1" style={{ color: '#fca5a5' }}>
                 {policeChase.copCount} cop{policeChase.copCount > 1 ? 's' : ''} chasing you!
               </p>
-              <div className="mt-2 bg-black rounded overflow-hidden h-1.5">
+              <div className="mt-2 bg-slate-200 rounded overflow-hidden h-1.5">
                 <motion.div
                   animate={{ width: `${Math.max(0, 100 - (policeTimer / policeChase.timeRemaining) * 100)}%` }}
                   className="h-full"
@@ -1035,8 +1508,8 @@ export default function CityPage() {
           )}
 
           {/* Loot Result */}
-          <div className="rounded-lg p-4" style={{ background: '#111', border: '1px solid #2a2a2a' }}>
-            <h3 className="text-xs uppercase tracking-widest mb-3" style={{ color: '#39ff1480' }}>
+          <div className="rounded-lg p-4" style={{ background: '#ffffff', border: '1px solid #d1d5db' }}>
+            <h3 className="text-xs uppercase tracking-widest mb-3" style={{ color: '#0f766e99' }}>
               Last Find
             </h3>
             <AnimatePresence mode="wait">
@@ -1053,14 +1526,14 @@ export default function CityPage() {
                     className="text-2xl">
                     ⚙️
                   </motion.div>
-                  <div className="w-full bg-black rounded overflow-hidden h-1">
+                  <div className="w-full bg-slate-200 rounded overflow-hidden h-1">
                     <motion.div
                       animate={{ width: `${scavengeProgress}%` }}
                       className="h-full"
-                      style={{ background: '#39ff14' }}
+                      style={{ background: '#0f766e' }}
                     />
                   </div>
-                  <p className="text-xs" style={{ color: '#39ff14' }}>
+                  <p className="text-xs" style={{ color: '#0f766e' }}>
                     {Math.round(scavengeProgress)}% Rummaging...
                   </p>
                 </motion.div>
@@ -1071,7 +1544,7 @@ export default function CityPage() {
                   animate={{ scale: 1, opacity: 1 }}
                   className="flex items-center gap-3 p-3 rounded"
                   style={{
-                    background: '#1a1a1a',
+                    background: '#eef2f7',
                     border: `1px solid ${RARITY_COLORS[lastLoot.rarity]}44`,
                   }}>
                   <span className="text-3xl">{lastLoot.icon}</span>
@@ -1092,7 +1565,7 @@ export default function CityPage() {
                 <motion.p
                   key="empty"
                   className="text-xs text-center py-4"
-                  style={{ color: '#374151' }}>
+                  style={{ color: '#94a3b8' }}>
                   No recent finds. Go scavenge.
                 </motion.p>
               )}
@@ -1105,12 +1578,12 @@ export default function CityPage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               className="rounded-lg p-4"
-              style={{ background: '#111', border: '1px solid #39ff1430' }}>
-              <h3 className="text-xs uppercase tracking-widest mb-2" style={{ color: '#39ff1480' }}>
+              style={{ background: '#ffffff', border: '1px solid #0f766e33' }}>
+              <h3 className="text-xs uppercase tracking-widest mb-2" style={{ color: '#0f766e99' }}>
                 Current District
               </h3>
               <div>
-                <p className="text-sm font-bold" style={{ color: '#39ff14' }}>
+                <p className="text-sm font-bold" style={{ color: '#0f766e' }}>
                   {districtInfo.name}
                 </p>
                 <div className="mt-2 space-y-1 text-xs" style={{ color: '#6b7280' }}>
@@ -1144,13 +1617,13 @@ export default function CityPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: '#000000bb' }}>
+          style={{ background: '#f1f5f91f' }}>
           <motion.div
             initial={{ scale: 0.96, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             className="w-full max-w-md rounded-lg p-5 space-y-3"
-            style={{ background: '#111', border: '1px solid #39ff1460' }}>
-            <h2 className="text-sm font-bold tracking-wider uppercase" style={{ color: '#39ff14' }}>Scavenging Tutorial</h2>
+            style={{ background: '#ffffff', border: '1px solid #0f766e66' }}>
+            <h2 className="text-sm font-bold tracking-wider uppercase" style={{ color: '#0f766e' }}>Scavenging Tutorial</h2>
             <p className="text-xs" style={{ color: '#9ca3af' }}>1) Pick a district. Higher danger means better loot and more risk.</p>
             <p className="text-xs" style={{ color: '#9ca3af' }}>2) Watch your energy and heat. High heat increases police danger.</p>
             <p className="text-xs" style={{ color: '#9ca3af' }}>3) Use rest zones and consumables to recover between runs.</p>
@@ -1165,7 +1638,7 @@ export default function CityPage() {
                   setShowTutorial(false);
                 }}
                 className="px-4 py-2 rounded text-xs uppercase tracking-wider"
-                style={{ background: '#39ff1418', border: '1px solid #39ff1460', color: '#39ff14' }}>
+                style={{ background: '#0f766e18', border: '1px solid #0f766e66', color: '#0f766e' }}>
                 Start Scavenging
               </motion.button>
             </div>

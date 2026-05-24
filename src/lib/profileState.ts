@@ -1,4 +1,4 @@
-import { DISTRICTS, UPGRADE_TREE_DEFINITIONS, createDailyMissionBoard, createInitialAuctionListings, createInitialDirectTradeOffers, createInitialFactionRewardHistory, createInitialFactionStandings, createInitialGuildState, createInitialJunkyardApplicants, createInitialJunkyardFacilities, createInitialJunkyardStats, createInitialJunkyardStorage, createInitialJunkyardWorkers, createInitialMarketListings, createInitialMissionStats, createInitialPropertyState, createInitialTravelState, createInitialUpgradeTreeProgress, normalizePropertyState, type AuctionListing, type DirectTradeOffer, type DirectTradeStatus, type District, type FactionId, type FactionRewardHistoryEntry, type FactionStandings, type GuildState, type InventoryItem, type JunkyardFacility, type JunkyardFacilityId, type JunkyardFacilityStatus, type JunkyardJob, type JunkyardJobStatus, type JunkyardStats, type JunkyardStorageBin, type JunkyardStorageCategory, type JunkyardWorker, type JunkyardWorkerSpecialization, type JunkyardWorkerStatus, type MarketCategory, type MarketListing, type MissionBranchOption, type MissionChainStep, type MissionObjective, type MissionRecord, type MissionStats, type MissionStatus, type NavPage, type PersistedGameState, type Player, type PropertyState, type TradeHistoryEntry, type TradeHistoryType, type TravelState, type UpgradeTreeId, type UpgradeTreeProgress } from '@/store/gameStore';
+import { DISTRICTS, UPGRADE_TREE_DEFINITIONS, createDailyMissionBoard, createInitialAuctionListings, createInitialDirectTradeOffers, createInitialFactionRewardHistory, createInitialFactionStandings, createInitialGuildState, createInitialJunkyardApplicants, createInitialJunkyardFacilities, createInitialJunkyardStats, createInitialJunkyardStorage, createInitialJunkyardWorkers, createInitialMarketListings, createInitialMissionStats, createInitialPropertyState, createInitialTravelState, createInitialUpgradeTreeProgress, normalizePropertyState, type AuctionListing, type DirectTradeOffer, type DirectTradeStatus, type District, type FactionId, type FactionRewardHistoryEntry, type FactionStandings, type GuildState, type InventoryItem, type JunkyardFacility, type JunkyardFacilityId, type JunkyardFacilityStatus, type JunkyardJob, type JunkyardJobStatus, type JunkyardStats, type JunkyardStorageBin, type JunkyardStorageCategory, type JunkyardWorker, type JunkyardWorkerSpecialization, type JunkyardWorkerStatus, type MarketCategory, type MarketListing, type MissionBranchOption, type MissionChainStep, type MissionObjective, type MissionRecord, type MissionStats, type MissionStatus, type NavPage, type OwnedVehicle, type PersistedGameState, type Player, type PropertyState, type TradeHistoryEntry, type TradeHistoryType, type TravelState, type UpgradeTreeId, type UpgradeTreeProgress, type VehicleTravelMode } from '@/store/gameStore';
 
 type PlayerEquipment = Player['equipment'];
 
@@ -32,6 +32,7 @@ export type AccountSettings = {
   property: PropertyState;
   guild: GuildState;
   lastMissionRefreshAt: number;
+  ownedVehicles: Partial<Record<VehicleTravelMode, OwnedVehicle>>;
 };
 
 type DbProfileShape = {
@@ -91,7 +92,31 @@ const DEFAULT_SETTINGS: AccountSettings = {
   property: createInitialPropertyState('Scavenger'),
   guild: createInitialGuildState('Scavenger'),
   lastMissionRefreshAt: 0,
+  ownedVehicles: {},
 };
+
+function isOwnedVehicle(value: unknown): value is OwnedVehicle {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const candidate = value as Partial<OwnedVehicle>;
+  return typeof candidate.mode === 'string'
+    && typeof candidate.builtAt === 'number'
+    && typeof candidate.fuel === 'number'
+    && typeof candidate.maxFuel === 'number'
+    && typeof candidate.durability === 'number'
+    && typeof candidate.maintenance === 'number'
+    && Array.isArray(candidate.upgrades);
+}
+
+function isOwnedVehicleRecord(value: unknown): value is Partial<Record<VehicleTravelMode, OwnedVehicle>> {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  return Object.values(value).every((entry) => entry === undefined || isOwnedVehicle(entry));
+}
 
 function isPropertyState(value: unknown): value is PropertyState {
   if (!value || typeof value !== 'object') {
@@ -111,7 +136,7 @@ function isTravelState(value: unknown): value is TravelState {
 
   const candidate = value as Partial<TravelState>;
   return (candidate.status === 'idle' || candidate.status === 'travelling')
-    && (candidate.mode === null || (typeof candidate.mode === 'string' && ['bus', 'train', 'scooter', 'car', 'truck', 'lorry'].includes(candidate.mode)))
+    && (candidate.mode === null || (typeof candidate.mode === 'string' && ['bus', 'train', 'plane', 'scooter', 'car', 'truck', 'lorry'].includes(candidate.mode)))
     && typeof candidate.origin === 'string'
     && (candidate.destination === null || typeof candidate.destination === 'string')
     && (candidate.departureAt === null || typeof candidate.departureAt === 'number')
@@ -634,6 +659,7 @@ export function parseSettingsJson(raw: string): AccountSettings {
       property: isPropertyState(parsed.property) ? parsed.property : DEFAULT_SETTINGS.property,
       guild: isGuildState(parsed.guild) ? parsed.guild : DEFAULT_SETTINGS.guild,
       lastMissionRefreshAt: typeof parsed.lastMissionRefreshAt === 'number' ? parsed.lastMissionRefreshAt : DEFAULT_SETTINGS.lastMissionRefreshAt,
+      ownedVehicles: isOwnedVehicleRecord(parsed.ownedVehicles) ? parsed.ownedVehicles : DEFAULT_SETTINGS.ownedVehicles,
     };
   } catch {
     return DEFAULT_SETTINGS;
@@ -710,6 +736,7 @@ export function buildPersistedGameState(args: {
       usedCapacity,
       avatar: args.profile.avatar,
       equipment,
+      ownedVehicles: settings.ownedVehicles,
       lastScavengeTime: args.profile.updatedAt.getTime(),
       totalScavenged: args.profile.totalScavenged,
     },

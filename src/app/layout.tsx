@@ -31,7 +31,7 @@ export default async function RootLayout({
 
   return (
     <html lang="en" className={`${geistMono.variable} h-full`}>
-      <body className="min-h-full" style={{ background: '#0a0a0a', fontFamily: 'monospace' }}>
+      <body className="min-h-full" style={{ background: '#f8fafc', fontFamily: 'monospace' }}>
         <AuthSessionProvider session={session}>
           {session?.user ? (
             <GameBootstrap>

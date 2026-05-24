@@ -39,9 +39,9 @@ export interface DistrictInfo {
   description: string;
 }
 
-export type TravelMode = 'bus' | 'train' | 'scooter' | 'car' | 'truck' | 'lorry';
+export type TravelMode = 'bus' | 'train' | 'plane' | 'scooter' | 'car' | 'truck' | 'lorry';
 
-export type VehicleTravelMode = Exclude<TravelMode, 'bus' | 'train'>;
+export type VehicleTravelMode = Exclude<TravelMode, 'bus' | 'train' | 'plane'>;
 
 export type TravelStatus = 'idle' | 'travelling';
 
@@ -55,6 +55,12 @@ export interface TravelState {
   fareCost: number;
   cargoCapacity: number;
   durationMs: number;
+  shipmentManifest: TravelShipmentManifest | null;
+  routeModifier: RouteModifier | null;
+  routeEventSummary: string | null;
+  hadDelay: boolean;
+  hadInterruption: boolean;
+  cargoProfitBonus: number;
 }
 
 export interface TravelQuote {
@@ -64,6 +70,75 @@ export interface TravelQuote {
   fareCost: number;
   cargoCapacity: number;
   durationMs: number;
+}
+
+export type TravelShipmentSource = 'property' | 'junkyard' | 'auction' | 'guild_vault';
+
+export interface TravelShipmentOption {
+  id: string;
+  source: TravelShipmentSource;
+  sourceRefId: string;
+  sourceLabel: string;
+  itemId: string;
+  name: string;
+  icon: string;
+  rarity: Rarity;
+  quantityAvailable: number;
+  weightPerUnit: number;
+  valuePerUnit: number;
+  description: string;
+}
+
+export interface TravelShipmentSelection {
+  optionId: string;
+  quantity: number;
+}
+
+export interface TravelShipmentManifestEntry {
+  optionId: string;
+  source: TravelShipmentSource;
+  sourceRefId: string;
+  sourceLabel: string;
+  item: InventoryItem;
+  quantity: number;
+  totalWeight: number;
+  totalValue: number;
+}
+
+export interface TravelShipmentManifest {
+  targetPropertyId: string;
+  targetPropertyName: string;
+  entries: TravelShipmentManifestEntry[];
+  totalWeight: number;
+}
+
+export interface TravelCargoAdjustment {
+  cargoLoad: number;
+  cargoUtilization: number;
+  fareSurcharge: number;
+  durationPenaltyMs: number;
+  finalFareCost: number;
+  finalDurationMs: number;
+  isOverweight: boolean;
+}
+
+export type RouteModifier = 'safe' | 'risky' | 'congested' | 'premium';
+
+type RouteEventKind = 'inspection' | 'shortcut' | 'ambush' | 'traffic_jam';
+
+interface RouteGameplayAdjustment {
+  routeModifier: RouteModifier;
+  riskScore: number;
+  fareMultiplier: number;
+  durationMultiplier: number;
+  eventKind: RouteEventKind | null;
+  eventFareDelta: number;
+  eventDurationDeltaMs: number;
+  heatDelta: number;
+  routeEventSummary: string | null;
+  hadDelay: boolean;
+  hadInterruption: boolean;
+  cargoProfitBonus: number;
 }
 
 export type PropertyTier = 'dumpster' | 'shack' | 'workshop' | 'junkyard' | 'industrial_yard';
@@ -83,6 +158,16 @@ export interface PropertyLettingDetails {
 }
 
 export interface ShackUnlockProgress {
+  unlocked: boolean;
+  completedAt: number | null;
+}
+
+export interface WorkshopUnlockProgress {
+  unlocked: boolean;
+  completedAt: number | null;
+}
+
+export interface JunkyardUnlockProgress {
   unlocked: boolean;
   completedAt: number | null;
 }
@@ -135,12 +220,14 @@ export interface PropertyUnit {
 export interface PropertyState {
   activePropertyId: string;
   shackAccess: ShackUnlockProgress;
+  workshopAccess: WorkshopUnlockProgress;
+  junkyardAccess: JunkyardUnlockProgress;
   properties: PropertyUnit[];
 }
 
 export interface PropertyListing {
   district: District;
-  tier: Extract<PropertyTier, 'shack'>;
+  tier: Extract<PropertyTier, 'shack' | 'workshop' | 'junkyard'>;
   label: string;
   purchasePrice: number;
   rentPerDay: number;
@@ -631,6 +718,7 @@ export interface Player {
     flashlight: string | null;
     gloves: string | null;
   };
+  ownedVehicles: Partial<Record<VehicleTravelMode, OwnedVehicle>>;
   lastScavengeTime: number; // for heat decay
   totalScavenged: number; // lifetime value for rank progression
 }
@@ -712,12 +800,16 @@ interface GameState {
 
   setPage: (page: NavPage) => void;
   setDistrict: (district: District) => void;
-  startTravel: (destination: District, mode?: TravelMode) => void;
+  startTravel: (destination: District, mode?: TravelMode, options?: { includePropertyShipment?: boolean; shipmentSelections?: TravelShipmentSelection[] }) => void;
   refreshTravelState: () => void;
   refreshPropertyState: () => void;
   setActiveProperty: (propertyId: string) => void;
   unlockShackTier: () => void;
+  unlockWorkshopTier: () => void;
+  unlockJunkyardTier: () => void;
   purchaseShack: (district: District) => void;
+  purchaseWorkshop: (district: District) => void;
+  purchaseJunkyard: (district: District) => void;
   listPropertyForRent: (propertyId: string, mode: PropertyLettingMode) => void;
   endPropertyRental: (propertyId: string) => void;
   moveItemToPropertyStorage: (itemId: string, quantity: number) => void;
@@ -780,6 +872,10 @@ interface GameState {
   startJunkyardFacilityUpgrade: (facilityId: JunkyardFacilityId) => void;
   upgradeJunkyardOperations: (kind: 'parallel' | 'workers') => void;
   purchaseUpgradeNode: (nodeId: string, costOptionId?: string) => void;
+  buildVehicle: (mode: VehicleTravelMode) => void;
+  repairVehicle: (mode: VehicleTravelMode) => void;
+  refuelVehicle: (mode: VehicleTravelMode) => void;
+  installVehicleUpgrade: (mode: VehicleTravelMode, upgradeKey: VehicleUpgradeKey) => void;
   disassembleItem: (itemId: string, quantity: number) => void;
   removeFromInventory: (itemId: string, quantity: number) => void;
   calculateUsedCapacity: () => number;
@@ -1267,6 +1363,16 @@ type OnboardingCampaignStage = {
 const MISSION_ACTIVE_LIMIT = 5;
 const MISSION_DAY_MS = 24 * 60 * 60 * 1000;
 const MISSION_WEEK_MS = 7 * MISSION_DAY_MS;
+const ROUTE_GAMEPLAY_MIN_RANK = 40;
+
+const DISTRICT_ROUTE_FACTION: Record<District, FactionId> = {
+  slums: 'gangs',
+  tech: 'corp',
+  financial: 'corp',
+  harbor: 'scavengers',
+  university: 'neutrals',
+  rich_hills: 'police',
+};
 
 const createDistrictVisitCounter = (): Record<District, number> => ({
   slums: 0,
@@ -3619,7 +3725,10 @@ const DISTRICT_TRAVEL_GRID: Record<District, { x: number; y: number }> = {
 export const BUS_TRAVEL_CAPACITY = 35;
 export const TRAIN_TRAVEL_CAPACITY = 90;
 export const TRAIN_MIN_RANK = 10;
+export const AIRPORT_TRAVEL_CAPACITY = 120;
+export const AIRPORT_MIN_RANK = 18;
 const TRAIN_SERVICE_DISTRICTS: District[] = ['harbor', 'university', 'tech', 'financial', 'rich_hills'];
+const AIRPORT_SERVICE_DISTRICTS: District[] = ['harbor', 'financial', 'rich_hills'];
 
 type VehicleTravelSpec = {
   mode: VehicleTravelMode;
@@ -3634,7 +3743,45 @@ type VehicleTravelSpec = {
   durationPerDistanceMs: number;
   durationDangerFactor: number;
   summary: string;
+  buildCashCost: number;
+  buildMaterialCosts: Partial<Record<JunkyardStorageCategory, number>>;
+  fuelCapacity: number;
+  fuelUsePerTrip: number;
+  maintenanceWearPerTrip: number;
+  stealthBonus: number;
 };
+
+export type VehicleUpgradeKey = 'cargo_rack' | 'tuned_engine' | 'stealth_plating' | 'efficiency_kit';
+
+export interface OwnedVehicle {
+  mode: VehicleTravelMode;
+  builtAt: number;
+  fuel: number;
+  maxFuel: number;
+  durability: number;
+  maintenance: number;
+  upgrades: VehicleUpgradeKey[];
+}
+
+export interface VehicleConstructionRecipe {
+  mode: VehicleTravelMode;
+  cashCost: number;
+  ingredients: DumpsterAssemblyIngredient[];
+  rankRequired: number;
+  requiredPropertyTier: PropertyTier;
+}
+
+export interface VehicleUpgradeDefinition {
+  key: VehicleUpgradeKey;
+  label: string;
+  description: string;
+  cashCost: number;
+  materialCosts: Partial<Record<JunkyardStorageCategory, number>>;
+  cargoBonus: number;
+  durationMultiplier: number;
+  fareMultiplier: number;
+  stealthBonus: number;
+}
 
 export const VEHICLE_TRAVEL_SPECS: Record<VehicleTravelMode, VehicleTravelSpec> = {
   scooter: {
@@ -3650,6 +3797,12 @@ export const VEHICLE_TRAVEL_SPECS: Record<VehicleTravelMode, VehicleTravelSpec> 
     durationPerDistanceMs: 12_000,
     durationDangerFactor: 100,
     summary: 'Cheap and quick, but barely handles more than a light haul.',
+    buildCashCost: 600,
+    buildMaterialCosts: { Metals: 20, Waste: 10 },
+    fuelCapacity: 100,
+    fuelUsePerTrip: 14,
+    maintenanceWearPerTrip: 11,
+    stealthBonus: 4,
   },
   car: {
     mode: 'car',
@@ -3664,6 +3817,12 @@ export const VEHICLE_TRAVEL_SPECS: Record<VehicleTravelMode, VehicleTravelSpec> 
     durationPerDistanceMs: 10_000,
     durationDangerFactor: 95,
     summary: 'Balanced district runner with decent space and steady fuel burn.',
+    buildCashCost: 2800,
+    buildMaterialCosts: { Metals: 55, Electronics: 16 },
+    fuelCapacity: 130,
+    fuelUsePerTrip: 18,
+    maintenanceWearPerTrip: 10,
+    stealthBonus: 6,
   },
   truck: {
     mode: 'truck',
@@ -3678,6 +3837,12 @@ export const VEHICLE_TRAVEL_SPECS: Record<VehicleTravelMode, VehicleTravelSpec> 
     durationPerDistanceMs: 13_500,
     durationDangerFactor: 120,
     summary: 'Heavier freight option for moving bigger scrap loads between districts.',
+    buildCashCost: 7600,
+    buildMaterialCosts: { Metals: 95, Electronics: 28, Waste: 18 },
+    fuelCapacity: 170,
+    fuelUsePerTrip: 24,
+    maintenanceWearPerTrip: 12,
+    stealthBonus: 2,
   },
   lorry: {
     mode: 'lorry',
@@ -3692,8 +3857,125 @@ export const VEHICLE_TRAVEL_SPECS: Record<VehicleTravelMode, VehicleTravelSpec> 
     durationPerDistanceMs: 16_000,
     durationDangerFactor: 145,
     summary: 'Slow and expensive, but built for serious cross-district hauling.',
+    buildCashCost: 16500,
+    buildMaterialCosts: { Metals: 160, Electronics: 52, Software: 18 },
+    fuelCapacity: 220,
+    fuelUsePerTrip: 30,
+    maintenanceWearPerTrip: 14,
+    stealthBonus: 0,
   },
 };
+
+export const VEHICLE_UPGRADE_DEFINITIONS: Record<VehicleUpgradeKey, VehicleUpgradeDefinition> = {
+  cargo_rack: {
+    key: 'cargo_rack',
+    label: 'Cargo Rack',
+    description: 'Extra tie-down racks and side crates increase usable haul space.',
+    cashCost: 700,
+    materialCosts: { Metals: 18 },
+    cargoBonus: 10,
+    durationMultiplier: 1,
+    fareMultiplier: 1.04,
+    stealthBonus: -1,
+  },
+  tuned_engine: {
+    key: 'tuned_engine',
+    label: 'Tuned Engine',
+    description: 'Sharper throttle response trims trip time at the cost of extra upkeep.',
+    cashCost: 950,
+    materialCosts: { Metals: 12, Electronics: 8 },
+    cargoBonus: 0,
+    durationMultiplier: 0.9,
+    fareMultiplier: 1.06,
+    stealthBonus: 0,
+  },
+  stealth_plating: {
+    key: 'stealth_plating',
+    label: 'Stealth Plating',
+    description: 'Muted panels and covered lights reduce route exposure.',
+    cashCost: 800,
+    materialCosts: { Metals: 10, Software: 6 },
+    cargoBonus: 0,
+    durationMultiplier: 1,
+    fareMultiplier: 1.02,
+    stealthBonus: 8,
+  },
+  efficiency_kit: {
+    key: 'efficiency_kit',
+    label: 'Efficiency Kit',
+    description: 'Filters and tuned ratios cut fuel burn and fare overhead.',
+    cashCost: 900,
+    materialCosts: { Electronics: 10, Waste: 10 },
+    cargoBonus: 0,
+    durationMultiplier: 0.96,
+    fareMultiplier: 0.9,
+    stealthBonus: 1,
+  },
+};
+
+export const VEHICLE_CONSTRUCTION_RECIPES: Record<VehicleTravelMode, VehicleConstructionRecipe> = {
+  scooter: {
+    mode: 'scooter',
+    cashCost: 600,
+    rankRequired: 2,
+    requiredPropertyTier: 'shack',
+    ingredients: [
+      { itemId: 'c46', itemName: 'Scooter Battery Casing', icon: '🛴', quantity: 1 },
+      { itemId: 'c47', itemName: 'Push Cart Wheel', icon: '🛞', quantity: 2 },
+      { itemId: 'c48', itemName: 'Moped Battery Harness', icon: '🪫', quantity: 1 },
+      { itemId: 'c51', itemName: 'Delivery Cart Axle', icon: '🛒', quantity: 1 },
+    ],
+  },
+  car: {
+    mode: 'car',
+    cashCost: 2800,
+    rankRequired: 7,
+    requiredPropertyTier: 'workshop',
+    ingredients: [
+      { itemId: 'u42', itemName: 'Scooter Battery Array', icon: '🔋', quantity: 1 },
+      { itemId: 'u43', itemName: 'Vehicle Dash Cluster', icon: '🚗', quantity: 1 },
+      { itemId: 'u44', itemName: 'Utility Vehicle Seat', icon: '🪑', quantity: 1 },
+      { itemId: 'u48', itemName: 'Delivery Cart Wheelset', icon: '🛞', quantity: 1 },
+      { itemId: 'u49', itemName: 'Harbor Vehicle Beacon', icon: '⚓', quantity: 1 },
+    ],
+  },
+  truck: {
+    mode: 'truck',
+    cashCost: 7600,
+    rankRequired: 16,
+    requiredPropertyTier: 'workshop',
+    ingredients: [
+      { itemId: 'r36', itemName: 'Fleet Battery Module', icon: '🔋', quantity: 1 },
+      { itemId: 'r38', itemName: 'Vehicle ECU Crate', icon: '🚗', quantity: 1 },
+      { itemId: 'r44', itemName: 'Patrol Vehicle Console', icon: '🚓', quantity: 1 },
+      { itemId: 'u44', itemName: 'Utility Vehicle Seat', icon: '🪑', quantity: 2 },
+      { itemId: 'u49', itemName: 'Harbor Vehicle Beacon', icon: '⚓', quantity: 1 },
+    ],
+  },
+  lorry: {
+    mode: 'lorry',
+    cashCost: 16500,
+    rankRequired: 28,
+    requiredPropertyTier: 'junkyard',
+    ingredients: [
+      { itemId: 'r36', itemName: 'Fleet Battery Module', icon: '🔋', quantity: 2 },
+      { itemId: 'r38', itemName: 'Vehicle ECU Crate', icon: '🚗', quantity: 1 },
+      { itemId: 'e31', itemName: 'Rescue Vehicle Nav', icon: '🚑', quantity: 1 },
+      { itemId: 'e34', itemName: 'Silent Vehicle Rotors', icon: '🚁', quantity: 1 },
+      { itemId: 'l22', itemName: 'Phantom Cart Engine', icon: '🛒', quantity: 1 },
+    ],
+  },
+};
+
+const PROPERTY_TIER_ORDER: PropertyTier[] = ['dumpster', 'shack', 'workshop', 'junkyard', 'industrial_yard'];
+
+export function hasRequiredPropertyTier(currentTier: PropertyTier | null | undefined, requiredTier: PropertyTier) {
+  if (!currentTier) {
+    return false;
+  }
+
+  return PROPERTY_TIER_ORDER.indexOf(currentTier) >= PROPERTY_TIER_ORDER.indexOf(requiredTier);
+}
 
 function getTravelDistance(origin: District, destination: District) {
   const start = DISTRICT_TRAVEL_GRID[origin];
@@ -3712,6 +3994,172 @@ export function createInitialTravelState(origin: District): TravelState {
     fareCost: 0,
     cargoCapacity: 0,
     durationMs: 0,
+    shipmentManifest: null,
+    routeModifier: null,
+    routeEventSummary: null,
+    hadDelay: false,
+    hadInterruption: false,
+    cargoProfitBonus: 0,
+  };
+}
+
+function getRouteModifier(mode: TravelMode, destinationDanger: number): RouteModifier {
+  if (mode === 'plane') {
+    return 'premium';
+  }
+
+  if (destinationDanger >= 70) {
+    return 'risky';
+  }
+
+  if (mode === 'bus' || destinationDanger >= 45) {
+    return 'congested';
+  }
+
+  return 'safe';
+}
+
+function getRouteGameplayAdjustment(args: {
+  mode: TravelMode;
+  destination: District;
+  rank: number;
+  heat: number;
+  cargoUtilization: number;
+  factionStandings: FactionStandings;
+  guildTerritory: District[];
+  shipmentValue: number;
+}): RouteGameplayAdjustment {
+  const routeModifier = getRouteModifier(args.mode, DISTRICTS[args.destination].danger);
+
+  if (args.rank < ROUTE_GAMEPLAY_MIN_RANK) {
+    return {
+      routeModifier,
+      riskScore: 0,
+      fareMultiplier: 1,
+      durationMultiplier: 1,
+      eventKind: null,
+      eventFareDelta: 0,
+      eventDurationDeltaMs: 0,
+      heatDelta: 0,
+      routeEventSummary: null,
+      hadDelay: false,
+      hadInterruption: false,
+      cargoProfitBonus: 0,
+    };
+  }
+
+  const destinationDanger = DISTRICTS[args.destination].danger;
+  const controllingFaction = DISTRICT_ROUTE_FACTION[args.destination];
+  const factionStanding = args.factionStandings[controllingFaction] ?? 0;
+  const guildRouteAccess = args.guildTerritory.includes(args.destination);
+
+  const baseFareMultiplier = routeModifier === 'safe'
+    ? 0.95
+    : routeModifier === 'risky'
+      ? 1.1
+      : routeModifier === 'congested'
+        ? 1.07
+        : 1.14;
+  const baseDurationMultiplier = routeModifier === 'safe'
+    ? 0.94
+    : routeModifier === 'risky'
+      ? 1.12
+      : routeModifier === 'congested'
+        ? 1.16
+        : 0.9;
+
+  const heatPenalty = Math.max(0, (args.heat - 25) * 0.16);
+  const factionRelief = Math.max(-16, Math.min(20, factionStanding / 6));
+  const cargoRisk = Math.max(0, (args.cargoUtilization - 0.6) * 48);
+  const guildRelief = guildRouteAccess ? 14 : 0;
+  const riskScore = Math.max(0, destinationDanger + heatPenalty + cargoRisk - factionRelief - guildRelief);
+
+  const fareMultiplier = Math.max(0.78, baseFareMultiplier + (riskScore / 1000) - (guildRouteAccess ? 0.04 : 0));
+  const durationMultiplier = Math.max(0.72, baseDurationMultiplier + (riskScore / 1200) - (guildRouteAccess ? 0.03 : 0));
+
+  const eventChance = Math.max(0.05, Math.min(0.5, riskScore / 180 + Math.max(0, args.cargoUtilization - 0.75) * 0.25));
+  const rolledEvent = Math.random() < eventChance;
+
+  const baseHeavyLoadPremium = args.cargoUtilization >= 0.75 && riskScore >= 55
+    ? Math.max(0, Math.round(Math.max(0, riskScore - 48) * (args.cargoUtilization - 0.72) * 0.9))
+    : 0;
+
+  if (!rolledEvent) {
+    const shipmentBonus = args.shipmentValue > 0 && args.cargoUtilization >= 0.75 && riskScore >= 55
+      ? Math.max(0, Math.round(args.shipmentValue * Math.min(0.18, 0.03 + riskScore / 520)))
+      : 0;
+    const cargoProfitBonus = shipmentBonus + baseHeavyLoadPremium;
+
+    return {
+      routeModifier,
+      riskScore,
+      fareMultiplier,
+      durationMultiplier,
+      eventKind: null,
+      eventFareDelta: 0,
+      eventDurationDeltaMs: 0,
+      heatDelta: 0,
+      routeEventSummary: null,
+      hadDelay: false,
+      hadInterruption: false,
+      cargoProfitBonus,
+    };
+  }
+
+  const eventRoll = Math.random();
+  const eventKind: RouteEventKind = eventRoll < 0.3
+    ? 'inspection'
+    : eventRoll < 0.55
+      ? 'shortcut'
+      : eventRoll < 0.82
+        ? 'ambush'
+        : 'traffic_jam';
+
+  const eventFareDelta = eventKind === 'inspection'
+    ? 28
+    : eventKind === 'ambush'
+      ? 35
+      : eventKind === 'shortcut'
+        ? -18
+        : 16;
+  const eventDurationDeltaMs = eventKind === 'inspection'
+    ? 12_000
+    : eventKind === 'ambush'
+      ? 14_000
+      : eventKind === 'shortcut'
+        ? -8_000
+        : 10_000;
+  const heatDelta = eventKind === 'inspection'
+    ? 5
+    : eventKind === 'ambush'
+      ? 8
+      : 0;
+  const routeEventSummary = eventKind === 'inspection'
+    ? 'Route inspection triggered extra checkpoint fees and delays.'
+    : eventKind === 'ambush'
+      ? 'Route ambush forced a detour and emergency spend.'
+      : eventKind === 'shortcut'
+        ? 'Found a shortcut through backstreets and cut travel time.'
+        : 'Traffic jam and congestion slowed the route.';
+  const cargoProfitBonus = eventKind === 'shortcut' && args.shipmentValue > 0 && args.cargoUtilization >= 0.7
+    ? Math.max(0, Math.round(args.shipmentValue * 0.06)) + baseHeavyLoadPremium
+    : args.shipmentValue > 0 && args.cargoUtilization >= 0.75 && riskScore >= 55
+      ? Math.max(0, Math.round(args.shipmentValue * Math.min(0.16, 0.02 + riskScore / 560))) + baseHeavyLoadPremium
+      : baseHeavyLoadPremium;
+
+  return {
+    routeModifier,
+    riskScore,
+    fareMultiplier,
+    durationMultiplier,
+    eventKind,
+    eventFareDelta,
+    eventDurationDeltaMs,
+    heatDelta,
+    routeEventSummary,
+    hadDelay: eventDurationDeltaMs > 0,
+    hadInterruption: eventKind === 'inspection' || eventKind === 'ambush',
+    cargoProfitBonus,
   };
 }
 
@@ -3736,6 +4184,14 @@ export function createInitialPropertyState(username = 'Scavenger_X'): PropertySt
   return {
     activePropertyId: 'starter-dumpster',
     shackAccess: {
+      unlocked: false,
+      completedAt: null,
+    },
+    workshopAccess: {
+      unlocked: false,
+      completedAt: null,
+    },
+    junkyardAccess: {
       unlocked: false,
       completedAt: null,
     },
@@ -3765,6 +4221,8 @@ export function normalizePropertyState(property: PropertyState, username = 'Scav
 
   return {
     shackAccess: property.shackAccess ?? fallbackState.shackAccess,
+    workshopAccess: property.workshopAccess ?? fallbackState.workshopAccess,
+    junkyardAccess: property.junkyardAccess ?? fallbackState.junkyardAccess,
     activePropertyId: properties.some((entry) => entry.id === property.activePropertyId)
       ? property.activePropertyId
       : properties[0].id,
@@ -3870,6 +4328,192 @@ export const SHACK_PROPERTY_LISTINGS: Record<District, PropertyListing> = {
   },
 };
 
+export const WORKSHOP_PROPERTY_LISTINGS: Record<District, PropertyListing> = {
+  slums: {
+    district: 'slums',
+    tier: 'workshop',
+    label: 'Salvage Bay Workshop',
+    purchasePrice: 5200,
+    rentPerDay: 300,
+    storageCapacity: 95,
+    assemblyTier: 3,
+    canDisassemble: true,
+    canRecycle: true,
+    employeeCapacity: 0,
+    riskNote: 'Fastest path into serious fabrication, but theft pressure still bites.',
+    publicDailyRate: 360,
+    friendDailyRate: 245,
+  },
+  tech: {
+    district: 'tech',
+    tier: 'workshop',
+    label: 'Prototype Repair Loft',
+    purchasePrice: 6800,
+    rentPerDay: 390,
+    storageCapacity: 108,
+    assemblyTier: 3,
+    canDisassemble: true,
+    canRecycle: true,
+    employeeCapacity: 0,
+    riskNote: 'Cleaner electronics pipelines and stronger parts quality for advanced builds.',
+    publicDailyRate: 455,
+    friendDailyRate: 310,
+  },
+  financial: {
+    district: 'financial',
+    tier: 'workshop',
+    label: 'Service Tunnel Garage',
+    purchasePrice: 7600,
+    rentPerDay: 435,
+    storageCapacity: 112,
+    assemblyTier: 3,
+    canDisassemble: true,
+    canRecycle: true,
+    employeeCapacity: 0,
+    riskNote: 'Premium routes and resale options with higher scrutiny and higher costs.',
+    publicDailyRate: 505,
+    friendDailyRate: 345,
+  },
+  harbor: {
+    district: 'harbor',
+    tier: 'workshop',
+    label: 'Dock Crane Workshop',
+    purchasePrice: 7100,
+    rentPerDay: 410,
+    storageCapacity: 118,
+    assemblyTier: 3,
+    canDisassemble: true,
+    canRecycle: true,
+    employeeCapacity: 0,
+    riskNote: 'Best bulk handling and roomy staging space for heavier salvaged parts.',
+    publicDailyRate: 480,
+    friendDailyRate: 325,
+  },
+  university: {
+    district: 'university',
+    tier: 'workshop',
+    label: 'Applied Salvage Lab',
+    purchasePrice: 6400,
+    rentPerDay: 370,
+    storageCapacity: 104,
+    assemblyTier: 3,
+    canDisassemble: true,
+    canRecycle: true,
+    employeeCapacity: 0,
+    riskNote: 'Reliable repair benches and cleaner tooling without harbor-scale storage.',
+    publicDailyRate: 430,
+    friendDailyRate: 295,
+  },
+  rich_hills: {
+    district: 'rich_hills',
+    tier: 'workshop',
+    label: 'Estate Service Workshop',
+    purchasePrice: 8800,
+    rentPerDay: 510,
+    storageCapacity: 126,
+    assemblyTier: 4,
+    canDisassemble: true,
+    canRecycle: true,
+    employeeCapacity: 0,
+    riskNote: 'High-end space with deep storage and prestige, but costly to hold.',
+    publicDailyRate: 590,
+    friendDailyRate: 405,
+  },
+};
+
+export const JUNKYARD_PROPERTY_LISTINGS: Record<District, PropertyListing> = {
+  slums: {
+    district: 'slums',
+    tier: 'junkyard',
+    label: 'Breaker Yard Lot',
+    purchasePrice: 14500,
+    rentPerDay: 780,
+    storageCapacity: 180,
+    assemblyTier: 4,
+    canDisassemble: true,
+    canRecycle: true,
+    employeeCapacity: 3,
+    riskNote: 'Fastest route into full yard ops, with rough security and volatile neighbors.',
+    publicDailyRate: 0,
+    friendDailyRate: 0,
+  },
+  tech: {
+    district: 'tech',
+    tier: 'junkyard',
+    label: 'Scrap Systems Yard',
+    purchasePrice: 17800,
+    rentPerDay: 920,
+    storageCapacity: 195,
+    assemblyTier: 4,
+    canDisassemble: true,
+    canRecycle: true,
+    employeeCapacity: 4,
+    riskNote: 'Cleaner inbound material streams and strong electronics throughput for facility growth.',
+    publicDailyRate: 0,
+    friendDailyRate: 0,
+  },
+  financial: {
+    district: 'financial',
+    tier: 'junkyard',
+    label: 'Service Corridor Yard',
+    purchasePrice: 19400,
+    rentPerDay: 980,
+    storageCapacity: 205,
+    assemblyTier: 4,
+    canDisassemble: true,
+    canRecycle: true,
+    employeeCapacity: 4,
+    riskNote: 'Best resale lanes and contracts, but zoning and visibility stay expensive.',
+    publicDailyRate: 0,
+    friendDailyRate: 0,
+  },
+  harbor: {
+    district: 'harbor',
+    tier: 'junkyard',
+    label: 'Container Strip Yard',
+    purchasePrice: 18600,
+    rentPerDay: 950,
+    storageCapacity: 215,
+    assemblyTier: 4,
+    canDisassemble: true,
+    canRecycle: true,
+    employeeCapacity: 5,
+    riskNote: 'Excellent bulk handling and transport access for a real recycling operation.',
+    publicDailyRate: 0,
+    friendDailyRate: 0,
+  },
+  university: {
+    district: 'university',
+    tier: 'junkyard',
+    label: 'Research Salvage Yard',
+    purchasePrice: 17100,
+    rentPerDay: 880,
+    storageCapacity: 190,
+    assemblyTier: 4,
+    canDisassemble: true,
+    canRecycle: true,
+    employeeCapacity: 4,
+    riskNote: 'Balanced yard footprint with cleaner tooling and lower bulk flow than harbor sites.',
+    publicDailyRate: 0,
+    friendDailyRate: 0,
+  },
+  rich_hills: {
+    district: 'rich_hills',
+    tier: 'junkyard',
+    label: 'Estate Recovery Yard',
+    purchasePrice: 22800,
+    rentPerDay: 1120,
+    storageCapacity: 225,
+    assemblyTier: 5,
+    canDisassemble: true,
+    canRecycle: true,
+    employeeCapacity: 5,
+    riskNote: 'Premium footprint with huge capacity and prestige, but the cost floor is brutal.',
+    publicDailyRate: 0,
+    friendDailyRate: 0,
+  },
+};
+
 export const SHACK_ASSEMBLY_RECIPES: ShackAssemblyRecipe[] = [
   {
     id: 'patchwork_repair_kit',
@@ -3917,6 +4561,57 @@ export const SHACK_ASSEMBLY_RECIPES: ShackAssemblyRecipe[] = [
       weight: 1.1,
       value: 220,
       description: 'A bench-built lighting controller with resale and future upgrade value.',
+    },
+  },
+  {
+    id: 'precision_repair_kit',
+    name: 'Precision Repair Kit',
+    icon: '🔧',
+    description: 'Workshop-only chassis and seal kit for restoring damaged rigs without a full yard service line.',
+    componentCost: 8,
+    requiredAssemblyTier: 3,
+    outputItemId: 'kit_precision_repair',
+    output: {
+      name: 'Precision Repair Kit',
+      icon: '🔧',
+      rarity: 'rare',
+      weight: 0.7,
+      value: 180,
+      description: 'Workshop service kit that restores major vehicle durability damage.',
+    },
+  },
+  {
+    id: 'calibration_tuner',
+    name: 'Calibration Tuner',
+    icon: '🧪',
+    description: 'Workshop-only tune pack for maintenance recovery, sensors, and idle stability.',
+    componentCost: 7,
+    requiredAssemblyTier: 3,
+    outputItemId: 'kit_calibration_tuner',
+    output: {
+      name: 'Calibration Tuner',
+      icon: '🧪',
+      rarity: 'rare',
+      weight: 0.5,
+      value: 165,
+      description: 'Workshop tuning kit that restores maintenance and drive stability.',
+    },
+  },
+  {
+    id: 'overhaul_crate',
+    name: 'Overhaul Crate',
+    icon: '🧰',
+    description: 'Full workshop overhaul bundle for deep service before you own a junkyard.',
+    componentCost: 14,
+    requiredAssemblyTier: 4,
+    outputItemId: 'kit_overhaul_crate',
+    output: {
+      name: 'Overhaul Crate',
+      icon: '🧰',
+      rarity: 'epic',
+      weight: 1.4,
+      value: 340,
+      description: 'Heavy workshop crate that covers a full rig overhaul in one service.',
     },
   },
   {
@@ -4024,6 +4719,14 @@ const SHACK_UNLOCK_CASH_COST = 900;
 const SHACK_UNLOCK_COMPONENT_COST = 6;
 const SHACK_UNLOCK_MIN_RANK = 8;
 const SHACK_UNLOCK_MIN_STASH_WEIGHT = 10;
+const WORKSHOP_UNLOCK_CASH_COST = 2400;
+const WORKSHOP_UNLOCK_COMPONENT_COST = 12;
+const WORKSHOP_UNLOCK_MIN_RANK = 14;
+const WORKSHOP_UNLOCK_MIN_STASH_WEIGHT = 24;
+const JUNKYARD_UNLOCK_CASH_COST = 5200;
+const JUNKYARD_UNLOCK_COMPONENT_COST = 20;
+const JUNKYARD_UNLOCK_MIN_RANK = 22;
+const JUNKYARD_UNLOCK_MIN_STASH_WEIGHT = 45;
 const SHACK_STORAGE_UPGRADE_BASE_COST = 650;
 const SHACK_STORAGE_UPGRADE_BASE_COMPONENTS = 2;
 const SHACK_STORAGE_UPGRADE_CAP = 4;
@@ -4054,6 +4757,32 @@ export function getShackUnlockStatus(property: PropertyState, player: Player, in
   };
 }
 
+export function getWorkshopUnlockStatus(property: PropertyState, player: Player, inventory: InventoryItem[]) {
+  const activeProperty = getActiveProperty(property);
+  const componentStack = inventory.find((entry) => entry.id === 'mat_components');
+  return {
+    activeProperty,
+    hasCorrectBase: activeProperty?.tier === 'shack',
+    rankReady: player.rank >= WORKSHOP_UNLOCK_MIN_RANK,
+    componentReady: (componentStack?.quantity ?? 0) >= WORKSHOP_UNLOCK_COMPONENT_COST,
+    stashReady: Boolean(activeProperty && getPropertyStoredWeight(activeProperty) >= WORKSHOP_UNLOCK_MIN_STASH_WEIGHT),
+    cashReady: player.cash >= WORKSHOP_UNLOCK_CASH_COST,
+  };
+}
+
+export function getJunkyardUnlockStatus(property: PropertyState, player: Player, inventory: InventoryItem[]) {
+  const activeProperty = getActiveProperty(property);
+  const componentStack = inventory.find((entry) => entry.id === 'mat_components');
+  return {
+    activeProperty,
+    hasCorrectBase: activeProperty?.tier === 'workshop',
+    rankReady: player.rank >= JUNKYARD_UNLOCK_MIN_RANK,
+    componentReady: (componentStack?.quantity ?? 0) >= JUNKYARD_UNLOCK_COMPONENT_COST,
+    stashReady: Boolean(activeProperty && getPropertyStoredWeight(activeProperty) >= JUNKYARD_UNLOCK_MIN_STASH_WEIGHT),
+    cashReady: player.cash >= JUNKYARD_UNLOCK_CASH_COST,
+  };
+}
+
 export function getPropertyStorageUpgradeCost(propertyUnit: PropertyUnit) {
   const nextLevel = propertyUnit.storageUpgradeLevel + 1;
   return {
@@ -4067,7 +4796,15 @@ export function getActiveProperty(property: PropertyState) {
   return property.properties.find((entry) => entry.id === property.activePropertyId) ?? property.properties[0];
 }
 
-export function getPropertyListing(district: District) {
+export function getPropertyListing(tier: Extract<PropertyTier, 'shack' | 'workshop' | 'junkyard'>, district: District) {
+  if (tier === 'workshop') {
+    return WORKSHOP_PROPERTY_LISTINGS[district];
+  }
+
+  if (tier === 'junkyard') {
+    return JUNKYARD_PROPERTY_LISTINGS[district];
+  }
+
   return SHACK_PROPERTY_LISTINGS[district];
 }
 
@@ -4094,6 +4831,530 @@ function removeInventoryQuantity(items: InventoryItem[], itemId: string, quantit
     .filter((entry) => entry.quantity > 0);
 }
 
+function mergePackedItemsIntoStorageItems(storedItems: InventoryItem[], packedItems: InventoryItem[]) {
+  return packedItems.reduce((items, packedItem) => upsertInventoryStack(items, packedItem), storedItems);
+}
+
+function getTravelShipmentTargetProperty(property: PropertyState, destination: District) {
+  const sourceProperty = getActiveProperty(property);
+  return property.properties.find((entry) => (
+    entry.district === destination
+    && entry.id !== sourceProperty?.id
+    && entry.occupancyStatus !== 'rented_out'
+  )) ?? null;
+}
+
+export function getTravelShipmentOptions(
+  property: PropertyState,
+  junkyardStorage: JunkyardStorageBin[],
+  auctionListings: AuctionListing[],
+  guild: GuildState,
+  destination: District,
+): TravelShipmentOption[] {
+  const targetProperty = getTravelShipmentTargetProperty(property, destination);
+  const sourceProperty = getActiveProperty(property);
+  if (!targetProperty || !sourceProperty) {
+    return [];
+  }
+
+  const propertyOptions = sourceProperty.storedItems
+    .filter((entry) => entry.quantity > 0)
+    .map((entry) => ({
+      id: `property:${sourceProperty.id}:${entry.id}`,
+      source: 'property' as const,
+      sourceRefId: sourceProperty.id,
+      sourceLabel: sourceProperty.name,
+      itemId: entry.id,
+      name: entry.name,
+      icon: entry.icon,
+      rarity: entry.rarity,
+      quantityAvailable: entry.quantity,
+      weightPerUnit: entry.weight,
+      valuePerUnit: entry.value,
+      description: entry.description,
+    }));
+
+  const junkyardOptions = junkyardStorage
+    .filter((entry) => entry.usedCapacity > 0)
+    .map((entry) => {
+      const quantityAvailable = Math.max(0, Math.floor(entry.usedCapacity));
+      const valuePerUnit = entry.usedCapacity > 0 ? entry.storedValue / entry.usedCapacity : 0;
+      return {
+        id: `junkyard:${entry.category}`,
+        source: 'junkyard' as const,
+        sourceRefId: entry.category,
+        sourceLabel: `Junkyard ${entry.category}`,
+        itemId: `junkyard_material_${entry.category.toLowerCase()}`,
+        name: `${entry.category} Materials`,
+        icon: entry.icon,
+        rarity: 'common' as const,
+        quantityAvailable,
+        weightPerUnit: 1,
+        valuePerUnit,
+        description: `${entry.category} salvage packed for district transit.`,
+      };
+    })
+    .filter((entry) => entry.quantityAvailable > 0);
+
+  const auctionOptions = auctionListings
+    .filter((entry) => entry.ownedByPlayer && entry.quantity > 0)
+    .map((entry) => ({
+      id: `auction:${entry.id}`,
+      source: 'auction' as const,
+      sourceRefId: entry.id,
+      sourceLabel: 'Auction Depot',
+      itemId: entry.itemId,
+      name: entry.name,
+      icon: entry.icon,
+      rarity: entry.rarity,
+      quantityAvailable: entry.quantity,
+      weightPerUnit: entry.weight,
+      valuePerUnit: entry.unitValue,
+      description: entry.description,
+    }));
+
+  const guildOptions = isGuildMember(guild)
+    ? guild.vault
+      .filter((entry) => entry.quantity > 0)
+      .map((entry) => ({
+        id: `guild:${entry.id}`,
+        source: 'guild_vault' as const,
+        sourceRefId: entry.id,
+        sourceLabel: 'Guild Vault',
+        itemId: entry.itemId,
+        name: entry.name,
+        icon: entry.icon,
+        rarity: entry.rarity,
+        quantityAvailable: entry.quantity,
+        weightPerUnit: entry.weight,
+        valuePerUnit: entry.value,
+        description: entry.description,
+      }))
+    : [];
+
+  return [
+    ...propertyOptions,
+    ...junkyardOptions,
+    ...auctionOptions,
+    ...guildOptions,
+  ];
+}
+
+export function getTravelShipmentPreview(args: {
+  property: PropertyState;
+  junkyardStorage: JunkyardStorageBin[];
+  auctionListings: AuctionListing[];
+  guild: GuildState;
+  destination: District;
+  maxShipmentWeight: number;
+  selections?: TravelShipmentSelection[];
+  includePropertyStock?: boolean;
+}): TravelShipmentManifest | null {
+  if (args.maxShipmentWeight <= 0) {
+    return null;
+  }
+
+  const targetProperty = getTravelShipmentTargetProperty(args.property, args.destination);
+  if (!targetProperty) {
+    return null;
+  }
+
+  const targetFreeWeight = Math.max(0, targetProperty.storageCapacity - getPropertyStoredWeight(targetProperty));
+  if (targetFreeWeight <= 0) {
+    return null;
+  }
+
+  const options = getTravelShipmentOptions(args.property, args.junkyardStorage, args.auctionListings, args.guild, args.destination);
+  const optionsById = new Map(options.map((entry) => [entry.id, entry]));
+
+  const explicitSelections = (args.selections ?? [])
+    .map((entry) => ({ optionId: entry.optionId, quantity: Math.max(0, Math.floor(entry.quantity)) }))
+    .filter((entry) => entry.quantity > 0)
+    .filter((entry) => optionsById.has(entry.optionId));
+
+  const fallbackSelections = args.includePropertyStock
+    ? options
+      .filter((entry) => entry.source === 'property')
+      .map((entry) => ({ optionId: entry.id, quantity: entry.quantityAvailable }))
+    : [];
+
+  const plannedSelections = explicitSelections.length > 0 ? explicitSelections : fallbackSelections;
+  if (plannedSelections.length === 0) {
+    return null;
+  }
+
+  const weightCap = Math.min(args.maxShipmentWeight, targetFreeWeight);
+  let remainingWeight = weightCap;
+  const entries: TravelShipmentManifestEntry[] = [];
+
+  for (const selection of plannedSelections) {
+    const option = optionsById.get(selection.optionId);
+    if (!option || remainingWeight <= 0) {
+      continue;
+    }
+
+    const maxQuantityByWeight = option.weightPerUnit <= 0
+      ? selection.quantity
+      : Math.floor((remainingWeight + 1e-9) / option.weightPerUnit);
+    const quantity = Math.min(selection.quantity, option.quantityAvailable, Math.max(0, maxQuantityByWeight));
+    if (quantity <= 0) {
+      continue;
+    }
+
+    const totalWeight = option.weightPerUnit * quantity;
+    const totalValue = option.valuePerUnit * quantity;
+    const item: InventoryItem = {
+      id: option.itemId,
+      name: option.name,
+      icon: option.icon,
+      rarity: option.rarity,
+      quantity,
+      weight: option.weightPerUnit,
+      value: Math.max(1, Math.round(option.valuePerUnit)),
+      description: option.description,
+    };
+
+    entries.push({
+      optionId: option.id,
+      source: option.source,
+      sourceRefId: option.sourceRefId,
+      sourceLabel: option.sourceLabel,
+      item,
+      quantity,
+      totalWeight,
+      totalValue,
+    });
+
+    if (option.weightPerUnit > 0) {
+      remainingWeight -= totalWeight;
+    }
+  }
+
+  if (entries.length === 0) {
+    return null;
+  }
+
+  return {
+    targetPropertyId: targetProperty.id,
+    targetPropertyName: targetProperty.name,
+    entries,
+    totalWeight: entries.reduce((sum, entry) => sum + entry.totalWeight, 0),
+  };
+}
+
+function applyTravelShipmentDeparture(state: Pick<GameState, 'property' | 'junkyardStorage' | 'auctionListings' | 'guild'>, manifest: TravelShipmentManifest) {
+  const propertyDeductions = new Map<string, Map<string, number>>();
+  const junkyardDeductions = new Map<string, { usedCapacity: number; storedValue: number }>();
+  const auctionDeductions = new Map<string, number>();
+  const guildDeductions = new Map<string, number>();
+
+  for (const entry of manifest.entries) {
+    if (entry.source === 'property') {
+      const byItem = propertyDeductions.get(entry.sourceRefId) ?? new Map<string, number>();
+      byItem.set(entry.item.id, (byItem.get(entry.item.id) ?? 0) + entry.quantity);
+      propertyDeductions.set(entry.sourceRefId, byItem);
+      continue;
+    }
+
+    if (entry.source === 'junkyard') {
+      const existing = junkyardDeductions.get(entry.sourceRefId) ?? { usedCapacity: 0, storedValue: 0 };
+      junkyardDeductions.set(entry.sourceRefId, {
+        usedCapacity: existing.usedCapacity + entry.totalWeight,
+        storedValue: existing.storedValue + entry.totalValue,
+      });
+      continue;
+    }
+
+    if (entry.source === 'auction') {
+      auctionDeductions.set(entry.sourceRefId, (auctionDeductions.get(entry.sourceRefId) ?? 0) + entry.quantity);
+      continue;
+    }
+
+    guildDeductions.set(entry.sourceRefId, (guildDeductions.get(entry.sourceRefId) ?? 0) + entry.quantity);
+  }
+
+  const property: PropertyState = {
+    ...state.property,
+    properties: state.property.properties.map((unit) => {
+      const byItem = propertyDeductions.get(unit.id);
+      if (!byItem) {
+        return unit;
+      }
+
+      const nextStoredItems = Array.from(byItem.entries()).reduce(
+        (items, [itemId, quantity]) => removeInventoryQuantity(items, itemId, quantity),
+        unit.storedItems,
+      );
+      return { ...unit, storedItems: nextStoredItems };
+    }),
+  };
+
+  const junkyardStorage = state.junkyardStorage.map((bin) => {
+    const deduction = junkyardDeductions.get(bin.category);
+    if (!deduction) {
+      return bin;
+    }
+    return {
+      ...bin,
+      usedCapacity: Math.max(0, Math.round((bin.usedCapacity - deduction.usedCapacity) * 10) / 10),
+      storedValue: Math.max(0, Math.round((bin.storedValue - deduction.storedValue) * 100) / 100),
+    };
+  });
+
+  const auctionListings = state.auctionListings
+    .map((listing) => {
+      const deduction = auctionDeductions.get(listing.id);
+      if (!deduction) {
+        return listing;
+      }
+      return {
+        ...listing,
+        quantity: listing.quantity - deduction,
+        lastUpdated: Date.now(),
+      };
+    })
+    .filter((listing) => listing.quantity > 0);
+
+  const guild: GuildState = {
+    ...state.guild,
+    vault: state.guild.vault.flatMap((vaultEntry) => {
+      const deduction = guildDeductions.get(vaultEntry.id);
+      if (!deduction) {
+        return [vaultEntry];
+      }
+      const nextQuantity = vaultEntry.quantity - deduction;
+      return nextQuantity > 0 ? [{ ...vaultEntry, quantity: nextQuantity }] : [];
+    }),
+  };
+
+  return {
+    property,
+    junkyardStorage,
+    auctionListings,
+    guild,
+  };
+}
+
+function returnShipmentEntriesToSources(
+  state: Pick<GameState, 'property' | 'junkyardStorage' | 'auctionListings' | 'guild' | 'player'>,
+  entries: TravelShipmentManifestEntry[],
+) {
+  let property = state.property;
+  let junkyardStorage = state.junkyardStorage;
+  let auctionListings = state.auctionListings;
+  let guild = state.guild;
+  let returnedWeight = 0;
+  let lostWeight = 0;
+
+  for (const entry of entries) {
+    const entryWeight = entry.item.weight * entry.quantity;
+
+    if (entry.source === 'property') {
+      const sourceIndex = property.properties.findIndex((unit) => unit.id === entry.sourceRefId);
+      if (sourceIndex === -1) {
+        lostWeight += entryWeight;
+        continue;
+      }
+
+      const sourceUnit = property.properties[sourceIndex];
+      const nextSourceUnit = {
+        ...sourceUnit,
+        storedItems: upsertInventoryStack(sourceUnit.storedItems, {
+          ...entry.item,
+          quantity: entry.quantity,
+        }),
+      };
+      property = {
+        ...property,
+        properties: property.properties.map((unit, index) => (index === sourceIndex ? nextSourceUnit : unit)),
+      };
+      returnedWeight += entryWeight;
+      continue;
+    }
+
+    if (entry.source === 'junkyard') {
+      const sourceCategory = entry.sourceRefId as JunkyardStorageCategory;
+      const sourceBin = junkyardStorage.find((bin) => bin.category === sourceCategory);
+      if (!sourceBin) {
+        lostWeight += entryWeight;
+        continue;
+      }
+
+      junkyardStorage = junkyardStorage.map((bin) => (
+        bin.category === sourceCategory
+          ? {
+              ...bin,
+              usedCapacity: Math.round((bin.usedCapacity + entryWeight) * 10) / 10,
+              storedValue: Math.round((bin.storedValue + entry.totalValue) * 100) / 100,
+            }
+          : bin
+      ));
+      returnedWeight += entryWeight;
+      continue;
+    }
+
+    if (entry.source === 'auction') {
+      const listingIndex = auctionListings.findIndex((listing) => listing.id === entry.sourceRefId);
+      if (listingIndex >= 0) {
+        auctionListings = auctionListings.map((listing, index) => (
+          index === listingIndex
+            ? { ...listing, quantity: listing.quantity + entry.quantity, lastUpdated: Date.now() }
+            : listing
+        ));
+      } else {
+        auctionListings = [
+          {
+            id: entry.sourceRefId,
+            itemId: entry.item.id,
+            name: entry.item.name,
+            icon: entry.item.icon,
+            rarity: entry.item.rarity,
+            category: getMarketCategoryForItem(entry.item),
+            price: Math.max(1, entry.item.value),
+            basePrice: Math.max(1, entry.item.value),
+            weight: entry.item.weight,
+            unitValue: entry.item.value,
+            quantity: entry.quantity,
+            seller: state.player.username,
+            description: entry.item.description,
+            listedAt: Date.now(),
+            lastUpdated: Date.now(),
+            expiresAt: Date.now() + (12 * 60 * 60 * 1000),
+            ownedByPlayer: true,
+          },
+          ...auctionListings,
+        ];
+      }
+      returnedWeight += entryWeight;
+      continue;
+    }
+
+    const vaultIndex = guild.vault.findIndex((vaultEntry) => vaultEntry.id === entry.sourceRefId);
+    if (vaultIndex >= 0) {
+      guild = {
+        ...guild,
+        vault: guild.vault.map((vaultEntry, index) => (
+          index === vaultIndex
+            ? { ...vaultEntry, quantity: vaultEntry.quantity + entry.quantity }
+            : vaultEntry
+        )),
+      };
+    } else {
+      guild = {
+        ...guild,
+        vault: [
+          {
+            id: entry.sourceRefId,
+            itemId: entry.item.id,
+            name: entry.item.name,
+            icon: entry.item.icon,
+            rarity: entry.item.rarity,
+            quantity: entry.quantity,
+            weight: entry.item.weight,
+            value: entry.item.value,
+            description: entry.item.description,
+            depositedBy: state.player.username,
+            depositedAt: Date.now(),
+          },
+          ...guild.vault,
+        ],
+      };
+    }
+
+    returnedWeight += entryWeight;
+  }
+
+  return {
+    property,
+    junkyardStorage,
+    auctionListings,
+    guild,
+    returnedWeight,
+    lostWeight,
+  };
+}
+
+function resolveTravelShipmentArrival(state: Pick<GameState, 'property' | 'junkyardStorage' | 'auctionListings' | 'guild' | 'player'>, manifest: TravelShipmentManifest) {
+  const targetProperty = state.property.properties.find((entry) => entry.id === manifest.targetPropertyId);
+  if (!targetProperty || targetProperty.occupancyStatus === 'rented_out') {
+    const returned = returnShipmentEntriesToSources(state, manifest.entries);
+    return {
+      property: returned.property,
+      junkyardStorage: returned.junkyardStorage,
+      auctionListings: returned.auctionListings,
+      guild: returned.guild,
+      deliveredWeight: 0,
+      returnedWeight: returned.returnedWeight,
+      lostWeight: returned.lostWeight,
+    };
+  }
+
+  const targetFreeWeight = Math.max(0, targetProperty.storageCapacity - getPropertyStoredWeight(targetProperty));
+  let remainingWeight = targetFreeWeight;
+  const deliveredEntries: TravelShipmentManifestEntry[] = [];
+  const overflowEntries: TravelShipmentManifestEntry[] = [];
+
+  for (const entry of manifest.entries) {
+    const maxQuantityByWeight = entry.item.weight <= 0
+      ? entry.quantity
+      : Math.floor((remainingWeight + 1e-9) / entry.item.weight);
+    const deliveredQuantity = Math.min(entry.quantity, Math.max(0, maxQuantityByWeight));
+
+    if (deliveredQuantity > 0) {
+      const deliveredWeight = deliveredQuantity * entry.item.weight;
+      const deliveredValue = deliveredQuantity * (entry.totalValue / Math.max(1, entry.quantity));
+      deliveredEntries.push({
+        ...entry,
+        quantity: deliveredQuantity,
+        item: { ...entry.item, quantity: deliveredQuantity },
+        totalWeight: deliveredWeight,
+        totalValue: deliveredValue,
+      });
+      if (entry.item.weight > 0) {
+        remainingWeight -= deliveredWeight;
+      }
+    }
+
+    const overflowQuantity = entry.quantity - deliveredQuantity;
+    if (overflowQuantity > 0) {
+      const overflowWeight = overflowQuantity * entry.item.weight;
+      const overflowValue = overflowQuantity * (entry.totalValue / Math.max(1, entry.quantity));
+      overflowEntries.push({
+        ...entry,
+        quantity: overflowQuantity,
+        item: { ...entry.item, quantity: overflowQuantity },
+        totalWeight: overflowWeight,
+        totalValue: overflowValue,
+      });
+    }
+  }
+
+  const deliveredItems = deliveredEntries.map((entry) => ({ ...entry.item, quantity: entry.quantity }));
+  const propertyAfterDelivery: PropertyState = {
+    ...state.property,
+    properties: state.property.properties.map((entry) => (
+      entry.id === targetProperty.id
+        ? { ...entry, storedItems: mergePackedItemsIntoStorageItems(entry.storedItems, deliveredItems) }
+        : entry
+    )),
+  };
+
+  const returned = returnShipmentEntriesToSources({
+    ...state,
+    property: propertyAfterDelivery,
+  }, overflowEntries);
+
+  return {
+    property: returned.property,
+    junkyardStorage: returned.junkyardStorage,
+    auctionListings: returned.auctionListings,
+    guild: returned.guild,
+    deliveredWeight: deliveredEntries.reduce((sum, entry) => sum + entry.totalWeight, 0),
+    returnedWeight: returned.returnedWeight,
+    lostWeight: returned.lostWeight,
+  };
+}
+
 const LEGACY_ITEM_TEMPLATE_IDS: Partial<Record<string, string[]>> = {
   c1: ['1'],
   c2: ['7'],
@@ -4106,7 +5367,7 @@ function matchesItemTemplateId(item: Pick<InventoryItem, 'id'>, templateId: stri
     || legacyIds.includes(item.id);
 }
 
-function getCombinedItemQuantity(inventory: InventoryItem[], storedItems: InventoryItem[], itemId: string) {
+export function getCombinedItemQuantity(inventory: InventoryItem[], storedItems: InventoryItem[], itemId: string) {
   const inventoryQuantity = inventory
     .filter((entry) => matchesItemTemplateId(entry, itemId))
     .reduce((total, entry) => total + entry.quantity, 0);
@@ -4165,16 +5426,16 @@ function hasDisassemblyAccess(property: PropertyState) {
   return Boolean(activeProperty?.canDisassemble);
 }
 
-function canBreakDownRarity(rarity: Rarity, canRecycleUncommon: boolean) {
-  return (canRecycleUncommon
-    ? ['uncommon', 'rare', 'epic', 'legendary', 'illegal']
+function canBreakDownRarity(rarity: Rarity, canBreakDownCommon: boolean) {
+  return (canBreakDownCommon
+    ? ['common', 'uncommon', 'rare', 'epic', 'legendary', 'illegal']
     : ['rare', 'epic', 'legendary', 'illegal']).includes(rarity);
 }
 
-export function getBreakdownComponentYield(rarity: Rarity, canRecycleUncommon: boolean) {
+export function getBreakdownComponentYield(rarity: Rarity, canBreakDownCommon: boolean) {
   const rarityYield: Record<Rarity, number> = {
-    common: 0,
-    uncommon: canRecycleUncommon ? 1 : 0,
+    common: canBreakDownCommon ? 1 : 0,
+    uncommon: canBreakDownCommon ? 1 : 0,
     rare: 2,
     epic: 4,
     legendary: 7,
@@ -4252,6 +5513,21 @@ export function hasJunkyardAccess(property: PropertyState) {
   return activeProperty?.tier === 'junkyard' || activeProperty?.tier === 'industrial_yard';
 }
 
+export function getWorkshopVehicleRepairRequirements(vehicle: OwnedVehicle) {
+  const damage = Math.max(0, 100 - vehicle.durability);
+  const maintenanceGap = Math.max(0, 100 - vehicle.maintenance);
+  const overhaulCrates = damage >= 75 || maintenanceGap >= 75 ? 1 : 0;
+  const remainingDamage = overhaulCrates > 0 ? Math.max(0, damage - 55) : damage;
+  const remainingMaintenanceGap = overhaulCrates > 0 ? Math.max(0, maintenanceGap - 55) : maintenanceGap;
+
+  return {
+    cashCost: Math.max(0, Math.round(damage * 5 + maintenanceGap * 3)),
+    overhaulCrates,
+    precisionRepairKits: Math.max(0, Math.ceil(remainingDamage / 30)),
+    calibrationTuners: Math.max(0, Math.ceil(remainingMaintenanceGap / 35)),
+  };
+}
+
 function getJunkyardLockedMessage(property: PropertyState) {
   const activeProperty = getActiveProperty(property);
   const tierLabel = activeProperty ? getPropertyTierLabel(activeProperty.tier) : 'current base';
@@ -4290,15 +5566,35 @@ export function getTrainTravelQuote(origin: District, destination: District): Tr
   };
 }
 
+export function isAirportRouteAvailable(origin: District, destination: District) {
+  return AIRPORT_SERVICE_DISTRICTS.includes(origin) && AIRPORT_SERVICE_DISTRICTS.includes(destination) && origin !== destination;
+}
+
+export function getAirportTravelQuote(origin: District, destination: District): TravelQuote {
+  const distance = getTravelDistance(origin, destination);
+  const destinationDanger = DISTRICTS[destination].danger;
+
+  return {
+    mode: 'plane',
+    origin,
+    destination,
+    fareCost: Math.max(80, Math.round(55 + distance * 18 + destinationDanger / 8)),
+    cargoCapacity: AIRPORT_TRAVEL_CAPACITY,
+    durationMs: Math.max(6_000, Math.round(distance * 7_500 + destinationDanger * 80)),
+  };
+}
+
 export function getTravelModeLabel(mode: TravelMode) {
   if (mode === 'bus') return 'Bus';
   if (mode === 'train') return 'Train';
+  if (mode === 'plane') return 'Plane';
   return VEHICLE_TRAVEL_SPECS[mode].label;
 }
 
 export function getTravelModeIcon(mode: TravelMode) {
   if (mode === 'bus') return '🚌';
   if (mode === 'train') return '🚆';
+  if (mode === 'plane') return '✈️';
   return VEHICLE_TRAVEL_SPECS[mode].icon;
 }
 
@@ -4319,6 +5615,107 @@ export function getUnlockedVehicleModes(progress: UpgradeTreeProgress): VehicleT
     .map((vehicle) => vehicle.mode);
 }
 
+function createOwnedVehicle(mode: VehicleTravelMode): OwnedVehicle {
+  const spec = VEHICLE_TRAVEL_SPECS[mode];
+  return {
+    mode,
+    builtAt: Date.now(),
+    fuel: spec.fuelCapacity,
+    maxFuel: spec.fuelCapacity,
+    durability: 100,
+    maintenance: 100,
+    upgrades: [],
+  };
+}
+
+export function getBuiltVehicleModes(ownedVehicles: Partial<Record<VehicleTravelMode, OwnedVehicle>>) {
+  return (Object.keys(ownedVehicles) as VehicleTravelMode[])
+    .filter((mode) => Boolean(ownedVehicles[mode]));
+}
+
+export function getVehicleUpgradeEffects(vehicle: OwnedVehicle | null) {
+  return (vehicle?.upgrades ?? []).reduce((totals, key) => {
+    const upgrade = VEHICLE_UPGRADE_DEFINITIONS[key];
+    return {
+      cargoBonus: totals.cargoBonus + upgrade.cargoBonus,
+      durationMultiplier: totals.durationMultiplier * upgrade.durationMultiplier,
+      fareMultiplier: totals.fareMultiplier * upgrade.fareMultiplier,
+      stealthBonus: totals.stealthBonus + upgrade.stealthBonus,
+    };
+  }, {
+    cargoBonus: 0,
+    durationMultiplier: 1,
+    fareMultiplier: 1,
+    stealthBonus: 0,
+  });
+}
+
+export function getVehicleTravelQuoteForOwnedVehicle(origin: District, destination: District, vehicle: OwnedVehicle): TravelQuote {
+  const baseQuote = getVehicleTravelQuote(origin, destination, vehicle.mode);
+  const effects = getVehicleUpgradeEffects(vehicle);
+
+  return {
+    ...baseQuote,
+    cargoCapacity: Math.round(baseQuote.cargoCapacity + effects.cargoBonus),
+    fareCost: Math.max(1, Math.round(baseQuote.fareCost * effects.fareMultiplier)),
+    durationMs: Math.max(6_000, Math.round(baseQuote.durationMs * effects.durationMultiplier)),
+  };
+}
+
+export function getVehicleConstructionRecipe(mode: VehicleTravelMode) {
+  return VEHICLE_CONSTRUCTION_RECIPES[mode];
+}
+
+export function getVehicleRepairCost(vehicle: OwnedVehicle) {
+  const damage = Math.max(0, 100 - vehicle.durability);
+  const maintenanceGap = Math.max(0, 100 - vehicle.maintenance);
+  return {
+    cashCost: Math.max(0, Math.round(damage * 12 + maintenanceGap * 6)),
+    materialCosts: {
+      Metals: Math.max(0, Math.ceil(damage / 8)),
+      Electronics: Math.max(0, Math.ceil(maintenanceGap / 14)),
+    } satisfies Partial<Record<JunkyardStorageCategory, number>>,
+  };
+}
+
+export function getVehicleRefuelCost(vehicle: OwnedVehicle) {
+  const missingFuel = Math.max(0, vehicle.maxFuel - vehicle.fuel);
+  return {
+    fuelNeeded: missingFuel,
+    cashCost: Math.max(0, Math.ceil(missingFuel * 1.6)),
+  };
+}
+
+function getVehicleBreakdownRisk(vehicle: OwnedVehicle, destination: District) {
+  const effects = getVehicleUpgradeEffects(vehicle);
+  const maintenancePenalty = Math.max(0, 40 - vehicle.maintenance) * 0.9;
+  const durabilityPenalty = Math.max(0, 28 - vehicle.durability) * 1.15;
+  const routeDangerPenalty = Math.max(0, DISTRICTS[destination].danger - 35) * 0.22;
+  return Math.max(0, Math.min(85, maintenancePenalty + durabilityPenalty + routeDangerPenalty - effects.stealthBonus));
+}
+
+function rollVehicleBreakdown(vehicle: OwnedVehicle, destination: District) {
+  const breakdownRisk = getVehicleBreakdownRisk(vehicle, destination);
+  const rolledBreakdown = Math.random() * 100 < breakdownRisk;
+  if (!rolledBreakdown) {
+    return {
+      breakdownRisk,
+      didBreakdown: false,
+      durationPenaltyMs: 0,
+      farePenalty: 0,
+      extraWear: 0,
+    };
+  }
+
+  return {
+    breakdownRisk,
+    didBreakdown: true,
+    durationPenaltyMs: Math.round(7_000 + DISTRICTS[destination].danger * 85),
+    farePenalty: Math.round(8 + DISTRICTS[destination].danger / 6),
+    extraWear: Math.round(6 + DISTRICTS[destination].danger / 12),
+  };
+}
+
 function getVehicleTravelQuote(origin: District, destination: District, mode: VehicleTravelMode): TravelQuote {
   const distance = getTravelDistance(origin, destination);
   const destinationDanger = DISTRICTS[destination].danger;
@@ -4335,6 +5732,10 @@ function getVehicleTravelQuote(origin: District, destination: District, mode: Ve
 }
 
 export function getTravelQuote(origin: District, destination: District, mode: TravelMode): TravelQuote {
+  if (mode === 'plane') {
+    return getAirportTravelQuote(origin, destination);
+  }
+
   if (mode === 'train') {
     return getTrainTravelQuote(origin, destination);
   }
@@ -4346,7 +5747,60 @@ export function getTravelQuote(origin: District, destination: District, mode: Tr
   return getVehicleTravelQuote(origin, destination, mode);
 }
 
+export function getTravelCargoAdjustment(quote: TravelQuote, cargoLoad: number): TravelCargoAdjustment {
+  const safeCargoCapacity = Math.max(1, quote.cargoCapacity);
+  const cargoUtilization = cargoLoad / safeCargoCapacity;
+  const isOverweight = cargoUtilization > 1;
+
+  let fareSurcharge = 0;
+  let durationPenaltyMs = 0;
+
+  if (cargoUtilization > 0.7) {
+    const loadStress = Math.min(1, Math.max(0, (cargoUtilization - 0.7) / 0.3));
+    fareSurcharge = Math.max(0, Math.round((quote.fareCost * 0.18 + 6) * loadStress));
+    durationPenaltyMs = Math.max(0, Math.round((quote.durationMs * 0.22 + 1_500) * loadStress));
+  }
+
+  return {
+    cargoLoad,
+    cargoUtilization,
+    fareSurcharge,
+    durationPenaltyMs,
+    finalFareCost: quote.fareCost + fareSurcharge,
+    finalDurationMs: quote.durationMs + durationPenaltyMs,
+    isOverweight,
+  };
+}
+
+export function getTravelQuoteForLoad(origin: District, destination: District, mode: TravelMode, cargoLoad: number): TravelQuote {
+  const quote = getTravelQuote(origin, destination, mode);
+  const cargoAdjustment = getTravelCargoAdjustment(quote, cargoLoad);
+
+  return {
+    ...quote,
+    fareCost: cargoAdjustment.finalFareCost,
+    durationMs: cargoAdjustment.finalDurationMs,
+  };
+}
+
+export function getTravelQuoteForFleetLoad(origin: District, destination: District, mode: TravelMode, cargoLoad: number, ownedVehicle?: OwnedVehicle | null): TravelQuote {
+  const quote = ownedVehicle && mode !== 'bus' && mode !== 'train' && mode !== 'plane'
+    ? getVehicleTravelQuoteForOwnedVehicle(origin, destination, ownedVehicle)
+    : getTravelQuote(origin, destination, mode);
+  const cargoAdjustment = getTravelCargoAdjustment(quote, cargoLoad);
+
+  return {
+    ...quote,
+    fareCost: cargoAdjustment.finalFareCost,
+    durationMs: cargoAdjustment.finalDurationMs,
+  };
+}
+
 function getTravelLockedMessage(mode: TravelMode) {
+  if (mode === 'plane') {
+    return `Airport routes unlock at Rank ${AIRPORT_MIN_RANK}.`;
+  }
+
   if (mode === 'train') {
     return `Train routes unlock at Rank ${TRAIN_MIN_RANK}.`;
   }
@@ -4725,6 +6179,7 @@ export const useGameStore = create<GameState>((set, get) => {
         flashlight: null,
         gloves: null,
       },
+      ownedVehicles: {},
       lastScavengeTime: Date.now(),
       totalScavenged: 2500,
     },
@@ -4799,8 +6254,11 @@ export const useGameStore = create<GameState>((set, get) => {
         travel: createInitialTravelState(district),
       };
     }),
-    startTravel: (destination, mode = 'bus') => {
+    startTravel: (destination, mode = 'bus', options) => {
       const store = get();
+      const ownedVehicle = mode !== 'bus' && mode !== 'train' && mode !== 'plane'
+        ? store.player.ownedVehicles[mode] ?? null
+        : null;
 
       if (store.travel.status === 'travelling') {
         store.addNotification('You are already on the move.', 'warning');
@@ -4822,6 +6280,18 @@ export const useGameStore = create<GameState>((set, get) => {
         return;
       }
 
+      if (mode === 'plane') {
+        if (store.player.rank < AIRPORT_MIN_RANK) {
+          store.addNotification(`Airport routes unlock at Rank ${AIRPORT_MIN_RANK}.`, 'warning');
+          return;
+        }
+
+        if (!isAirportRouteAvailable(store.currentDistrict, destination)) {
+          store.addNotification(`No airport route runs from ${DISTRICTS[store.currentDistrict].name} to ${DISTRICTS[destination].name}.`, 'warning');
+          return;
+        }
+      }
+
       if (mode === 'train') {
         if (store.player.rank < TRAIN_MIN_RANK) {
           store.addNotification(`Train routes unlock at Rank ${TRAIN_MIN_RANK}.`, 'warning');
@@ -4834,13 +6304,19 @@ export const useGameStore = create<GameState>((set, get) => {
         }
       }
 
-      if (mode !== 'bus' && mode !== 'train') {
-        const unlockedVehicleModes = getUnlockedVehicleModes(store.upgradeTreeProgress);
-        if (!unlockedVehicleModes.includes(mode)) {
-          const lockedMessage = getTravelLockedMessage(mode);
-          if (lockedMessage) {
-            store.addNotification(lockedMessage, 'warning');
-          }
+      if (mode !== 'bus' && mode !== 'train' && mode !== 'plane') {
+        if (!ownedVehicle) {
+          store.addNotification(`Build your ${getTravelModeLabel(mode)} before taking it on district routes.`, 'warning');
+          return;
+        }
+
+        if (ownedVehicle.durability < 20) {
+          store.addNotification(`${getTravelModeLabel(mode)} durability is too low for a safe trip. Repair it first.`, 'warning');
+          return;
+        }
+
+        if (ownedVehicle.fuel < VEHICLE_TRAVEL_SPECS[mode].fuelUsePerTrip) {
+          store.addNotification(`${getTravelModeLabel(mode)} is too low on fuel for this run. Refuel first.`, 'warning');
           return;
         }
       }
@@ -4850,8 +6326,41 @@ export const useGameStore = create<GameState>((set, get) => {
         return;
       }
 
-      const quote = getTravelQuote(store.currentDistrict, destination, mode);
-      const transportLabel = quote.mode === 'train'
+      const baseQuote = ownedVehicle
+        ? getVehicleTravelQuoteForOwnedVehicle(store.currentDistrict, destination, ownedVehicle)
+        : getTravelQuote(store.currentDistrict, destination, mode);
+      const shipmentHeadroom = Math.max(0, baseQuote.cargoCapacity - store.player.usedCapacity);
+      const shipmentManifest = getTravelShipmentPreview({
+        property: store.property,
+        junkyardStorage: store.junkyardStorage,
+        auctionListings: store.auctionListings,
+        guild: store.guild,
+        destination,
+        maxShipmentWeight: shipmentHeadroom,
+        selections: options?.shipmentSelections,
+        includePropertyStock: options?.includePropertyShipment,
+      });
+      const effectiveCargoLoad = store.player.usedCapacity + (shipmentManifest?.totalWeight ?? 0);
+      const cargoAdjustment = getTravelCargoAdjustment(baseQuote, effectiveCargoLoad);
+      const breakdownResult = ownedVehicle ? rollVehicleBreakdown(ownedVehicle, destination) : null;
+      const routeGameplay = getRouteGameplayAdjustment({
+        mode,
+        destination,
+        rank: store.player.rank,
+        heat: store.player.heat,
+        cargoUtilization: cargoAdjustment.cargoUtilization,
+        factionStandings: store.factionStandings,
+        guildTerritory: store.guild.territory,
+        shipmentValue: shipmentManifest?.entries.reduce((total, entry) => total + entry.totalValue, 0) ?? 0,
+      });
+      const quote = {
+        ...baseQuote,
+        fareCost: Math.max(1, Math.round((cargoAdjustment.finalFareCost + (breakdownResult?.farePenalty ?? 0)) * routeGameplay.fareMultiplier) + routeGameplay.eventFareDelta),
+        durationMs: Math.max(6_000, Math.round((cargoAdjustment.finalDurationMs + (breakdownResult?.durationPenaltyMs ?? 0)) * routeGameplay.durationMultiplier) + routeGameplay.eventDurationDeltaMs),
+      };
+      const transportLabel = quote.mode === 'plane'
+        ? 'airport ticket'
+        : quote.mode === 'train'
         ? 'train ticket'
         : quote.mode === 'bus'
           ? 'bus fare'
@@ -4862,8 +6371,9 @@ export const useGameStore = create<GameState>((set, get) => {
         return;
       }
 
-      if (store.player.usedCapacity > quote.cargoCapacity) {
-        store.addNotification(`${getTravelModeLabel(quote.mode)} travel only allows ${quote.cargoCapacity} carry weight. Offload some inventory first.`, 'warning');
+      if (cargoAdjustment.isOverweight) {
+        const overflow = Math.max(0, effectiveCargoLoad - quote.cargoCapacity);
+        store.addNotification(`${getTravelModeLabel(quote.mode)} travel only allows ${quote.cargoCapacity} carry weight. Offload ${overflow.toFixed(1)} before departure.`, 'warning');
         return;
       }
 
@@ -4871,10 +6381,7 @@ export const useGameStore = create<GameState>((set, get) => {
       const arrivalAt = departureAt + quote.durationMs;
 
       set((s) => ({
-        player: {
-          ...s.player,
-          cash: s.player.cash - quote.fareCost,
-        },
+        ...(shipmentManifest ? applyTravelShipmentDeparture(s, shipmentManifest) : {}),
         travel: {
           status: 'travelling',
           mode: quote.mode,
@@ -4885,10 +6392,45 @@ export const useGameStore = create<GameState>((set, get) => {
           fareCost: quote.fareCost,
           cargoCapacity: quote.cargoCapacity,
           durationMs: quote.durationMs,
+          shipmentManifest,
+          routeModifier: routeGameplay.routeModifier,
+          routeEventSummary: routeGameplay.routeEventSummary,
+          hadDelay: routeGameplay.hadDelay || Boolean(breakdownResult?.durationPenaltyMs),
+          hadInterruption: routeGameplay.hadInterruption || Boolean(breakdownResult?.didBreakdown),
+          cargoProfitBonus: routeGameplay.cargoProfitBonus,
+        },
+        player: {
+          ...s.player,
+          heat: Math.max(0, Math.min(100, s.player.heat + routeGameplay.heatDelta)),
+          cash: s.player.cash - quote.fareCost,
+          ownedVehicles: ownedVehicle ? {
+            ...s.player.ownedVehicles,
+            [mode]: {
+              ...ownedVehicle,
+              fuel: Math.max(0, ownedVehicle.fuel - VEHICLE_TRAVEL_SPECS[mode].fuelUsePerTrip),
+              durability: Math.max(0, ownedVehicle.durability - VEHICLE_TRAVEL_SPECS[mode].maintenanceWearPerTrip - (breakdownResult?.extraWear ?? 0)),
+              maintenance: Math.max(0, ownedVehicle.maintenance - Math.round(VEHICLE_TRAVEL_SPECS[mode].maintenanceWearPerTrip * 0.8) - (breakdownResult?.extraWear ?? 0)),
+            },
+          } : s.player.ownedVehicles,
         },
       }));
 
-      store.addNotification(`Departed for ${DISTRICTS[destination].name} by ${getTravelModeLabel(quote.mode).toLowerCase()}. ETA ${Math.ceil(quote.durationMs / 1000)}s.`, 'info');
+      const heavyLoadNote = cargoAdjustment.fareSurcharge > 0 || cargoAdjustment.durationPenaltyMs > 0
+        ? ` Heavy-load logistics added +$${cargoAdjustment.fareSurcharge} and +${Math.ceil(cargoAdjustment.durationPenaltyMs / 1000)}s.`
+        : '';
+      const breakdownNote = breakdownResult?.didBreakdown
+        ? ` Breakdown risk hit. Route delay +${Math.ceil(breakdownResult.durationPenaltyMs / 1000)}s and emergency spend +$${breakdownResult.farePenalty}.`
+        : ownedVehicle && breakdownResult && breakdownResult.breakdownRisk >= 20
+          ? ` Maintenance risk ${Math.round(breakdownResult.breakdownRisk)}%.`
+          : '';
+      const routeModifierNote = store.player.rank >= ROUTE_GAMEPLAY_MIN_RANK
+        ? ` Route class: ${routeGameplay.routeModifier.toUpperCase()}${routeGameplay.riskScore > 0 ? ` (risk ${Math.round(routeGameplay.riskScore)}).` : '.'}`
+        : '';
+      const routeEventNote = routeGameplay.routeEventSummary ? ` ${routeGameplay.routeEventSummary}` : '';
+      const shipmentNote = shipmentManifest
+        ? ` Shipping ${shipmentManifest.totalWeight.toFixed(1)} cargo weight to ${shipmentManifest.targetPropertyName}.`
+        : '';
+      store.addNotification(`Departed for ${DISTRICTS[destination].name} by ${getTravelModeLabel(quote.mode).toLowerCase()}. ETA ${Math.ceil(quote.durationMs / 1000)}s.${heavyLoadNote}${breakdownNote ? ` ${breakdownNote}` : ''}${routeModifierNote ? ` ${routeModifierNote}` : ''}${routeEventNote}${shipmentNote}`, 'info');
     },
     refreshTravelState: () => {
       const store = get();
@@ -4901,6 +6443,10 @@ export const useGameStore = create<GameState>((set, get) => {
       }
 
       const destination = store.travel.destination;
+      const shipmentManifest = store.travel.shipmentManifest;
+      const shipmentResult = shipmentManifest
+        ? resolveTravelShipmentArrival(store, shipmentManifest)
+        : null;
 
       set((s) => ({
         ...buildDistrictTransitionResult({
@@ -4913,10 +6459,44 @@ export const useGameStore = create<GameState>((set, get) => {
           lastMissionRefreshAt: s.lastMissionRefreshAt,
           now: Date.now(),
         }),
+        property: shipmentResult ? shipmentResult.property : s.property,
+        junkyardStorage: shipmentResult ? shipmentResult.junkyardStorage : s.junkyardStorage,
+        auctionListings: shipmentResult ? shipmentResult.auctionListings : s.auctionListings,
+        guild: shipmentResult ? shipmentResult.guild : s.guild,
+        player: {
+          ...s.player,
+          cash: s.player.cash + (s.travel.cargoProfitBonus > 0 ? s.travel.cargoProfitBonus : 0),
+        },
         travel: createInitialTravelState(destination),
       }));
 
       store.addNotification(`Arrived in ${DISTRICTS[destination].name}.`, 'success');
+
+      if (store.travel.hadDelay) {
+        store.addNotification('Route delays extended your arrival window on this run.', 'warning');
+      }
+
+      if (store.travel.hadInterruption) {
+        store.addNotification('Route interruption encountered: expect stricter checks on high-risk runs.', 'warning');
+      }
+
+      if (store.travel.cargoProfitBonus > 0) {
+        store.addNotification(`High-risk logistics premium paid out +$${store.travel.cargoProfitBonus.toLocaleString()} on arrival.`, 'success');
+      }
+
+      if (shipmentManifest && shipmentResult) {
+        if (shipmentResult.deliveredWeight > 0) {
+          store.addNotification(`Delivered ${shipmentResult.deliveredWeight.toFixed(1)} stash weight to ${shipmentManifest.targetPropertyName}.`, 'success');
+        }
+
+        if (shipmentResult.returnedWeight > 0) {
+          store.addNotification(`Returned ${shipmentResult.returnedWeight.toFixed(1)} overflow weight to source storage.`, 'info');
+        }
+
+        if (shipmentResult.lostWeight > 0) {
+          store.addNotification(`Lost ${shipmentResult.lostWeight.toFixed(1)} stash weight due to full storage on arrival.`, 'warning');
+        }
+      }
     },
     refreshPropertyState: () => {
       const store = get();
@@ -5003,11 +6583,85 @@ export const useGameStore = create<GameState>((set, get) => {
         },
       }));
 
-      store.addNotification('Dumpster upgrade path cleared. Shack purchases are now unlocked across the city.', 'success');
+      store.addNotification('Dumpster upgrade path cleared. Shack purchases are now unlocked across the city. Buy and activate a Shack from City > Shack Market.', 'success');
+    },
+    unlockWorkshopTier: () => {
+      const store = get();
+      const status = getWorkshopUnlockStatus(store.property, store.player, store.inventory);
+
+      if (!store.property.shackAccess.unlocked) {
+        store.addNotification('Unlock Shack tier before pushing into Workshop territory.', 'warning');
+        return;
+      }
+
+      if (store.property.workshopAccess.unlocked) {
+        store.addNotification('Workshop tier is already unlocked.', 'info');
+        return;
+      }
+
+      if (!status.hasCorrectBase || !status.rankReady || !status.componentReady || !status.stashReady || !status.cashReady) {
+        store.addNotification('Shack-to-Workshop upgrade path is not ready yet. Review the Workshop market requirements.', 'warning');
+        return;
+      }
+
+      set((state) => ({
+        inventory: removeInventoryQuantity(state.inventory, 'mat_components', WORKSHOP_UNLOCK_COMPONENT_COST),
+        player: {
+          ...state.player,
+          cash: state.player.cash - WORKSHOP_UNLOCK_CASH_COST,
+          usedCapacity: removeInventoryQuantity(state.inventory, 'mat_components', WORKSHOP_UNLOCK_COMPONENT_COST).reduce((total, entry) => total + entry.weight * entry.quantity, 0),
+        },
+        property: {
+          ...state.property,
+          workshopAccess: {
+            unlocked: true,
+            completedAt: Date.now(),
+          },
+        },
+      }));
+
+      store.addNotification('Shack-to-Workshop path cleared. Workshop purchases are now unlocked across the city. Buy and activate a Workshop from City > Workshop Market.', 'success');
+    },
+    unlockJunkyardTier: () => {
+      const store = get();
+      const status = getJunkyardUnlockStatus(store.property, store.player, store.inventory);
+
+      if (!store.property.workshopAccess.unlocked) {
+        store.addNotification('Unlock Workshop tier before pushing into Junkyard operations.', 'warning');
+        return;
+      }
+
+      if (store.property.junkyardAccess.unlocked) {
+        store.addNotification('Junkyard tier is already unlocked.', 'info');
+        return;
+      }
+
+      if (!status.hasCorrectBase || !status.rankReady || !status.componentReady || !status.stashReady || !status.cashReady) {
+        store.addNotification('Workshop-to-Junkyard upgrade path is not ready yet. Review the Junkyard market requirements.', 'warning');
+        return;
+      }
+
+      set((state) => ({
+        inventory: removeInventoryQuantity(state.inventory, 'mat_components', JUNKYARD_UNLOCK_COMPONENT_COST),
+        player: {
+          ...state.player,
+          cash: state.player.cash - JUNKYARD_UNLOCK_CASH_COST,
+          usedCapacity: removeInventoryQuantity(state.inventory, 'mat_components', JUNKYARD_UNLOCK_COMPONENT_COST).reduce((total, entry) => total + entry.weight * entry.quantity, 0),
+        },
+        property: {
+          ...state.property,
+          junkyardAccess: {
+            unlocked: true,
+            completedAt: Date.now(),
+          },
+        },
+      }));
+
+      store.addNotification('Workshop-to-Junkyard path cleared. Full Junkyard purchases are now unlocked across the city. Buy and activate a Junkyard from City > Junkyard Market.', 'success');
     },
     purchaseShack: (district) => {
       const store = get();
-      const listing = getPropertyListing(district);
+      const listing = getPropertyListing('shack', district);
       const existingProperty = store.property.properties.find((entry) => entry.district === district && entry.tier === 'shack');
 
       if (existingProperty) {
@@ -5064,6 +6718,124 @@ export const useGameStore = create<GameState>((set, get) => {
 
       store.addNotification(`Secured ${listing.label} in ${DISTRICTS[district].name} for $${listing.purchasePrice.toLocaleString()}.`, 'success');
     },
+    purchaseWorkshop: (district) => {
+      const store = get();
+      const listing = getPropertyListing('workshop', district);
+      const existingProperty = store.property.properties.find((entry) => entry.district === district && entry.tier === 'workshop');
+
+      if (existingProperty) {
+        store.addNotification(`You already control a Workshop in ${DISTRICTS[district].name}.`, 'info');
+        return;
+      }
+
+      if (!store.property.workshopAccess.unlocked) {
+        store.addNotification('Finish the Shack-to-Workshop upgrade path before buying Workshop properties.', 'warning');
+        return;
+      }
+
+      if (store.player.cash < listing.purchasePrice) {
+        store.addNotification(`Need $${listing.purchasePrice.toLocaleString()} to secure ${listing.label}.`, 'warning');
+        return;
+      }
+
+      const propertyId = `workshop-${district}-${Date.now()}`;
+      const propertyName = district === 'slums'
+        ? `${store.player.username}'s Workshop`
+        : `${DISTRICTS[district].name} ${listing.label}`;
+
+      set((state) => ({
+        player: {
+          ...state.player,
+          cash: state.player.cash - listing.purchasePrice,
+        },
+        property: {
+          ...state.property,
+          activePropertyId: propertyId,
+          properties: [
+            ...state.property.properties.map((entry) => ({
+              ...entry,
+              occupancyStatus: (entry.occupancyStatus === 'rented_out' ? 'rented_out' : 'inactive') as PropertyOccupancyStatus,
+            })),
+            {
+              id: propertyId,
+              name: propertyName,
+              district,
+              tier: 'workshop',
+              occupancyStatus: 'active',
+              storageCapacity: listing.storageCapacity,
+              assemblyTier: listing.assemblyTier,
+              canDisassemble: listing.canDisassemble,
+              canRecycle: listing.canRecycle,
+              employeeCapacity: listing.employeeCapacity,
+              storageUpgradeLevel: 0,
+              storedItems: [],
+              letting: null,
+            },
+          ],
+        },
+      }));
+
+      store.addNotification(`Secured ${listing.label} in ${DISTRICTS[district].name} for $${listing.purchasePrice.toLocaleString()}.`, 'success');
+    },
+    purchaseJunkyard: (district) => {
+      const store = get();
+      const listing = getPropertyListing('junkyard', district);
+      const existingProperty = store.property.properties.find((entry) => entry.district === district && entry.tier === 'junkyard');
+
+      if (existingProperty) {
+        store.addNotification(`You already control a Junkyard in ${DISTRICTS[district].name}.`, 'info');
+        return;
+      }
+
+      if (!store.property.junkyardAccess.unlocked) {
+        store.addNotification('Finish the Workshop-to-Junkyard upgrade path before buying Junkyard properties.', 'warning');
+        return;
+      }
+
+      if (store.player.cash < listing.purchasePrice) {
+        store.addNotification(`Need $${listing.purchasePrice.toLocaleString()} to secure ${listing.label}.`, 'warning');
+        return;
+      }
+
+      const propertyId = `junkyard-${district}-${Date.now()}`;
+      const propertyName = district === 'slums'
+        ? `${store.player.username}'s Junkyard`
+        : `${DISTRICTS[district].name} ${listing.label}`;
+
+      set((state) => ({
+        player: {
+          ...state.player,
+          cash: state.player.cash - listing.purchasePrice,
+        },
+        property: {
+          ...state.property,
+          activePropertyId: propertyId,
+          properties: [
+            ...state.property.properties.map((entry) => ({
+              ...entry,
+              occupancyStatus: (entry.occupancyStatus === 'rented_out' ? 'rented_out' : 'inactive') as PropertyOccupancyStatus,
+            })),
+            {
+              id: propertyId,
+              name: propertyName,
+              district,
+              tier: 'junkyard',
+              occupancyStatus: 'active',
+              storageCapacity: listing.storageCapacity,
+              assemblyTier: listing.assemblyTier,
+              canDisassemble: listing.canDisassemble,
+              canRecycle: listing.canRecycle,
+              employeeCapacity: listing.employeeCapacity,
+              storageUpgradeLevel: 0,
+              storedItems: [],
+              letting: null,
+            },
+          ],
+        },
+      }));
+
+      store.addNotification(`Secured ${listing.label} in ${DISTRICTS[district].name} for $${listing.purchasePrice.toLocaleString()}.`, 'success');
+    },
     listPropertyForRent: (propertyId, mode) => {
       const store = get();
       const targetProperty = store.property.properties.find((entry) => entry.id === propertyId);
@@ -5083,7 +6855,12 @@ export const useGameStore = create<GameState>((set, get) => {
         return;
       }
 
-      const listing = getPropertyListing(targetProperty.district);
+      if (targetProperty.tier !== 'shack' && targetProperty.tier !== 'workshop') {
+        store.addNotification('Lettings are only configured for Shack and Workshop tiers right now.', 'warning');
+        return;
+      }
+
+      const listing = getPropertyListing(targetProperty.tier, targetProperty.district);
       const leaseTerms = getLeaseTerms(listing, mode);
 
       set((state) => ({
@@ -6982,6 +8759,241 @@ export const useGameStore = create<GameState>((set, get) => {
       const actionLabel = storageBin.unlocked ? 'Expanded' : 'Unlocked';
       store.addNotification(`${actionLabel} ${category} storage for $${cashCost.toLocaleString()} and ${materialCost} materials.`, 'success');
     },
+    buildVehicle: (mode) => {
+      const store = get();
+      const recipe = getVehicleConstructionRecipe(mode);
+      const activeProperty = getActiveProperty(store.property);
+
+      if (!activeProperty) {
+        store.addNotification('Set an active base before assembling a fleet vehicle.', 'warning');
+        return;
+      }
+
+      if (!hasRequiredPropertyTier(activeProperty.tier, recipe.requiredPropertyTier)) {
+        store.addNotification(`${getTravelModeLabel(mode)} assembly needs a ${getPropertyTierLabel(recipe.requiredPropertyTier)} base. ${getPropertyTierLabel(activeProperty.tier)} only handles earlier transport builds.`, 'warning');
+        return;
+      }
+
+      if (store.player.ownedVehicles[mode]) {
+        store.addNotification(`You already have a ${getTravelModeLabel(mode)} in the fleet.`, 'info');
+        return;
+      }
+
+      if (store.player.rank < recipe.rankRequired) {
+        store.addNotification(`Requires Rank ${recipe.rankRequired} to build the ${getTravelModeLabel(mode)}.`, 'warning');
+        return;
+      }
+
+      if (store.player.cash < recipe.cashCost) {
+        store.addNotification(`Need $${recipe.cashCost.toLocaleString()} to build the ${getTravelModeLabel(mode)}.`, 'warning');
+        return;
+      }
+
+      const missingIngredient = recipe.ingredients.find((ingredient) => (
+        getCombinedItemQuantity(store.inventory, activeProperty.storedItems, ingredient.itemId) < ingredient.quantity
+      ));
+
+      if (missingIngredient) {
+        store.addNotification(`Need ${missingIngredient.quantity}x ${missingIngredient.itemName} to build the ${getTravelModeLabel(mode)}.`, 'warning');
+        return;
+      }
+
+      const removedIngredients = recipe.ingredients.reduce(
+        (state, ingredient) => removeCombinedItemQuantity(state.inventory, state.storedItems, ingredient.itemId, ingredient.quantity),
+        {
+          inventory: store.inventory,
+          storedItems: activeProperty.storedItems,
+        },
+      );
+
+      set((s) => ({
+        inventory: removedIngredients.inventory,
+        player: {
+          ...s.player,
+          cash: s.player.cash - recipe.cashCost,
+          usedCapacity: removedIngredients.inventory.reduce((total, entry) => total + entry.weight * entry.quantity, 0),
+          ownedVehicles: {
+            ...s.player.ownedVehicles,
+            [mode]: createOwnedVehicle(mode),
+          },
+        },
+        property: {
+          ...s.property,
+          properties: s.property.properties.map((entry) => (
+            entry.id === s.property.activePropertyId
+              ? { ...entry, storedItems: removedIngredients.storedItems }
+              : entry
+          )),
+        },
+      }));
+
+      store.addNotification(`Built ${getTravelModeLabel(mode)} from salvaged parts at ${activeProperty.name}.`, 'success');
+    },
+    repairVehicle: (mode) => {
+      const store = get();
+      const vehicle = store.player.ownedVehicles[mode];
+      const activeProperty = getActiveProperty(store.property);
+      if (!vehicle) {
+        return;
+      }
+
+      const repairCost = getVehicleRepairCost(vehicle);
+      if (repairCost.cashCost <= 0 && Object.values(repairCost.materialCosts).every((cost) => !cost)) {
+        store.addNotification(`${getTravelModeLabel(mode)} is already fully serviced.`, 'info');
+        return;
+      }
+
+      const workshopRepair = getWorkshopVehicleRepairRequirements(vehicle);
+      const precisionKits = getCombinedItemQuantity(store.inventory, activeProperty?.storedItems ?? [], 'kit_precision_repair');
+      const calibrationTuners = getCombinedItemQuantity(store.inventory, activeProperty?.storedItems ?? [], 'kit_calibration_tuner');
+      const overhaulCrates = getCombinedItemQuantity(store.inventory, activeProperty?.storedItems ?? [], 'kit_overhaul_crate');
+      const hasWorkshopRepairStock = overhaulCrates >= workshopRepair.overhaulCrates
+        && precisionKits >= workshopRepair.precisionRepairKits
+        && calibrationTuners >= workshopRepair.calibrationTuners;
+
+      if (activeProperty && hasRequiredPropertyTier(activeProperty.tier, 'workshop') && hasWorkshopRepairStock) {
+        if (store.player.cash < workshopRepair.cashCost) {
+          store.addNotification(`Need $${workshopRepair.cashCost.toLocaleString()} to service the ${getTravelModeLabel(mode)} at ${activeProperty.name}.`, 'warning');
+          return;
+        }
+
+        const removedOverhaulCrates = removeCombinedItemQuantity(store.inventory, activeProperty.storedItems, 'kit_overhaul_crate', workshopRepair.overhaulCrates);
+        const removedPrecisionKits = removeCombinedItemQuantity(removedOverhaulCrates.inventory, removedOverhaulCrates.storedItems, 'kit_precision_repair', workshopRepair.precisionRepairKits);
+        const removedCalibrationTuners = removeCombinedItemQuantity(removedPrecisionKits.inventory, removedPrecisionKits.storedItems, 'kit_calibration_tuner', workshopRepair.calibrationTuners);
+
+        set((s) => ({
+          inventory: removedCalibrationTuners.inventory,
+          player: {
+            ...s.player,
+            cash: s.player.cash - workshopRepair.cashCost,
+            usedCapacity: removedCalibrationTuners.inventory.reduce((total, entry) => total + entry.weight * entry.quantity, 0),
+            ownedVehicles: {
+              ...s.player.ownedVehicles,
+              [mode]: {
+                ...vehicle,
+                durability: 100,
+                maintenance: 100,
+              },
+            },
+          },
+          property: {
+            ...s.property,
+            properties: s.property.properties.map((entry) => (
+              entry.id === s.property.activePropertyId
+                ? { ...entry, storedItems: removedCalibrationTuners.storedItems }
+                : entry
+            )),
+          },
+        }));
+
+        store.addNotification(`Workshop crew rebuilt ${getTravelModeLabel(mode)} to full condition at ${activeProperty.name}.`, 'success');
+        return;
+      }
+
+      if (store.player.cash < repairCost.cashCost) {
+        store.addNotification(`Need $${repairCost.cashCost.toLocaleString()} to repair the ${getTravelModeLabel(mode)}.`, 'warning');
+        return;
+      }
+
+      if (!hasCategorizedMaterials(store.junkyardStorage, repairCost.materialCosts)) {
+        store.addNotification(`Need more repair stock before the ${getTravelModeLabel(mode)} can be serviced.`, 'warning');
+        return;
+      }
+
+      const nextStorage = spendCategorizedMaterials(store.junkyardStorage, repairCost.materialCosts);
+      set((s) => ({
+        player: {
+          ...s.player,
+          cash: s.player.cash - repairCost.cashCost,
+          ownedVehicles: {
+            ...s.player.ownedVehicles,
+            [mode]: {
+              ...vehicle,
+              durability: 100,
+              maintenance: 100,
+            },
+          },
+        },
+        junkyardStorage: nextStorage,
+      }));
+
+      store.addNotification(`Repaired and serviced ${getTravelModeLabel(mode)} back to full condition.`, 'success');
+    },
+    refuelVehicle: (mode) => {
+      const store = get();
+      const vehicle = store.player.ownedVehicles[mode];
+      if (!vehicle) {
+        return;
+      }
+
+      const refuelCost = getVehicleRefuelCost(vehicle);
+      if (refuelCost.cashCost <= 0) {
+        store.addNotification(`${getTravelModeLabel(mode)} tank is already full.`, 'info');
+        return;
+      }
+
+      if (store.player.cash < refuelCost.cashCost) {
+        store.addNotification(`Need $${refuelCost.cashCost.toLocaleString()} to refuel the ${getTravelModeLabel(mode)}.`, 'warning');
+        return;
+      }
+
+      set((s) => ({
+        player: {
+          ...s.player,
+          cash: s.player.cash - refuelCost.cashCost,
+          ownedVehicles: {
+            ...s.player.ownedVehicles,
+            [mode]: {
+              ...vehicle,
+              fuel: vehicle.maxFuel,
+            },
+          },
+        },
+      }));
+
+      store.addNotification(`Refueled ${getTravelModeLabel(mode)} to full capacity.`, 'success');
+    },
+    installVehicleUpgrade: (mode, upgradeKey) => {
+      const store = get();
+      const vehicle = store.player.ownedVehicles[mode];
+      const upgrade = VEHICLE_UPGRADE_DEFINITIONS[upgradeKey];
+      if (!vehicle) {
+        return;
+      }
+
+      if (vehicle.upgrades.includes(upgradeKey)) {
+        store.addNotification(`${upgrade.label} is already installed on your ${getTravelModeLabel(mode)}.`, 'info');
+        return;
+      }
+
+      if (store.player.cash < upgrade.cashCost) {
+        store.addNotification(`Need $${upgrade.cashCost.toLocaleString()} to install ${upgrade.label}.`, 'warning');
+        return;
+      }
+
+      if (!hasCategorizedMaterials(store.junkyardStorage, upgrade.materialCosts)) {
+        store.addNotification(`Need more materials to fit ${upgrade.label}.`, 'warning');
+        return;
+      }
+
+      const nextStorage = spendCategorizedMaterials(store.junkyardStorage, upgrade.materialCosts);
+      set((s) => ({
+        player: {
+          ...s.player,
+          cash: s.player.cash - upgrade.cashCost,
+          ownedVehicles: {
+            ...s.player.ownedVehicles,
+            [mode]: {
+              ...vehicle,
+              upgrades: [...vehicle.upgrades, upgradeKey],
+            },
+          },
+        },
+        junkyardStorage: nextStorage,
+      }));
+
+      store.addNotification(`Installed ${upgrade.label} on your ${getTravelModeLabel(mode)}.`, 'success');
+    },
     tickJunkyard: () => {
       const store = get();
       if (!hasJunkyardAccess(store.property)) {
@@ -7459,14 +9471,14 @@ export const useGameStore = create<GameState>((set, get) => {
       const item = inventoryItem ?? storedItem;
       if (!item) return;
 
-      const canRecycleUncommon = Boolean(activeProperty?.canRecycle);
+      const canBreakDownCommon = Boolean(activeProperty?.canDisassemble || activeProperty?.canRecycle || hasJunkyardAccess(store.property));
 
-      if (!canBreakDownRarity(item.rarity, canRecycleUncommon)) {
-        get().addNotification(canRecycleUncommon ? 'Only uncommon+ items can be recycled on this bench.' : 'Only rare+ items can be disassembled.', 'warning');
+      if (!canBreakDownRarity(item.rarity, canBreakDownCommon)) {
+        get().addNotification(canBreakDownCommon ? 'Only common+ items can be recycled on this bench.' : 'Only rare+ items can be disassembled.', 'warning');
         return;
       }
 
-      const componentsGained = getBreakdownComponentYield(item.rarity, canRecycleUncommon) * quantity;
+      const componentsGained = getBreakdownComponentYield(item.rarity, canBreakDownCommon) * quantity;
       if (componentsGained <= 0) return;
 
       if (inventoryItem) {

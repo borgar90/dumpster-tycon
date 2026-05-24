@@ -167,5 +167,6 @@ export const createStarterProfileData = (displayName: string) => ({
       lastMaintenanceAt: 0,
     },
     lastMissionRefreshAt: 0,
+    ownedVehicles: {},
   }),
 });
